@@ -1,0 +1,20 @@
+{
+  "name": "structra-scape",
+  "version": "0.1.0",
+  "description": "A YAML-driven systems thinking and process modeling visualizer",
+  "type": "module",
+  "bin": {
+    "structra": "./src/index.js"
+  },
+  "files": ["src", "samples", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "node src/index.js build samples/approval-flow.yaml --output dist",
+    "validate": "node src/index.js validate samples/approval-flow.yaml",
+    "test": "node --test tests/validate.test.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "cytoscape": "^3.33.1",
+    "js-yaml": "^4.1.1"
+  }
+}

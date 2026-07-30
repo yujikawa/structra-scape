@@ -1,0 +1,26 @@
+# Example model. Copy this with `structra init` to start a new model.
+version: "0.1"
+name: 承認プロセスの改善
+description: 承認待ちが顧客満足度と売上に与える影響を探索するモデル
+
+nodes:
+  - { id: sales, name: 売上, type: kpi, layer: business, position: { x: 760, y: 100 } }
+  - { id: customer_satisfaction, name: 顧客満足度, type: kpi, layer: business, position: { x: 470, y: 100 } }
+  - { id: approval_wait, name: 承認待ち時間, type: causal_variable, layer: causal, links: [manager_approval], position: { x: 140, y: 330 } }
+  - { id: approval_volume, name: 承認件数, type: causal_variable, layer: causal, position: { x: 390, y: 510 } }
+  - { id: staff_load, name: 担当者負荷, type: causal_variable, layer: causal, position: { x: 650, y: 510 } }
+  - { id: processing_time, name: 処理時間, type: causal_variable, layer: causal, position: { x: 820, y: 330 } }
+  - { id: application, name: 申請, type: process, layer: process, owner: 申請者, duration: 15 min, position: { x: 130, y: 720 } }
+  - { id: manager_approval, name: 部長承認, type: process, layer: process, owner: 部長, duration: 2 days, note: 最も長い待機が発生している工程, links: [approval_wait, approval_volume], position: { x: 430, y: 720 } }
+  - { id: accounting_approval, name: 経理承認, type: process, layer: process, owner: 経理, duration: 4 hours, position: { x: 730, y: 720 } }
+  - { id: approval_completed, name: ApprovalCompleted, type: event, layer: event, position: { x: 1010, y: 720 } }
+edges:
+  - { source: approval_wait, target: customer_satisfaction, kind: causal, polarity: "-" }
+  - { source: customer_satisfaction, target: sales, kind: causal, polarity: "+" }
+  - { source: approval_volume, target: staff_load, kind: causal, polarity: "+" }
+  - { source: staff_load, target: processing_time, kind: causal, polarity: "+" }
+  - { source: processing_time, target: approval_wait, kind: causal, polarity: "+" }
+  - { source: application, target: manager_approval, kind: flow }
+  - { source: manager_approval, target: accounting_approval, kind: flow }
+  - { source: accounting_approval, target: approval_completed, kind: flow }
+  - { source: approval_wait, target: manager_approval, kind: link }
