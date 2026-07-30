@@ -1,78 +1,98 @@
 # structra-scape model
-# Edit this file, then run: structra build structra.yaml
+# Edit this file, then run: strscape build structra.yaml
 version: "0.1"
-name: 承認プロセスの改善
-description: 承認待ちが顧客満足度と売上に与える影響を探索するモデル
+name: Improve customer support response time
+description: Explore how support workload affects response time, customer satisfaction, and retention.
 
 nodes:
-  - id: sales
-    name: 売上
+  # Business outcomes
+  - id: improve_retention
+    name: Improve customer retention
+    type: goal
+    description: Keep more customers by improving their support experience.
+    position: { x: 840, y: 80 }
+  - id: customer_retention
+    name: Customer retention
     type: kpi
-    description: 月次売上
-    position: { x: 760, y: 100 }
+    description: Percentage of customers who continue using the service.
+    position: { x: 600, y: 180 }
   - id: customer_satisfaction
-    name: 顧客満足度
+    name: Customer satisfaction
     type: kpi
-    description: 承認速度を含む顧客体験の評価
-    position: { x: 470, y: 100 }
-  - id: approval_wait
-    name: 承認待ち時間
+    description: Customer-reported satisfaction with the support experience.
+    position: { x: 340, y: 180 }
+
+  # Causal factors: this loop describes why response time grows.
+  - id: response_time
+    name: First response time
     type: causal_variable
-    description: 申請から承認完了までの待機時間
-    relations:
-      - target: manager_approval
-        type: occurs_in
+    description: Time from a customer ticket to the first human response.
     validation: hypothesis
-    position: { x: 140, y: 330 }
-  - id: approval_volume
-    name: 承認件数
+    relations:
+      - target: triage_ticket
+        type: occurs_in
+    position: { x: 130, y: 400 }
+  - id: open_tickets
+    name: Open ticket backlog
     type: causal_variable
-    position: { x: 390, y: 510 }
-  - id: staff_load
-    name: 担当者負荷
+    validation: observed
+    position: { x: 370, y: 560 }
+  - id: agent_workload
+    name: Agent workload
     type: causal_variable
-    position: { x: 650, y: 510 }
-  - id: processing_time
-    name: 処理時間
+    validation: hypothesis
+    position: { x: 690, y: 560 }
+  - id: resolution_time
+    name: Resolution time
     type: causal_variable
-    position: { x: 820, y: 330 }
-  - id: application
-    name: 申請
+    validation: hypothesis
+    position: { x: 920, y: 400 }
+
+  # Processes: expected duration is the target; metrics are observed values.
+  - id: receive_ticket
+    name: Receive ticket
     type: process
-    owner: 申請者
-    expected_duration: 15 min
-    position: { x: 130, y: 720 }
-  - id: manager_approval
-    name: 部長承認
+    owner: Support system
+    expected_duration: 5 min
+    position: { x: 120, y: 760 }
+  - id: triage_ticket
+    name: Triage ticket
     type: process
-    owner: 部長
-    expected_duration: 4 hours
+    owner: Support team
+    expected_duration: 30 min
     bottleneck: true
-    bottleneck_reason: 平均処理時間が想定を44時間超過し、差し戻しも多い
+    bottleneck_reason: Average triage time exceeds the target and creates a growing backlog.
     metrics:
-      average_duration: 2 days
-      throughput: 250/day
-      rework_rate: 15%
-    traces: [approval_volume]
-    position: { x: 430, y: 720 }
-  - id: accounting_approval
-    name: 経理承認
+      average_duration: 6 hours
+      throughput: 180/day
+      rework_rate: 12%
+    traces: [agent_workload]
+    position: { x: 420, y: 760 }
+  - id: resolve_ticket
+    name: Resolve ticket
     type: process
-    owner: 経理
+    owner: Support team
     expected_duration: 4 hours
-    position: { x: 730, y: 720 }
-  - id: approval_completed
-    name: ApprovalCompleted
+    position: { x: 720, y: 760 }
+  - id: ticket_resolved
+    name: TicketResolved
     type: event
-    description: 全承認の完了時に発生するイベント
-    position: { x: 1010, y: 720 }
+    description: Emitted when a customer support ticket is resolved.
+    position: { x: 1010, y: 760 }
 
 edges:
-  - { source: approval_wait, target: customer_satisfaction, kind: causal, polarity: "-", validation: hypothesis }
-  - { source: customer_satisfaction, target: sales, kind: causal, polarity: "+", validation: hypothesis }
-  - { source: approval_volume, target: staff_load, kind: causal, polarity: "+", validation: hypothesis }
-  - { source: staff_load, target: processing_time, kind: causal, polarity: "+", validation: hypothesis }
-  - { source: processing_time, target: approval_wait, kind: causal, polarity: "+", delay: true, validation: hypothesis }
-  - { source: application, target: manager_approval, kind: flow }
-  - { source: manager_approval, target: accounting_approval, kind: flow }
-  - { source: accounting_approval, target: approval_completed, kind: flow }
+  # Higher response time lowers satisfaction, which lowers retention.
+  - { source: response_time, target: customer_satisfaction, kind: causal, polarity: "-", validation: hypothesis }
+  - { source: customer_satisfaction, target: customer_retention, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: customer_retention, target: improve_retention, kind: causal, polarity: "+", validation: observed }
+
+  # Reinforcing backlog loop. The delay represents the time before slow resolution grows the backlog.
+  - { source: open_tickets, target: agent_workload, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: agent_workload, target: resolution_time, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: resolution_time, target: response_time, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: response_time, target: open_tickets, kind: causal, polarity: "+", delay: true, validation: hypothesis }
+
+  # Operational flow.
+  - { source: receive_ticket, target: triage_ticket, kind: flow }
+  - { source: triage_ticket, target: resolve_ticket, kind: flow }
+  - { source: resolve_ticket, target: ticket_resolved, kind: flow }

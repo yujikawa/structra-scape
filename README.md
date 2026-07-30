@@ -1,4 +1,6 @@
-# structra-scape
+<h1 align="center">
+  <img src="src/templates/structra-scape-mark.svg" width="32" height="32" alt="structra-scape logo" valign="middle"> structra-scape
+</h1>
 
 `structra-scape` は、ビジネス課題・因果構造・業務プロセスを結び付け、問題を探索するためのYAML駆動OSSツールです。
 
@@ -15,8 +17,34 @@ npm run build
 生成された `dist/index.html` をブラウザで開いてください。新しいモデルは以下で作れます。
 
 ```bash
-node src/index.js init my-model.yaml
-node src/index.js build my-model.yaml --output dist
+strscape init my-model.yaml
+strscape build my-model.yaml --output dist
+```
+
+## AI-driven modeling and live preview
+
+Create a model together with a project-local Codex skill:
+
+```bash
+strscape init model.yaml --codex
+```
+
+This installs `.codex/skills/structra-modeling/SKILL.md`. It instructs an AI agent to treat YAML as the source of truth, use structured process metadata, mark hypotheses with `validation`, validate every edit, and avoid redundant `layer` fields.
+
+Start a live preview while the agent edits the YAML:
+
+```bash
+strscape dev model.yaml
+# http://localhost:4173
+```
+
+The browser reloads automatically whenever the YAML file changes. Use `--port 5000` to choose another port.
+
+To preview multiple models, pass a directory. When more than one YAML file is found, the viewer shows a model selector in its header.
+
+```bash
+strscape dev samples/
+strscape build samples/ --output dist
 ```
 
 ## YAMLモデル

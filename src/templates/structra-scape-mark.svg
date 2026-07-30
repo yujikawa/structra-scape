@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Structra-Scape">
+  <defs>
+    <linearGradient id="structra-s" x1="10" y1="8" x2="30" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#173d72"/>
+      <stop offset=".54" stop-color="#563b9c"/>
+      <stop offset="1" stop-color="#0b6b64"/>
+    </linearGradient>
+  </defs>
+  <circle cx="20" cy="20" r="18" fill="#fff"/>
+  <circle cx="20" cy="20" r="17.25" fill="none" stroke="#cedcf0" stroke-width="1.5"/>
+  <path d="M28.6 11.2c-2.2-2-5.1-3.1-8.7-3.1-5.3 0-8.8 2.3-8.8 5.8 0 3.8 3.6 5 8.8 6 4.8.9 8.4 1.8 8.4 5.6 0 3.4-3.5 5.5-8.8 5.5-3.8 0-7-1.4-9.1-3.8" fill="none" stroke="url(#structra-s)" stroke-width="4.1" stroke-linecap="round"/>
+  <path d="m8.2 25.6 1.3 5.2 4.7-2.4" fill="none" stroke="#0b6b64" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="28.6" cy="11.2" r="2.3" fill="#fff" stroke="#173d72" stroke-width="1.8"/>
+  <circle cx="20" cy="20" r="1.8" fill="#fff" stroke="#563b9c" stroke-width="1.6"/>
+</svg>

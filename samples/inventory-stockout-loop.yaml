@@ -1,0 +1,38 @@
+version: "0.1"
+name: 在庫切れを減らす
+description: 在庫切れが販売機会と補充業務に与える影響を探索するモデル。
+
+nodes:
+  - { id: improve_sales, name: 売上機会を守る, type: goal, position: { x: 850, y: 90 } }
+  - { id: sales, name: 売上, type: kpi, position: { x: 620, y: 180 } }
+  - { id: product_availability, name: 商品可用性, type: kpi, description: 顧客が欲しい商品を購入できる割合, position: { x: 360, y: 180 } }
+  - { id: stockouts, name: 在庫切れ件数, type: causal_variable, validation: observed, relations: [{ target: replenish_inventory, type: occurs_in }], position: { x: 180, y: 420 } }
+  - { id: emergency_orders, name: 緊急発注, type: causal_variable, validation: hypothesis, position: { x: 440, y: 570 } }
+  - { id: purchaser_workload, name: 購買担当者負荷, type: causal_variable, validation: hypothesis, position: { x: 760, y: 520 } }
+  - { id: replenishment_delay, name: 補充リードタイム, type: causal_variable, validation: hypothesis, position: { x: 860, y: 320 } }
+  - { id: monitor_stock, name: 在庫監視, type: process, owner: 需給計画チーム, expected_duration: 1 hour, position: { x: 130, y: 760 } }
+  - id: replenish_inventory
+    name: 在庫補充
+    type: process
+    owner: 購買チーム
+    expected_duration: 1 day
+    bottleneck: true
+    bottleneck_reason: 緊急発注が増えると通常発注の処理が遅れる。
+    metrics: { average_duration: 3 days, throughput: 90/day }
+    traces: [purchaser_workload]
+    position: { x: 440, y: 760 }
+  - { id: receive_inventory, name: 入庫処理, type: process, owner: 倉庫チーム, expected_duration: 4 hours, position: { x: 730, y: 760 } }
+  - { id: inventory_replenished, name: InventoryReplenished, type: event, position: { x: 1010, y: 760 } }
+
+edges:
+  - { source: stockouts, target: product_availability, kind: causal, polarity: "-", validation: observed }
+  - { source: product_availability, target: sales, kind: causal, polarity: "+", validation: observed }
+  - { source: sales, target: improve_sales, kind: causal, polarity: "+", validation: observed }
+  # Reinforcing stockout loop
+  - { source: stockouts, target: emergency_orders, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: emergency_orders, target: purchaser_workload, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: purchaser_workload, target: replenishment_delay, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: replenishment_delay, target: stockouts, kind: causal, polarity: "+", delay: true, validation: hypothesis }
+  - { source: monitor_stock, target: replenish_inventory, kind: flow }
+  - { source: replenish_inventory, target: receive_inventory, kind: flow }
+  - { source: receive_inventory, target: inventory_replenished, kind: flow }

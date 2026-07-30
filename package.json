@@ -4,17 +4,20 @@
   "description": "A YAML-driven systems thinking and process modeling visualizer",
   "type": "module",
   "bin": {
-    "structra": "./src/index.js"
+    "strscape": "./src/index.js"
   },
   "files": ["src", "samples", "README.md", "LICENSE"],
   "scripts": {
-    "build": "node src/index.js build samples/approval-flow.yaml --output dist",
-    "validate": "node src/index.js validate samples/approval-flow.yaml",
+    "build": "node src/index.js build samples/support-backlog-loop.yaml --output dist",
+    "dev": "node src/index.js dev samples/support-backlog-loop.yaml",
+    "validate": "node src/index.js validate samples/support-backlog-loop.yaml",
     "test": "node --test tests/validate.test.js"
   },
   "dependencies": {
+    "chokidar": "^4.0.3",
     "commander": "^12.1.0",
     "cytoscape": "^3.33.1",
+    "express": "^4.21.2",
     "js-yaml": "^4.1.1"
   }
 }

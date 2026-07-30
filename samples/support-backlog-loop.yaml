@@ -1,0 +1,58 @@
+# A complete reinforcing loop for exploring customer-support delays.
+version: "0.1"
+name: 問い合わせ対応の滞留を改善する
+description: 対応遅延が顧客満足度と継続率に及ぼす影響を、業務プロセスまで掘り下げるモデル。
+
+nodes:
+  # Business outcomes
+  - { id: improve_retention, name: 継続率を改善する, type: goal, position: { x: 850, y: 80 } }
+  - { id: retention_rate, name: 継続率, type: kpi, description: 顧客がサービスを継続する割合, position: { x: 600, y: 180 } }
+  - { id: customer_satisfaction, name: 顧客満足度, type: kpi, description: 問い合わせ体験に対する顧客評価, position: { x: 340, y: 180 } }
+
+  # A complete reinforcing loop: backlog → workload → response time → unresolved tickets → backlog.
+  - id: open_tickets
+    name: 未対応問い合わせ
+    type: causal_variable
+    validation: observed
+    relations: [{ target: triage_ticket, type: occurs_in }]
+    position: { x: 180, y: 420 }
+  - { id: agent_workload, name: 担当者負荷, type: causal_variable, validation: hypothesis, position: { x: 460, y: 560 } }
+  - { id: first_response_time, name: 初回応答時間, type: causal_variable, validation: hypothesis, position: { x: 790, y: 470 } }
+  - id: unresolved_tickets
+    name: 未解決問い合わせ
+    type: causal_variable
+    validation: hypothesis
+    traces: [triage_ticket]
+    position: { x: 730, y: 300 }
+
+  # Process evidence for investigating the loop.
+  - { id: receive_ticket, name: 問い合わせ受付, type: process, owner: サポートシステム, expected_duration: 5 min, position: { x: 130, y: 760 } }
+  - id: triage_ticket
+    name: 問い合わせ振り分け
+    type: process
+    owner: サポートチーム
+    expected_duration: 30 min
+    bottleneck: true
+    bottleneck_reason: 平均振り分け時間が想定を5.5時間超過し、未対応問い合わせを増加させている。
+    metrics: { average_duration: 6 hours, throughput: 180/day, rework_rate: 12% }
+    traces: [agent_workload, open_tickets]
+    position: { x: 430, y: 760 }
+  - { id: resolve_ticket, name: 問い合わせ解決, type: process, owner: サポートチーム, expected_duration: 4 hours, position: { x: 730, y: 760 } }
+  - { id: ticket_resolved, name: TicketResolved, type: event, description: 問い合わせを解決したときに発生するイベント, position: { x: 1010, y: 760 } }
+
+edges:
+  # Business impact
+  - { source: first_response_time, target: customer_satisfaction, kind: causal, polarity: "-", validation: hypothesis }
+  - { source: customer_satisfaction, target: retention_rate, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: retention_rate, target: improve_retention, kind: causal, polarity: "+", validation: observed }
+
+  # Reinforcing loop R1. Every arrow has positive polarity; the final edge is delayed.
+  - { source: open_tickets, target: agent_workload, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: agent_workload, target: first_response_time, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: first_response_time, target: unresolved_tickets, kind: causal, polarity: "+", validation: hypothesis }
+  - { source: unresolved_tickets, target: open_tickets, kind: causal, polarity: "+", delay: true, validation: hypothesis }
+
+  # Operational flow
+  - { source: receive_ticket, target: triage_ticket, kind: flow }
+  - { source: triage_ticket, target: resolve_ticket, kind: flow }
+  - { source: resolve_ticket, target: ticket_resolved, kind: flow }
