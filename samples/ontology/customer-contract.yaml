@@ -1,0 +1,78 @@
+kind: ontology
+name: 顧客と契約の定義
+base: https://example.com/customer#
+concepts:
+  - id: Organization
+    name: 法人
+    description: 契約の当事者となる組織。名前が変わっても同じ法人として扱う。
+  - id: Customer
+    name: 契約顧客
+    parent: Organization
+    description: 有効な契約を少なくとも1つ持つ法人。
+    example: A社は有効な保守契約を持つため、契約顧客に含める。
+    question: 契約が終了した会社は別の呼び名で管理する？
+    review_state: discussion
+  - id: Contract
+    name: 契約
+    description: 当事者間の合意。
+  - id: ActiveContract
+    name: 有効契約
+    parent: Contract
+    description: 基準日時点で有効と判断された契約。日時の判定は別途実装する。
+properties:
+  - id: hasContract
+    name: 契約を持つ
+    domain: Organization
+    range: Contract
+restrictions:
+  - subject: Customer
+    property: hasContract
+    operator: someValuesFrom
+    target: ActiveContract
+    mode: equivalent
+processes:
+  - id: ContractProcess
+    name: 申込みから契約まで
+    steps:
+      - id: Start
+        name: 申込みを受け取る
+        type: start
+        position: { x: 100, y: 160 }
+        items:
+          - { concept: Organization, role: participates }
+      - id: Review
+        name: 内容を審査する
+        type: task
+        owner: 営業担当
+        position: { x: 340, y: 160 }
+        items:
+          - { concept: Organization, role: reads }
+      - id: Decision
+        name: 審査結果
+        type: decision
+        position: { x: 580, y: 160 }
+        items: []
+      - id: Sign
+        name: 契約を締結する
+        type: task
+        owner: 契約担当
+        position: { x: 820, y: 160 }
+        items:
+          - { concept: Organization, role: participates }
+          - { concept: Contract, role: creates }
+      - id: End
+        name: 手続き完了
+        type: end
+        position: { x: 1060, y: 160 }
+        items: []
+      - id: Reject
+        name: 見送りを通知
+        type: end
+        position: { x: 580, y: 380 }
+        items: []
+    flows:
+      - { source: Start, target: Review }
+      - { source: Review, target: Decision }
+      - { source: Decision, target: Sign, label: 審査OK }
+      - { source: Decision, target: Reject, label: 審査NG }
+      - { source: Sign, target: End }

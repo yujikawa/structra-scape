@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { loadModel, validateModel } from '../src/validate.js';
+import { exportOntology } from '../src/ontology.js';
+import { renderModel } from '../src/build.js';
+
+const sample = () => loadModel('samples/ontology/customer-contract.yaml');
+test('customer definition includes organization AND existential restriction', () => {
+  const model = sample();
+  assert.deepEqual(validateModel(model), []);
+  assert.match(exportOntology(model), /:Customer owl:equivalentClass \[ a owl:Class ; owl:intersectionOf \( :Organization .*owl:someValuesFrom :ActiveContract/);
+});
+test('multiple equivalent conditions produce one conjunction; all does not add existence', () => {
+  const model = sample();
+  model.restrictions = [{ subject: 'Customer', property: 'hasContract', operator: 'allValuesFrom', target: 'Contract', mode: 'equivalent' }, { subject: 'Customer', property: 'hasContract', operator: 'maxCardinality', count: 3, mode: 'equivalent' }];
+  const ttl = exportOntology(model);
+  assert.equal((ttl.match(/owl:equivalentClass/g) || []).length, 1);
+  assert.match(ttl, /owl:maxCardinality "3"\^\^xsd:nonNegativeInteger/);
+  assert.doesNotMatch(ttl, /owl:someValuesFrom/);
+});
+test('rejects unsupported rules, invalid counts, dangling references and unsafe identifiers', () => {
+  for (const patch of [{ operator: 'madeUp' }, { operator: 'maxCardinality', count: -1 }, { operator: 'maxCardinality', count: 1.5 }, { target: 'Missing' }, { property: 'Missing' }]) {
+    const m = sample(); Object.assign(m.restrictions[0], patch);
+    assert.throws(() => exportOntology(m));
+  }
+  const m = sample(); m.concepts[0].id = 'bad> .'; assert.throws(() => exportOntology(m));
+  m.base = 'https://example.com/> .'; assert.throws(() => exportOntology(m));
+  assert.ok(validateModel({ kind: 'ontology', name: 'bad', concepts: {} }).length);
+});
+test('offline editor embeds compilable code and escapes user script endings', () => {
+  const html = renderModel('samples/ontology/customer-contract.yaml');
+  assert.doesNotMatch(html, /<!-- (ONTOLOGY_CORE|YAML_BUNDLE|STRUCTRA_)/);
+  for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
+  assert.match(html, /YAMLを保存/);
+  assert.doesNotMatch(html, /id="owl"|id="turtle"|生成されるOWL/);
+  assert.match(html, /みんなで確認/);
+  assert.match(renderModel('samples/support-backlog-loop.yaml'), /Causal guide/);
+});
+
+test('review notes and layout survive YAML serialization and reject invalid metadata', async () => {
+  const { default: yaml } = await import('js-yaml');
+  const model = sample();
+  Object.assign(model.concepts[0], { example: 'A社', question: '名称変更時は？', review_state: 'agreed', position: { x: 100, y: 200 } });
+  const restored = yaml.load(yaml.dump(model));
+  assert.deepEqual(restored, model);
+  assert.deepEqual(validateModel(restored), []);
+  restored.concepts[0].review_state = 'unknown';
+  restored.concepts[0].position.x = Infinity;
+  assert.equal(validateModel(restored).length, 2);
+});

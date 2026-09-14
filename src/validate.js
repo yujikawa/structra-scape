@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { validateOntology } from './ontology.js';
 
 const nodeTypes = new Set(['goal', 'kpi', 'causal_variable', 'process', 'event']);
 const relationTypes = new Set(['affects', 'occurs_in', 'derived_from', 'produces', 'consumes']);
@@ -13,6 +14,7 @@ export function loadModel(file) {
 }
 
 export function validateModel(model) {
+  if (model?.kind === 'ontology') return validateOntology(model);
   const errors = [];
   if (!model.name) errors.push('name is required');
   if (!Array.isArray(model.nodes)) errors.push('nodes must be an array');

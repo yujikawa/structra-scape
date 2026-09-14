@@ -4,6 +4,9 @@ import { build } from './build.js';
 import { createModel } from './init.js';
 import { validateFile } from './validate.js';
 import { dev } from './dev.js';
+import fs from 'node:fs';
+import { loadModel } from './validate.js';
+import { exportOntology } from './ontology.js';
 
 const program = new Command();
 program
@@ -37,5 +40,13 @@ program.command('dev <file>')
   .description('Preview a YAML model or a directory of models and reload on changes')
   .option('-p, --port <port>', 'port', Number, 4173)
   .action((file, options) => dev(file, options.port));
+
+program.command('owl <file>')
+  .description('Export the supported ontology model to OWL Turtle')
+  .option('-o, --output <file>', 'Turtle destination', 'ontology.ttl')
+  .action((file, options) => {
+    try { fs.writeFileSync(options.output, exportOntology(loadModel(file)), 'utf8'); console.log(`  ✓ Exported ${options.output}`); }
+    catch (error) { console.error(error.message); process.exitCode = 1; }
+  });
 
 program.parse();

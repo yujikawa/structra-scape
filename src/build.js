@@ -17,7 +17,9 @@ export function renderModel(file) {
     if (errors.length) throw new Error(`Cannot build invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);
     return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model };
   });
-  const template = fs.readFileSync(path.join(here, 'templates', 'viewer.html'), 'utf8');
+  const isOntology = models.every(entry => entry.model.kind === 'ontology');
+  if (!isOntology && models.some(entry => entry.model.kind === 'ontology')) throw new Error('Build ontology and exploration models separately.');
+  const template = fs.readFileSync(path.join(here, 'templates', isOntology ? 'ontology.html' : 'viewer.html'), 'utf8');
   const logo = fs.readFileSync(path.join(here, 'templates', 'structra-scape-mark.svg'), 'utf8');
   const data = JSON.stringify({ models }).replace(/</g, '\\u003c');
   const cytoscape = fs.readFileSync(path.join(here, '..', 'node_modules', 'cytoscape', 'dist', 'cytoscape.min.js'), 'utf8');
@@ -26,7 +28,10 @@ export function renderModel(file) {
     // other sequences with a special meaning in String#replace replacement text.
     .replace('<!-- STRUCTRA_CYTOSCAPE_BUNDLE -->', () => cytoscape)
     .replace('<!-- STRUCTRA_LOGO -->', () => logo)
-    .replace('<!-- STRUCTRA_MODEL_DATA -->', () => `window.__STRUCTRA_DATA__ = ${data};`);
+    .replace('<!-- STRUCTRA_MODEL_DATA -->', () => `window.__STRUCTRA_DATA__ = ${data};`)
+    .replace('<!-- ONTOLOGY_CORE -->', () => fs.readFileSync(path.join(here, 'ontology.js'), 'utf8').replace(/^export /gm, ''))
+    .replace('<!-- PROCESS_EDITOR -->', () => fs.readFileSync(path.join(here, 'templates', 'process-editor.js'), 'utf8'))
+    .replace('<!-- YAML_BUNDLE -->', () => fs.readFileSync(path.join(here, '..', 'node_modules', 'js-yaml', 'dist', 'js-yaml.min.js'), 'utf8'));
   return html;
 }
 

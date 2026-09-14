@@ -92,6 +92,63 @@ Processは継続する業務・工程、Eventはその処理の前後で一瞬�
 
 ## 現時点のMVP
 
+### ことばと関係の共同確認・編集
+
+「みんなで確認」では意味・具体例・相談事項・考え中／要相談／合意済みをカードで確認できます。これらは description / example / question / review_state に保存され、図の配置は position に保存されます。合意状態は手動の話し合い記録です。「内容を反映」でモデルへ反映し、「YAMLを保存」で保存します。
+
+```bash
+node src/index.js dev samples/ontology/customer-contract.yaml
+node src/index.js build samples/ontology/customer-contract.yaml --output dist/ontology
+node src/index.js owl samples/ontology/customer-contract.yaml --output dist/ontology/customer.ttl
+```
+
+`kind: ontology` のモデルは専用のオントロジー編集画面で開きます。概念・上位概念・オブジェクト関係を図で確認し、業務名・説明・関係の条件を編集できます。編集内容はメモリ上に保持され、**「YAMLを保存」でダウンロード**します。元ファイルへの自動上書きはしません。保存したYAMLを再度開いて編集を続けられます。
+
+対応条件は `someValuesFrom` / `allValuesFrom` / `minCardinality` / `maxCardinality` / `cardinality`。必要条件は `subClassOf`、必要十分条件は `equivalentClass` として出力します。同じ概念の必要十分条件が複数あるときは、上位概念と合わせた一つのAND式になります。個数制限は条件付き個数ではなく、関係先全体に対する制限です。
+
+画面ではOWL表示・出力を外し、YAMLを正本としています。従来のOWL出力CLIは互換用に残っています。OWLのインポート、任意のOWLの往復編集、推論、実データの検証、Snowflakeとの対応付け、同時共同編集は未実装です。構造検証は参照・入力形式・対応演算子を検査し、論理的な充足可能性までは検査しません。`allValuesFrom` は関係先の存在を要求しません。`domain` / `range` は入力チェックではなく型の推論に使う定義です。
+
+モデルは `concepts`（id / name / description / parent）、`properties`（id / name / description / domain / range）、`restrictions`（subject / property / operator / targetまたはcount / mode）の3配列で管理します。IDは英字から始まる英数字・ハイフン・アンダースコアです。`mode` は `necessary` または `equivalent`。モデル例は `samples/ontology/customer-contract.yaml` を参照してください。探索モデルとオントロジーモデルは別々にビルドします。
+
+### オントロジーと業務プロセスを一つのYAMLで作る
+
+1. `concepts` に、業務で意味をそろえたいものを追加します。`id` は名前を変更しても変えない共通識別子です。`parent` は「〜の一種」を表します。
+2. `properties` に概念同士のつながりを追加します。`domain` が始点、`range` が相手です。
+3. `restrictions` に分類条件を追加します。たとえば `someValuesFrom` は「その種類の相手が少なくとも一つある」、`allValuesFrom` は「相手がすべてその種類である」を表します。`mode: equivalent` は、その条件で概念を呼び分ける設定です。
+4. `processes` に業務フローを追加します。`steps` が作業、`flows` が順番です。`type` は `start`、`task`、`decision`、`parallel`、`join`、`end` から選びます。
+5. 作業の `items` で、オントロジーの概念IDを参照します。`role` は `creates`（作成）、`reads`（参照）、`updates`（更新）、`participates`（参加）です。
+
+最小例は次の形です。
+
+```yaml
+concepts:
+  - id: Contract
+    name: 契約
+properties: []
+restrictions: []
+processes:
+  - id: SignContract
+    name: 契約締結
+    steps:
+      - id: Sign
+        name: 契約を締結する
+        type: task
+        items:
+          - concept: Contract
+            role: creates
+    flows: []
+```
+
+作成・検証・表示は次のコマンドです。
+
+```bash
+strscape validate samples/ontology/customer-contract.yaml
+strscape build samples/ontology/customer-contract.yaml --output dist/ontology
+strscape dev samples/ontology/customer-contract.yaml
+```
+
+画面では「オントロジー」と「業務プロセス」のモードを切り替えます。業務プロセスの作業から登場する概念を開くと定義へ移動でき、概念側の「登場する業務」から該当作業へ戻れます。
+
 - YAMLモデルの初期化・検証・単一HTMLへのビルド
 - typeから導出する Business / System / Process / Event ビューの切替
 - Goal / KPI / Factor / Process / Event の描画
