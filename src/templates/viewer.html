@@ -2,6 +2,27 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>structra-scape</title>
 <style>
   :root{font-family:Inter,ui-sans-serif,system-ui;color:#e7eefc;background:#0c1220}*{box-sizing:border-box}body{margin:0}header{height:64px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #26334d;background:#10192b}.brand{display:flex;align-items:center;gap:9px;min-width:max-content}.brand svg{width:31px;height:31px;filter:drop-shadow(0 2px 6px #0008)}h1{font-size:18px;margin:0;letter-spacing:.05em}header p{margin:0;color:#9eacc5;font-size:13px}header select{max-width:260px;color:#dce7fa;background:#16223a;border:1px solid #2b3b59;border-radius:6px;padding:7px}main{display:grid;grid-template-columns:220px minmax(0,1fr) 270px;height:calc(100vh - 64px);min-height:560px}aside{background:#10192b;border-right:1px solid #26334d;padding:18px 14px;overflow:auto}#detail{border-right:0;border-left:1px solid #26334d}.eyebrow{color:#8ba2c9;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:0 0 7px}h2{font-size:16px;margin:0 0 15px}h3{font-size:13px;color:#b9c7df;margin:18px 0 8px}.tabs{display:grid;gap:6px}button{color:#dce7fa;font:inherit;text-align:left;background:#16223a;border:1px solid #2b3b59;border-radius:7px;cursor:pointer;padding:9px}button:hover,button.active{background:#243960;border-color:#77a7ff}.count{float:right;color:#9bafd1;font-size:12px}.legend{display:grid;gap:7px;color:#a7b6d2;font-size:12px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}#graph{min-width:0;position:relative;background-color:#0c1220;background-image:radial-gradient(#273650 1px,transparent 1px);background-size:22px 22px}#cy{position:absolute;inset:0}.tools{position:absolute;z-index:2;top:14px;right:14px;display:flex;gap:6px;padding:6px;border:1px solid #344765;border-radius:9px;background:#10192be8;box-shadow:0 6px 18px #0005}.tools button{min-width:34px;padding:7px 9px;text-align:center;font-weight:700}.tools #zoom-level{min-width:52px;color:#aebfe0}.detail-empty{color:#8e9db9;font-size:13px;line-height:1.6}dl{margin:0}dt{color:#8e9db9;font-size:11px;margin-top:14px;text-transform:uppercase;letter-spacing:.06em}dd{margin:4px 0;line-height:1.5;font-size:13px}.related{margin-top:8px;display:grid;gap:5px}.related button{font-size:12px;padding:8px}@media(max-width:800px){main{grid-template-columns:150px minmax(380px,1fr) 190px}aside{padding:14px 10px}}
+</style>
+<style>
+  /* Calm the viewer down: fewer competing surfaces, clearer hierarchy. */
+  :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#193b43;background:#f5f8f6}
+  body{background:#f5f8f6;color:#193b43}
+  header{height:60px;padding:0 22px;background:#fff;border-bottom:1px solid #dbe5e4;box-shadow:0 1px 8px #193b4308}
+  .brand{color:#193b43}.brand svg{filter:none}h1{font-size:17px}header p{color:#66817c}
+  header select{color:#193b43;background:#f5f8f6;border:1px solid #cddbd7;border-radius:7px}
+  main{grid-template-columns:216px minmax(0,1fr) 310px;height:calc(100vh - 60px);background:#f5f8f6}
+  aside{background:#fff;border-color:#dbe5e4;padding:20px 16px}
+  #detail{background:#fff;border-left:1px solid #dbe5e4}
+  .eyebrow{color:#6b8b84;letter-spacing:.08em}.tabs{gap:4px}
+  button{color:#294b50;background:#f7faf9;border-color:#d5e2df;border-radius:7px}
+  button:hover,button.active{background:#e6f3ef;border-color:#4b9b8c;color:#155c56}
+  h2{color:#193b43}h3{color:#50716d}
+  #graph{background-color:#f5f8f6;background-image:radial-gradient(#d5e0dc 1px,transparent 1px);background-size:24px 24px}
+  #graph .tools{top:16px;right:16px;border-color:#d5e2df;background:#ffffffed;box-shadow:0 5px 16px #193b4314}
+  #graph .tools button{color:#315b5a;background:#fff;border-color:#d5e2df}
+  #graph .tools button:hover{background:#e6f3ef;border-color:#4b9b8c}
+  .detail-empty{color:#718984}
+  dt{color:#718984}dd{color:#294b50}
 </style></head><body>
 <style>#graph{background-color:#e1e5eb;background-image:radial-gradient(#aeb9c8 1px,transparent 1px)}#graph .tools{border-color:#bcc8d8;background:#fffffff0;box-shadow:0 6px 18px #15243a20}#graph .tools button{color:#314967;background:#f4f7fb;border-color:#cbd5e2}#graph .tools button:hover{background:#e5edf8;border-color:#77a7ff}#graph .tools #zoom-level{color:#566d89}</style><header><div class="brand"><!-- STRUCTRA_LOGO --><h1>structra-scape</h1></div><select id="model-selector" aria-label="Select model"></select><p id="subtitle"></p></header><main>
 <aside><p class="eyebrow">Explore</p><h2>Views</h2><div class="tabs" id="tabs"></div><h3>Legend</h3><div class="legend" id="legend"></div><h3>Causal guide</h3><div class="legend"><span><i class="dot" style="background:#3ecf8e"></i>⊕ Changes in the same direction</span><span><i class="dot" style="background:#ff7185"></i>⊖ Changes in the opposite direction</span><span>∥ Delay in the causal effect</span><span>Dashed line: hypothesis to validate</span></div></aside>
