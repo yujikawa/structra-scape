@@ -1,20 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installSkills } from './skills.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-export function createModel(file, { codex = false, ontology = false } = {}) {
+export function createModel(file, { codex = false, claude = false, exploration = false, skills = true } = {}) {
   const destination = path.resolve(process.cwd(), file);
   if (fs.existsSync(destination)) throw new Error(`${file} already exists`);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  fs.copyFileSync(path.join(here, 'templates', ontology ? 'starter-ontology.yaml' : 'starter-model.yaml'), destination);
-  if (codex) {
-    const skillDir = path.join(process.cwd(), '.codex', 'skills', 'structra-modeling');
-    fs.mkdirSync(skillDir, { recursive: true });
-    fs.copyFileSync(path.join(here, 'templates', 'codex', 'structra-modeling', 'SKILL.md'), path.join(skillDir, 'SKILL.md'));
-    console.log('  ✓ Added .codex/skills/structra-modeling');
+  if(skills&&!exploration){
+    const agent=codex&&!claude?'codex':claude&&!codex?'claude':'both';
+    for(const target of installSkills({agent}))console.log(`  ✓ Skill: ${target}`);
   }
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.copyFileSync(path.join(here, 'templates', exploration ? 'starter-model.yaml' : 'starter-ontology.yaml'), destination, fs.constants.COPYFILE_EXCL);
   console.log(`  ✓ Created ${file}`);
-  console.log(`  Next: strscape build ${file}`);
+  console.log(`  Next: strscape dev ${file}`);
+  if(skills&&!exploration)console.log('  Codex: $strscape-modeling / Claude Code: /strscape-modeling');
 }

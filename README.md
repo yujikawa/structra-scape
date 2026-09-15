@@ -6,6 +6,23 @@
 
 ## AIと一緒に作る
 
+### 作業フォルダを初期化する
+
+CLIをインストールした環境で、作業フォルダから `strscape init` を実行すると、`structra.yaml` と両AIのスキルを作成します。
+
+```text
+作業フォルダ/
+  structra.yaml
+  .agents/skills/strscape-modeling/SKILL.md
+  .claude/skills/strscape-modeling/SKILL.md
+```
+
+Codexには `$strscape-modeling を使って、structra.yamlに契約受付業務を整理して`、Claude Codeには `/strscape-modeling structra.yamlに契約受付業務を整理して` と依頼します。生成後はそのフォルダでAIの新しいセッションを開いてください。
+
+`init --codex` / `init --claude` で片方を選択、`--no-skills` でYAMLのみ作成できます。既存YAMLは上書きしません。従来の探索モデルは `init --exploration` で作成します。`--ontology` は互換用に残り、オントロジーが既定です。
+
+既存プロジェクトには `strscape skills` で両スキルを追加できます。`--directory <フォルダ>` と `--agent codex|claude|both` に対応します。独自編集されたスキルは上書きせず停止します。意図的な更新時のみ `--force` を指定してください。スキル本文はパッケージ内の共通テンプレートから配布します。
+
 ### ドキュメントへの掲載
 
 画面上部の「出力」から現在の業務フロー／オントロジー図をSVG・PNGで保存し、全用語の説明をMarkdownで保存できます。図は白背景の掲載用レイアウトです（画面上の配置を完全再現するものではありません）。タイトルと出力日時を含みます。
@@ -77,7 +94,7 @@ Create a model together with a project-local Codex skill:
 strscape init model.yaml --codex
 ```
 
-This installs `.codex/skills/structra-modeling/SKILL.md`. It instructs an AI agent to treat YAML as the source of truth, use structured process metadata, mark hypotheses with `validation`, validate every edit, and avoid redundant `layer` fields.
+This installs `.agents/skills/strscape-modeling/SKILL.md`. It guides the AI through CLI-based ontology and business-process modeling, validation, and handling unresolved definitions.
 
 Start a live preview while the agent edits the YAML:
 

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { loadModel } from './validate.js';
 import { exportOntology } from './ontology.js';
 import { registerAuthoringCommands } from './mutate.js';
+import { installSkills } from './skills.js';
 import { publicationMarkdown, publicationSvg } from './publication.js';
 
 const program = new Command();
@@ -19,9 +20,12 @@ program
 
 program.command('init [file]')
   .description('Create a starter structra-scape YAML model')
-  .option('--codex', 'add the Codex modeling skill to .codex/skills')
+  .option('--codex', 'install the Codex skill only (combine with --claude for both)')
+  .option('--claude', 'install the Claude Code skill only')
+  .option('--no-skills', 'create YAML without installing skills')
+  .option('--exploration', 'create a legacy exploration model without ontology skills')
   .option('--ontology', 'create a business process and ontology model')
-  .action((file = 'structra.yaml', options) => createModel(file, options));
+  .action((file = 'structra.yaml', options) => {try{createModel(file, options)}catch(e){console.error(e.message);process.exitCode=1}});
 
 program.command('validate <file>')
   .description('Validate a structra-scape YAML model')
@@ -58,6 +62,11 @@ program.command('owl <file>')
 
 program.command('guide').description('Print the YAML authoring contract for AI agents').action(()=>console.log(fs.readFileSync(fileURLToPath(new URL('./templates/authoring.md',import.meta.url)),'utf8')));
 registerAuthoringCommands(program);
+program.command('skills').description('Install the modeling skill for Codex and Claude Code')
+ .option('--agent <agent>','codex, claude or both','both')
+ .option('--directory <directory>','target project directory','.')
+ .option('--force','replace an existing customized skill')
+ .action(options=>{try{console.log(JSON.stringify({ok:true,files:installSkills(options)}));}catch(e){console.error(JSON.stringify({ok:false,error:e.message}));process.exitCode=1}});
 program.command('export <file>').description('Export publication SVG or Markdown')
  .requiredOption('--format <format>','svg or md').requiredOption('-o, --output <file>','destination (must not exist)')
  .option('--process <id>','process diagram for SVG').option('--concept <id>','concept for Markdown')

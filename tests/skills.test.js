@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { installSkills } from '../src/skills.js';
+const cli=path.resolve('src/index.js');
+test('init scaffolds both agents in working folder and protects existing files',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'structra-skills-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const run=(args)=>spawnSync(process.execPath,[cli,...args],{cwd:dir,encoding:'utf8'});
+ assert.equal(run(['init','models/business.yaml']).status,0);
+ for(const folder of ['.agents','.claude'])assert.ok(fs.readFileSync(path.join(dir,folder,'skills/strscape-modeling/SKILL.md'),'utf8').includes('expect-revision'));
+ assert.equal(run(['validate','models/business.yaml','--json']).status,0);
+ assert.equal(run(['init','models/business.yaml']).status,1);
+ const target=path.join(dir,'.claude/skills/strscape-modeling/SKILL.md');fs.writeFileSync(target,'custom');
+ assert.throws(()=>installSkills({directory:dir}),/Existing skill differs/);
+ assert.equal(fs.readFileSync(target,'utf8'),'custom');
+ assert.equal(run(['init','other.yaml']).status,1);assert.equal(fs.existsSync(path.join(dir,'other.yaml')),false);
+ assert.equal(run(['init','plain.yaml','--no-skills']).status,0);
+});
