@@ -17,9 +17,20 @@ describes the current schema and transaction format. If `strscape` is unavailabl
 report that the CLI must be installed or made available on PATH. Do not search for
 source entrypoints or download an arbitrary CLI as a fallback.
 
-Read the requested file with `inspect <file>` to obtain the model and revision.
-If no model exists, use `init <file> --ontology`, then inspect it. If several models
-could be the target and context does not resolve which one, ask before modifying.
+Before adding a business domain, list YAML files directly in models/ and inspect
+relevant candidates. Respect an explicitly requested file, including older files
+outside models/. Do not append to the first file merely because it exists.
+Keep related workflows that share definitions in the same model. Create a separate
+models/<domain-slug>.yaml for an independent domain with distinct scope or ownership.
+If the boundary is unclear, explain the tradeoff and ask whether to extend or split.
+Concepts cannot reference other YAML files; splitting shared definitions duplicates
+them, so prefer keeping workflows together when those definitions must stay shared.
+
+Read the selected file with `inspect <file>` to obtain the model and revision.
+For a new domain use `strscape init models/<domain-slug>.yaml --no-skills`, then
+inspect it and replace the example entities through a CLI transaction. The initial
+workspace setup is `strscape init`, which creates models/business.yaml and skills.
+Never move or merge existing models automatically.
 Legacy exploration models are not supported by the ontology mutation commands.
 
 ## Model the business meaning
@@ -61,6 +72,8 @@ to overwriting YAML to bypass an error. Report persistent failure with its cause
 
 Read the saved entities and check that the intended definitions and references
 are present. Report assumptions and unresolved questions along with the result.
-If a preview is needed, use `dev <file> --port <port>`; reuse an existing server
-watching that file rather than launching duplicates. For document output use
+If a preview is needed, use `strscape dev models/ --port <port>` so the model
+dropdown lists all domains. The watcher reads direct children, not nested folders.
+Reuse an existing directory preview rather than launching duplicates. For legacy
+files outside models/, preview their file or directory as appropriate. For document output use
 `export --help`. Commit, push, and external publishing require user intent.

@@ -1,5 +1,12 @@
 # AI authoring guide (Claude / Codex / any YAML-capable agent)
 
+Keep independent domains in models/<domain-slug>.yaml (direct children).
+Inspect existing models before choosing to extend one or create another. Related
+workflows sharing definitions belong together; cross-file concept references are
+not supported. Ask when scope is ambiguous. Initialize with `strscape init` and
+preview the workspace with `strscape dev models/`. Add domains with
+`strscape init models/contracts.yaml --no-skills`. Preserve explicitly named legacy paths.
+
 The YAML file is the source of truth. Prefer the CLI transactions below to update it;
 the dev viewer watches it. All authoring commands emit JSON, exit 1 on failure.
 Read with `strscape inspect business.yaml` and retain its revision.

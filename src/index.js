@@ -25,7 +25,7 @@ program.command('init [file]')
   .option('--no-skills', 'create YAML without installing skills')
   .option('--exploration', 'create a legacy exploration model without ontology skills')
   .option('--ontology', 'create a business process and ontology model')
-  .action((file = 'structra.yaml', options) => {try{createModel(file, options)}catch(e){console.error(e.message);process.exitCode=1}});
+  .action((file = 'models/business.yaml', options) => {try{createModel(file, options)}catch(e){console.error(e.message);process.exitCode=1}});
 
 program.command('validate <file>')
   .description('Validate a structra-scape YAML model')

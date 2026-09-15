@@ -15,6 +15,7 @@ export function createModel(file, { codex = false, claude = false, exploration =
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(path.join(here, 'templates', exploration ? 'starter-model.yaml' : 'starter-ontology.yaml'), destination, fs.constants.COPYFILE_EXCL);
   console.log(`  ✓ Created ${file}`);
-  console.log(`  Next: strscape dev ${file}`);
+  const preview = path.dirname(destination) === path.resolve('models') ? 'models/' : file;
+  console.log(`  Next: strscape dev "${preview}"`);
   if(skills&&!exploration)console.log('  Codex: $strscape-modeling / Claude Code: /strscape-modeling');
 }

@@ -8,16 +8,18 @@
 
 ### 作業フォルダを初期化する
 
-CLIをインストールした環境で、作業フォルダから `strscape init` を実行すると、`structra.yaml` と両AIのスキルを作成します。
+CLIをインストールした環境で、作業フォルダから `strscape init` を実行すると、`models/business.yaml` と両AIのスキルを作成します。
 
 ```text
 作業フォルダ/
-  structra.yaml
+  models/business.yaml
   .agents/skills/strscape-modeling/SKILL.md
   .claude/skills/strscape-modeling/SKILL.md
 ```
 
-Codexには `$strscape-modeling を使って、structra.yamlに契約受付業務を整理して`、Claude Codeには `/strscape-modeling structra.yamlに契約受付業務を整理して` と依頼します。生成後はそのフォルダでAIの新しいセッションを開いてください。
+Codexには `$strscape-modeling 契約受付業務を整理して`、Claude Codeには `/strscape-modeling 契約受付業務を整理して` と依頼します。AIは既存の `models/` を確認し、関連業務なら既存モデルを更新、独立領域なら `models/contracts.yaml` などを作成します。判断できない境界は確認します。生成後はそのフォルダでAIの新しいセッションを開いてください。
+
+`strscape dev models/` で直下の複数YAMLをプルダウンで切り替えられます。新規モデルは `strscape init models/contracts.yaml --no-skills` で追加できます。ファイル間の概念参照には未対応のため、共通定義を共有する業務は同じモデルにまとめてください。既存のルート直下のYAMLは自動移動せず、そのまま利用できます。
 
 `init --codex` / `init --claude` で片方を選択、`--no-skills` でYAMLのみ作成できます。既存YAMLは上書きしません。従来の探索モデルは `init --exploration` で作成します。`--ontology` は互換用に残り、オントロジーが既定です。
 

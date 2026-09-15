@@ -9,6 +9,13 @@ const cli=path.resolve('src/index.js');
 test('init scaffolds both agents in working folder and protects existing files',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'structra-skills-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  const run=(args)=>spawnSync(process.execPath,[cli,...args],{cwd:dir,encoding:'utf8'});
+ const initialized=run(['init']);assert.equal(initialized.status,0);
+ assert.ok(fs.existsSync(path.join(dir,'models/business.yaml')));
+ assert.match(initialized.stdout,/strscape dev "models\/"/);
+ assert.equal(run(['init','models/contracts.yaml','--no-skills']).status,0);
+ assert.equal(run(['build','models/','--output','dist']).status,0);
+ assert.ok(fs.readFileSync(path.join(dir,'dist/index.html'),'utf8').includes('"slug":"contracts"'));
+ fs.renameSync(path.join(dir,'models/business.yaml'),path.join(dir,'models/initial.yaml'));
  assert.equal(run(['init','models/business.yaml']).status,0);
  for(const folder of ['.agents','.claude'])assert.ok(fs.readFileSync(path.join(dir,folder,'skills/strscape-modeling/SKILL.md'),'utf8').includes('expect-revision'));
  assert.equal(run(['validate','models/business.yaml','--json']).status,0);
