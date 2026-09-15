@@ -42,7 +42,7 @@ Read the existing file before editing. Preserve IDs and unrelated content. Write
 the complete file atomically where possible, then validate. Do not launch a second
 dev server if one is already running. Never commit or push unless requested.
 
-Commands (installed CLI; in this repository substitute `node src/index.js` for `strscape`):
+Commands (run the installed `strscape` CLI from the working folder):
 
     strscape init business.yaml --ontology
     strscape guide

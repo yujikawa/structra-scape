@@ -11,10 +11,11 @@ and writes it, and the dev viewer follows saved changes.
 
 ## Discover the CLI and model
 
-In the structra-scape repository use `node src/index.js`; in a project with the
-installed package use `strscape`. Check `--help` and run `guide` before constructing
-a patch; it describes the current schema and transaction format. Do not download
-an arbitrary CLI if neither command is available; report the missing dependency.
+Use the installed `strscape` command from the user's working folder. Run
+`strscape --help` and `strscape guide` before constructing a patch; the guide
+describes the current schema and transaction format. If `strscape` is unavailable,
+report that the CLI must be installed or made available on PATH. Do not search for
+source entrypoints or download an arbitrary CLI as a fallback.
 
 Read the requested file with `inspect <file>` to obtain the model and revision.
 If no model exists, use `init <file> --ontology`, then inspect it. If several models
