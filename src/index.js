@@ -5,8 +5,11 @@ import { createModel } from './init.js';
 import { validateFile } from './validate.js';
 import { dev } from './dev.js';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { loadModel } from './validate.js';
 import { exportOntology } from './ontology.js';
+import { registerAuthoringCommands } from './mutate.js';
+import { publicationMarkdown, publicationSvg } from './publication.js';
 
 const program = new Command();
 program
@@ -17,12 +20,16 @@ program
 program.command('init [file]')
   .description('Create a starter structra-scape YAML model')
   .option('--codex', 'add the Codex modeling skill to .codex/skills')
+  .option('--ontology', 'create a business process and ontology model')
   .action((file = 'structra.yaml', options) => createModel(file, options));
 
 program.command('validate <file>')
   .description('Validate a structra-scape YAML model')
-  .action((file) => {
-    const errors = validateFile(file);
+  .option('--json', 'emit machine-readable validation results')
+  .action((file, options) => {
+    let errors;
+    try { errors = validateFile(file); } catch (error) { errors = [error.message]; }
+    if(options.json){console.log(JSON.stringify({valid:!errors.length,errors}));process.exitCode=errors.length?1:0;return;}
     if (errors.length) {
       errors.forEach((error) => console.error(`  ✗ ${error}`));
       process.exitCode = 1;
@@ -49,4 +56,10 @@ program.command('owl <file>')
     catch (error) { console.error(error.message); process.exitCode = 1; }
   });
 
+program.command('guide').description('Print the YAML authoring contract for AI agents').action(()=>console.log(fs.readFileSync(fileURLToPath(new URL('./templates/authoring.md',import.meta.url)),'utf8')));
+registerAuthoringCommands(program);
+program.command('export <file>').description('Export publication SVG or Markdown')
+ .requiredOption('--format <format>','svg or md').requiredOption('-o, --output <file>','destination (must not exist)')
+ .option('--process <id>','process diagram for SVG').option('--concept <id>','concept for Markdown')
+ .action((file,options)=>{try{const errors=validateFile(file);if(errors.length)throw new Error(errors.join('\n'));if(!['svg','md'].includes(options.format))throw new Error('format must be svg or md');if(options.process&&options.format!=='svg'||options.concept&&options.format!=='md')throw new Error('process requires svg; concept requires md');const model=loadModel(file);if(model.kind!=='ontology')throw new Error('Expected ontology model');const output=options.format==='svg'?publicationSvg(model,options):publicationMarkdown(model,options);fs.writeFileSync(options.output,output,{flag:'wx'});console.log(JSON.stringify({ok:true,output:options.output}));}catch(e){console.error(JSON.stringify({ok:false,error:e.message}));process.exitCode=1}});
 program.parse();

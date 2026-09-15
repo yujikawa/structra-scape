@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-export function createModel(file, { codex = false } = {}) {
+export function createModel(file, { codex = false, ontology = false } = {}) {
   const destination = path.resolve(process.cwd(), file);
   if (fs.existsSync(destination)) throw new Error(`${file} already exists`);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
-  fs.copyFileSync(path.join(here, 'templates', 'starter-model.yaml'), destination);
+  fs.copyFileSync(path.join(here, 'templates', ontology ? 'starter-ontology.yaml' : 'starter-model.yaml'), destination);
   if (codex) {
     const skillDir = path.join(process.cwd(), '.codex', 'skills', 'structra-modeling');
     fs.mkdirSync(skillDir, { recursive: true });

@@ -12,6 +12,23 @@ concepts:
     example: A社は有効な保守契約を持つため、契約顧客に含める。
     question: 契約が終了した会社は別の呼び名で管理する？
     review_state: discussion
+    exclusion: 有効な契約がなく、過去の契約だけが残っている法人は含めない。
+    cases:
+      - description: 有効な契約が1件ある法人
+        result: included
+        reason: サンプル定義に基づく判定例。業務上の合意は未実施。
+      - description: 終了した契約しかない法人
+        result: excluded
+      - description: 契約開始日が来月の法人
+        result: unresolved
+        reason: 契約の有効開始時点を確認する必要がある。
+    evidence: このファイルの説明用の仮定。実際の業務担当者との合意は未実施。
+    data_mapping:
+      source: example_warehouse.contracts（架空の説明用テーブル）
+      status: proposed
+      grain: 1行は1契約。契約顧客数は法人IDの重複を除いて数える。
+      condition: status = 'active' の契約に紐づく organization_id を抽出する案。
+      gap: statusだけでは基準日・開始日・終了日を判定できない可能性がある。有効期間と解約の扱いを業務担当者に確認する。
   - id: Contract
     name: 契約
     description: 当事者間の合意。

@@ -1,0 +1,20 @@
+kind: ontology
+name: 業務とことば
+base: https://example.org/business#
+concepts:
+  - id: Application
+    name: 申込み
+    description: サービスの利用を希望する意思表示。
+properties: []
+restrictions: []
+processes:
+  - id: Intake
+    name: 申込み受付
+    steps:
+      - id: Receive
+        name: 申込みを受け付ける
+        type: task
+        items:
+          - concept: Application
+            role: reads
+    flows: []

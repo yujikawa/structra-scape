@@ -11,7 +11,7 @@
     "build": "node src/index.js build samples/support-backlog-loop.yaml --output dist",
     "dev": "node src/index.js dev samples/support-backlog-loop.yaml",
     "validate": "node src/index.js validate samples/support-backlog-loop.yaml",
-    "test": "node --test tests/validate.test.js tests/ontology.test.js"
+    "test": "node --test tests/validate.test.js tests/ontology.test.js tests/mutate.test.js"
   },
   "dependencies": {
     "chokidar": "^4.0.3",

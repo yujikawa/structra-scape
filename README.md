@@ -2,7 +2,55 @@
   <img src="src/templates/structra-scape-mark.svg" width="32" height="32" alt="structra-scape logo" valign="middle"> structra-scape
 </h1>
 
-`structra-scape` は、ビジネス課題・因果構造・業務プロセスを結び付け、問題を探索するためのYAML駆動OSSツールです。
+`structra-scape` は、AIがYAMLで記述した業務プロセスとオントロジーを、画面で確認するツールです。
+
+## AIと一緒に作る
+
+### ドキュメントへの掲載
+
+画面上部の「出力」から現在の業務フロー／オントロジー図をSVG・PNGで保存し、全用語の説明をMarkdownで保存できます。図は白背景の掲載用レイアウトです（画面上の配置を完全再現するものではありません）。タイトルと出力日時を含みます。
+
+```bash
+node src/index.js export business.yaml --format svg --process Intake --output intake.svg
+node src/index.js export business.yaml --format md --concept Application --output application.md
+```
+
+指定IDを省略するとオントロジー図／全用語が対象です。CLIはSVGとMarkdown、PNGはブラウザから出力できます。既存ファイルへの上書きは拒否します。貼り付けた成果物は自動同期されないため、YAML変更後は再出力してください。
+
+### AI向け更新CLI
+
+AIは `inspect` で現在のモデルとrevisionを読み、`apply` で変更を一括適用します。
+
+```bash
+node src/index.js inspect business.yaml
+node src/index.js concept get business.yaml Customer
+node src/index.js concept upsert business.yaml Customer --input customer.json
+node src/index.js apply business.yaml --patch changes.json --dry-run
+node src/index.js apply business.yaml --patch changes.json --expect-revision <取得したrevision>
+```
+
+`changes.json` は `{"operations":[{"op":"upsert","entity":"concept","id":"Customer","value":{"name":"顧客"}}]}` の形式です。
+concept/property/process/step の取得・upsert・remove、flow/restriction のリスト一括置換に対応します。stepには `--process`、一括適用内では `process` を指定します。
+詳しい形式は `node src/index.js guide` にあります。`--input -` / `--patch -` は標準入力のJSONを読みます。
+
+保存前にモデル全体を検証し、失敗時は変更しません。同時CLI更新はロックで排他し、revisionで古いモデルへの更新を拒否できます。保存時にYAMLを再生成するためコメント・書式は保持されません。ネストした値は部分マージせず置換します。元YAMLを直接編集する場合はCLIと同時に書き込まないでください。
+
+Claude / Codexに `strscape guide` の出力と編集するYAMLを読ませ、業務とことばの定義を整理します。リポジトリ内では `strscape` を `node src/index.js` に置き換えてください。
+
+```bash
+strscape init business.yaml --ontology
+strscape guide
+strscape validate business.yaml --json
+strscape dev business.yaml --port 4175
+```
+
+`--json` は `{valid, errors}` を出力し、検証失敗時は終了コード1を返します。AIへの依頼例：
+
+> guideを読み、business.yamlに契約受付業務と登場することばを整理してください。既存IDを維持し、不明点をquestionに記載し、最後にvalidate --jsonで検証してください。
+
+オントロジー画面は閲覧専用です。作業から用語の定義へ、用語から使用箇所へ移動できます。YAML更新時には再読み込みし、表示モード・選択・ズームを復元します。不正なYAMLの場合は最後の正常な図を表示し、エラーを通知します。テンプレートのコード変更後はdevサーバーを再起動してください。
+
+以下の画面編集・YAMLダウンロードについての記述は旧編集画面の仕様です。現在の閲覧画面ではAIやテキストエディタで元YAMLを更新します。
 
 因果ループ（なぜ起きるか）と業務フロー（どこで起きるか）を独立して表現し、`relations` と `traces` を通じて抽象と具体を往復できます。作図ツールではなく、構造をたどるための **Problem Exploration Tool** です。
 

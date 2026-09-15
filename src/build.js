@@ -31,6 +31,7 @@ export function renderModel(file) {
     .replace('<!-- STRUCTRA_MODEL_DATA -->', () => `window.__STRUCTRA_DATA__ = ${data};`)
     .replace('<!-- ONTOLOGY_CORE -->', () => fs.readFileSync(path.join(here, 'ontology.js'), 'utf8').replace(/^export /gm, ''))
     .replace('<!-- PROCESS_EDITOR -->', () => fs.readFileSync(path.join(here, 'templates', 'process-editor.js'), 'utf8'))
+    .replace('<!-- READER -->', () => fs.readFileSync(path.join(here, 'publication.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'templates', 'reader.js'), 'utf8'))
     .replace('<!-- YAML_BUNDLE -->', () => fs.readFileSync(path.join(here, '..', 'node_modules', 'js-yaml', 'dist', 'js-yaml.min.js'), 'utf8'));
   return html;
 }

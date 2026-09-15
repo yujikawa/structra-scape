@@ -19,6 +19,24 @@ export function validateOntology(model) {
   const ids = new Set();
   for (const item of [...model.concepts, ...model.properties]) {
     if (!item || typeof item !== 'object') { errors.push('概念・関係はオブジェクトで指定してください'); continue; }
+    if(item.cases!==undefined){
+      if(!Array.isArray(item.cases))errors.push(`${item.id}.cases: 配列にしてください`);
+      else item.cases.forEach((c,i)=>{if(!c||typeof c.description!=='string'||!c.description.trim()||!['included','excluded','unresolved'].includes(c.result)||(c.reason!==undefined&&typeof c.reason!=='string'))errors.push(`${item.id}.cases[${i}]: description、result（included/excluded/unresolved）、任意のreasonが必要です`)});
+    }
+    for (const field of ['exclusion', 'evidence']) {
+      if (item[field] !== undefined && typeof item[field] !== 'string') errors.push(`${item.id}.${field}: 文字列にしてください`);
+    }
+    if (item.data_mapping !== undefined) {
+      const mapping = item.data_mapping;
+      if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) errors.push(`${item.id}.data_mapping: オブジェクトにしてください`);
+      else {
+        for (const field of ['source', 'grain', 'condition', 'gap']) {
+          if (mapping[field] !== undefined && typeof mapping[field] !== 'string') errors.push(`${item.id}.data_mapping.${field}: 文字列にしてください`);
+        }
+        if (typeof mapping.source !== 'string' || !mapping.source.trim()) errors.push(`${item.id}.data_mapping.source: データの所在が必要です`);
+        if (!['proposed', 'verified'].includes(mapping.status)) errors.push(`${item.id}.data_mapping.status: proposed または verified にしてください`);
+      }
+    }
     if (typeof item.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(item.id)) errors.push(`無効なID: ${item.id}`);
     if (ids.has(item.id)) errors.push(`重複ID: ${item.id}`);
     ids.add(item.id);
