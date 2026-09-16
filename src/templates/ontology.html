@@ -82,7 +82,14 @@ function refresh(layout=false){
   renderLists();
   const positions=new Map(cy.nodes().map(n=>[n.id(),n.position()]));
   cy.elements().remove();cy.add([...model.concepts.map(c=>({data:{id:c.id,label:c.name},position:positions.get(c.id)||c.position})),...model.concepts.filter(c=>c.parent).map(c=>({data:{id:'parent:'+c.id,source:c.id,target:c.parent,label:'〜の一種',kind:'parent',ref:c.id}})),...model.properties.map(p=>({data:{id:'property:'+p.id,source:p.domain,target:p.range,label:p.name,kind:'property',ref:p.id}})),...model.restrictions.filter(r=>r.target&&r.operator.endsWith('ValuesFrom')).map((r,i)=>({data:{id:'restriction:'+i,source:r.subject,target:r.target,label:term(r.property)+(r.operator==='someValuesFrom'?'：1つ以上':'：相手はすべて'),kind:'restriction',ref:r.subject}}))]);
-  if(layout&&!model.concepts.every(c=>c.position))cy.layout({name:'breadthfirst',directed:true,padding:55,spacingFactor:1.3}).run();
+  if(layout&&!model.concepts.every(c=>c.position)){
+    // Ontology relationships can be cyclic: a directed hierarchy collapses them into one row.
+    // Seed a grid, then spread connected terms in two dimensions without changing the YAML.
+    cy.layout({name:'grid',fit:false,avoidOverlap:true,spacingFactor:1.4}).run();
+    cy.layout({name:'cose',animate:false,randomize:false,padding:55,
+      nodeRepulsion:()=>12000,idealEdgeLength:()=>160,componentSpacing:100,
+      nodeOverlap:20,numIter:1000}).run();
+  }
   detail();updateReview();
 }
 function detail(){
@@ -145,8 +152,7 @@ function businessRule(r){const subject=term(r.subject),property=term(r.property)
 function updateReview(){
   $('yaml-preview').textContent=jsyaml.dump(model);
   const agreed=model.concepts.filter(c=>c.review_state==='agreed').length;
-  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card"><span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span><h3>${esc(c.name)}</h3>${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}<p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}</ul><button data-review="${esc(c.id)}">このことばを整理する</button></article>`).join('')}</div>`;
-  $('review-board').querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>{setReview(false);selected={kind:'concept',id:b.dataset.review};refresh();focusSelection()});
+  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card"><span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span><h3>${esc(c.name)}</h3>${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}<p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}</ul></article>`).join('')}</div>`;
 }
 function setReview(enabled){connectionState(false);document.body.classList.toggle('reviewing',enabled);$('review-board').hidden=!enabled;$('review-toggle').textContent=enabled?'図に戻る':'みんなで確認';if(enabled)updateReview();cy.resize()}
 $('review-toggle').onclick=()=>setReview(!document.body.classList.contains('reviewing'));
