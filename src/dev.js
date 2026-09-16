@@ -12,7 +12,7 @@ export async function dev(file, port = 4173) {
   refresh();
   app.get('/', (_req, res) => {
     try {
-      const reload = '<script>const stream=new EventSource("/events");stream.onmessage=e=>{const message=JSON.parse(e.data);if(message.reload){location.reload();return}let panel=document.getElementById("sync-status");if(!panel){panel=document.createElement("div");panel.id="sync-status";panel.style.cssText="padding:10px 20px;background:#fff3d5;white-space:pre-wrap;font:12px system-ui";document.body.prepend(panel)}panel.textContent=message.error?"YAMLの修正待ち（最後の正常な図を表示）\\n"+message.error:"YAMLと同期中"};stream.onerror=()=>{document.title="接続待ち · structra-scape"}</script>';
+      const reload = '<script>const stream=new EventSource("/events");stream.onmessage=e=>{const message=JSON.parse(e.data);if(message.reload){location.reload();return}let panel=document.getElementById("sync-status");if(!message.error){panel?.remove();return}if(!panel){panel=document.createElement("div");panel.id="sync-status";panel.setAttribute("role","alert");panel.style.cssText="padding:10px 20px;background:#fff3d5;white-space:pre-wrap;font:12px system-ui";document.body.prepend(panel)}panel.textContent="YAMLの修正待ち（最後の正常な図を表示）\\n"+message.error};stream.onerror=()=>{document.title="接続待ち · structra-scape"}</script>';
       res.type('html').send((html || '<html><body><h1>YAMLの修正を待っています</h1></body></html>').replace('</body>', `${reload}</body>`));
     } catch (error) {
       res.status(400).type('html').send(`<pre>Model error:\n${error.message}</pre>`);

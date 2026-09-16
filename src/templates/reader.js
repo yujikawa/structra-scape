@@ -14,7 +14,17 @@ exportMenu.querySelectorAll('[data-export]').forEach(button=>button.onclick=asyn
  }catch(error){status('出力に失敗しました：'+error.message,true)}finally{exportMenu.open=false}
 });
 document.querySelector('.inspector .section-label').textContent='ことばの定義';
-focusSelection=function(){cy.elements().unselect();cy.$id(selected.kind==='concept'?selected.id:'property:'+selected.id).select();cy.resize();cy.fit(undefined,45)};
+focusSelection=function(){
+ cy.resize();cy.stop();cy.elements().unselect();
+ const element=cy.$id(selected.kind==='concept'?selected.id:'property:'+selected.id);
+ if(!element.length)return;
+ element.select();
+ // Focus the selected term, not the bounding box of the entire model.
+ const target=element.isNode()?element:element.source();
+ cy.zoom(Math.max(1,Math.min(1.6,cy.zoom())));cy.center(target);
+ document.querySelector('.inspector').scrollTop=0;
+ document.querySelector('.list button.active')?.scrollIntoView({block:'nearest'});
+};
 openConcept=function(id){setProcessMode(false);selected={kind:'concept',id};$('search').value='';refresh();focusSelection();status('ことばの定義と、使われている作業を確認できます。')};
 $('status').textContent='YAMLから表示中 · 内容の変更はAIに依頼してください';
 modeBar.setAttribute('aria-label','表示を切り替え');
@@ -58,7 +68,37 @@ processDetail=function(){
  $('process-detail').querySelectorAll('[data-term]').forEach(b=>b.onclick=()=>openConcept(b.dataset.term));
 };
 pc.off('tap','edge');pc.off('dragfree');cy.off('dragfree');
-pc.autoungrabify(true);cy.autoungrabify(true);
+pc.autoungrabify(true);cy.autoungrabify(false);
+// Dragging is a view adjustment only. Existing refresh() preserves node positions.
+cy.nodes().grabify();
+// Consistent, labelled SVG icons across navigation and graph controls.
+const iconPaths={book:'M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16',flow:'M3 3h6v6H3z M15 15h6v6h-6z M6 9v9h9',data:'M3 6c0-5 18-5 18 0s-18 5-18 0 M3 6v12c0 5 18 5 18 0V6 M3 12c0 5 18 5 18 0',download:'M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5',fit:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',plus:'M12 5v14 M5 12h14',minus:'M5 12h14',check:'M4 12l5 5L20 6',chat:'M3 3h18v14H9l-6 4z',help:'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18v1',task:'M4 5h16v14H4z',decision:'M12 2l10 10-10 10L2 12z',circle:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',copy:'M8 8h13v13H8z M16 8V3H3v13h5'};
+function uiIcon(name){return `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${iconPaths[name]||iconPaths.book}"/></svg>`}
+function labelIcon(element,name){if(element&&!element.querySelector('.ui-icon'))element.insertAdjacentHTML('afterbegin',uiIcon(name));}
+const viewSwitch=document.createElement('div');viewSwitch.className='view-switch';viewSwitch.setAttribute('role','group');viewSwitch.setAttribute('aria-label','ことばの表示形式');
+const diagramButton=document.createElement('button');diagramButton.innerHTML=uiIcon('flow')+'関係図';diagramButton.onclick=()=>setReview(false);
+const definitionsButton=$('review-toggle');definitionsButton.onclick=()=>setReview(true);
+viewSwitch.append(diagramButton,definitionsButton);document.querySelector('.canvas').append(viewSwitch);
+const originalSetReview=setReview;
+setReview=function(enabled){originalSetReview(enabled);definitionsButton.innerHTML=uiIcon('book')+'定義一覧';diagramButton.setAttribute('aria-pressed',String(!enabled));definitionsButton.setAttribute('aria-pressed',String(enabled))};
+setReview(false);$('review-board').setAttribute('aria-label','ことばの定義一覧');
+readerStyle.textContent+=`.view-switch{position:absolute;top:14px;left:14px;z-index:4;display:flex;gap:3px;padding:4px;border:1px solid #d7e4df;border-radius:9px;background:#fff}.view-switch button{display:inline-flex;align-items:center;border:0;background:transparent;padding:7px 10px;font-size:12px}.view-switch button[aria-pressed="true"]{background:#e7f3ef;color:#155e50}body.reviewing #review-toggle{background:#e7f3ef;color:#155e50}body.reviewing .canvas>.graph-controls{display:none}body.reviewing .workspace{grid-template-columns:210px minmax(0,1fr)}@media(max-width:800px){body.reviewing .workspace{display:flex}}`;
+$('mode-ontology').textContent='ことばと関係';labelIcon($('mode-ontology'),'book');labelIcon($('mode-process'),'flow');
+exportMenu.classList.add('header-menu');labelIcon(exportMenu.querySelector('summary'),'download');
+const helpMenu=document.createElement('details');helpMenu.className='header-menu';helpMenu.innerHTML=`<summary>${uiIcon('help')}使い方</summary><div class="help-content"><strong>業務とことばを確認する</strong><p>左の一覧や図から対象を選びます。詳細のリンクで、作業と用語の定義を行き来できます。</p><p>内容の変更はAIに依頼してください。YAMLを保存すると、この画面に反映されます。</p><p>図はドラッグで移動、＋／−で拡大縮小できます。「全体」で表示を戻します。</p></div>`;document.querySelector('header').append(helpMenu);
+helpMenu.addEventListener('toggle',()=>{if(helpMenu.open)exportMenu.open=false});exportMenu.addEventListener('toggle',()=>{if(exportMenu.open)helpMenu.open=false});
+for(const [container,graph,fitId] of [[document.querySelector('.canvas'),cy,'fit'],[document.querySelector('.process-canvas'),pc,'flow-fit']]){
+ const controls=document.createElement('div');controls.className='graph-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','図の表示操作');
+ for(const [name,label,factor] of [['minus','縮小',1/1.2],['plus','拡大',1.2]]){const b=document.createElement('button');b.innerHTML=uiIcon(name);b.title=label;b.setAttribute('aria-label',label);b.onclick=()=>graph.zoom({level:Math.max(.1,Math.min(3,graph.zoom()*factor)),renderedPosition:{x:graph.width()/2,y:graph.height()/2}});controls.append(b)}
+ const fit=$(fitId);fit.textContent='全体';fit.title='図全体を表示';fit.setAttribute('aria-label','図全体を表示');labelIcon(fit,'fit');controls.append(fit);container.append(controls);
+}
+const plainProcessRender=renderProcess;
+renderProcess=function(){plainProcessRender();const p=process();$('process-steps').querySelectorAll('[data-step]').forEach(b=>{const step=p?.steps.find(s=>s.id===b.dataset.step);labelIcon(b,['start','end'].includes(step?.type)?'circle':['decision','parallel','join'].includes(step?.type)?'decision':'task');b.classList.toggle('active',b.dataset.step===activeStep)})};
+const plainPickStep=pickStep;
+pickStep=function(id){plainPickStep(id);$('process-steps').querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('active',b.dataset.step===activeStep))};
+const plainDetail=detail;
+detail=function(){plainDetail();const item=(selected.kind==='concept'?model.concepts:model.properties).find(x=>x.id===selected.id);if(!item)return;document.querySelectorAll('.reader-tabs button').forEach((b,i)=>labelIcon(b,['book','flow','data'][i]));labelIcon(document.querySelector('.question-banner'),'chat');labelIcon(document.querySelector('.request-copy'),'copy');if(item.review_state){const badge=document.createElement('p');badge.className='review-badge '+(item.review_state==='agreed'?'agreed':'pending');badge.innerHTML=uiIcon(item.review_state==='agreed'?'check':'chat')+esc(({agreed:'合意済み',discussion:'要確認',draft:'検討中'})[item.review_state]);$('detail').querySelector('h2').after(badge)}};
+readerStyle.textContent+=`.ui-icon{width:17px;height:17px;display:inline-block;vertical-align:middle;flex-shrink:0;margin-right:6px}header .brand svg{width:28px;height:28px}#status:not(.error),#flow-hint,.process-toolbar{display:none}#process-cy{inset:0}.mode-bar button,.reader-tabs button{display:inline-flex;align-items:center}.reader-tabs{flex-wrap:wrap}.reader-tabs .ui-icon{width:14px;height:14px;margin-right:4px}.header-menu{margin:0;position:relative}.header-menu:first-of-type{margin-left:auto}.header-menu summary{cursor:pointer;list-style:none;display:flex;align-items:center;padding:8px 10px;border:1px solid #d7e4df;border-radius:8px;font-size:12px}.header-menu summary::-webkit-details-marker{display:none}.help-content{position:absolute;right:0;top:42px;z-index:30;width:min(320px,85vw);padding:18px;background:white;border:1px solid #d7e4df;border-radius:10px;box-shadow:0 8px 24px #193b4320;font-size:13px;line-height:1.7}.header-menu button{width:100%;margin:4px 0}.graph-controls{position:absolute;right:16px;bottom:16px;z-index:3;display:flex;gap:4px;background:#fff;padding:5px;border:1px solid #d7e4df;border-radius:10px;box-shadow:0 3px 10px #193b4310}.graph-controls button{position:static!important;font-size:12px;display:flex;align-items:center;padding:8px;border:0;background:white}.graph-controls button:hover{background:#e7f3ef}.graph-controls button[aria-label="拡大"] .ui-icon,.graph-controls button[aria-label="縮小"] .ui-icon{margin:0}#process-steps button{border-color:transparent;background:transparent;padding:12px 8px}#process-steps button.active{background:#e7f3ef;border-color:#b9d7cc}#process-steps small{padding-left:23px;margin-top:5px;color:#61796f}.review-badge{display:inline-flex;align-items:center;font-size:12px;border-radius:20px;padding:5px 9px;margin:0 0 12px}.review-badge.agreed{background:#e1f3e8;color:#206647}.review-badge.pending{background:#fff3d5;color:#795718}`;
 // Store only browsing state, never a second copy of the model.
 window.addEventListener('pagehide',()=>{sessionStorage.setItem('structra-view:'+location.pathname,JSON.stringify({selected,processMode,activeProcess,activeStep,zoom:cy.zoom(),pan:cy.pan(),pz:pc.zoom(),pp:pc.pan()}))});
 setTimeout(()=>{let state;try{state=JSON.parse(sessionStorage.getItem('structra-view:'+location.pathname))}catch{}if(state){selected=state.selected||selected;activeProcess=state.activeProcess;activeStep=state.activeStep;refresh();setProcessMode(!!state.processMode);cy.zoom(state.zoom);cy.pan(state.pan);pc.zoom(state.pz);pc.pan(state.pp)}else if(model.processes?.length)setProcessMode(true)},0);
