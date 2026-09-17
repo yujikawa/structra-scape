@@ -6,6 +6,21 @@ import { exportOntology } from '../src/ontology.js';
 import { renderModel } from '../src/build.js';
 import { publicationMarkdown, publicationSvg } from '../src/publication.js';
 import { assessCompletion } from '../src/completion.js';
+import { translateUI } from '../src/i18n.js';
+
+test('UI translations preserve model text in dynamic messages and default to Japanese', () => {
+  assert.equal(translateUI('未確認事項', 'en'), 'Open questions');
+  assert.equal(translateUI('未確認事項', 'ja'), '未確認事項');
+  assert.equal(translateUI('契約顧客', 'en'), '契約顧客');
+  assert.equal(translateUI('判定が未決定：契約開始日が来月の法人', 'en'), 'Undecided case: 契約開始日が来月の法人');
+  assert.equal(translateUI('顧客と契約 · 5つの用語・関係に、確認が必要な項目があります。', 'en'), '顧客と契約 · 5 terms / relationships need review.');
+  assert.equal(translateUI('6個の作業 · 5本の流れ', 'en'), '6 steps · 5 flows');
+  assert.equal(translateUI('作業 · 営業担当', 'en'), 'Task · 営業担当');
+  assert.equal(translateUI('「顧客」の条件：「契約」でつながる「有効契約」が、少なくとも1つある。', 'en'), 'Rule for “顧客”: at least one “契約” relationship to “有効契約”.');
+  const html = renderModel('samples/ontology/customer-contract.yaml');
+  assert.match(html, /structra-language/);
+  assert.match(html, /modelTextValues/);
+});
 
 test('completion does not treat empty or merely agreed definitions as complete', () => {
   assert.equal(assessCompletion({ concepts: [], properties: [], restrictions: [] }).issues.length, 1);

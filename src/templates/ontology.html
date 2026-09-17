@@ -159,6 +159,7 @@ $('review-toggle').onclick=()=>setReview(!document.body.classList.contains('revi
 cy.on('dragfree','node',e=>{const c=model.concepts.find(c=>c.id===e.target.id());if(c){c.position={...e.target.position()};mark();updateReview()}});
 <!-- PROCESS_EDITOR -->
 <!-- READER -->
+<!-- LANGUAGE_VIEW -->
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});refresh(true);
 </script></body></html>
 
