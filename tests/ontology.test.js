@@ -124,3 +124,20 @@ test('review notes and layout survive YAML serialization and reject invalid meta
   restored.concepts[0].position.x = Infinity;
   assert.equal(validateModel(restored).length, 2);
 });
+
+test('process hierarchy validates references, ownership and cycles', () => {
+  const m = loadModel('samples/ontology/process-hierarchy.yaml');
+  assert.deepEqual(validateModel(m), []);
+  const invalid = structuredClone(m);
+  invalid.processes[0].steps[1].subprocess = 'Missing';
+  assert.ok(validateModel(invalid).some(e => e.includes('参照先')));
+  const cycle = structuredClone(m);
+  cycle.processes[2].steps[0].subprocess = 'OrderToInvoice';
+  assert.ok(validateModel(cycle).some(e => e.includes('循環')));
+  const duplicate = structuredClone(m);
+  duplicate.processes[0].steps[0].subprocess = 'ReviewDetails';
+  assert.ok(validateModel(duplicate).some(e => e.includes('親は一つ')));
+  const html = renderModel('samples/ontology/process-hierarchy.yaml');
+  assert.match(html, /process-breadcrumbs/);
+  for (const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
+});

@@ -57,7 +57,7 @@ function localizeScreen() {
   const currentProcess = process();
   pc.nodes().forEach(element => {
     const step = currentProcess?.steps.find(item => item.id === element.id());
-    if (step) element.data('label', step.name + '\n' + translateUI(stepTypes[step.type], uiLanguage));
+    if (step) element.data('label', step.name + '\n' + (step.subprocess ? (uiLanguage === 'en' ? 'Open details ›' : '詳細を開く ›') : translateUI(stepTypes[step.type], uiLanguage)));
   });
   languageObserver.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'title', 'placeholder'] });
 }

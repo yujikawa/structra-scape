@@ -1,0 +1,39 @@
+kind: ontology
+name: 受注から請求まで · 階層プロトタイプ
+base: https://example.com/order#
+concepts: []
+properties: []
+restrictions: []
+processes:
+  - id: OrderToInvoice
+    name: 受注から請求まで
+    steps:
+      - {id: Receive, name: 受注, type: task, description: 注文内容を受け付ける, position: {x: 100, y: 160}}
+      - {id: Review, name: 審査, type: task, subprocess: ReviewDetails, description: 出荷してよい注文か確認する, position: {x: 350, y: 160}}
+      - {id: Ship, name: 出荷, type: task, position: {x: 600, y: 160}}
+      - {id: Invoice, name: 請求, type: task, position: {x: 850, y: 160}}
+    flows:
+      - {source: Receive, target: Review}
+      - {source: Review, target: Ship, label: 承認}
+      - {source: Ship, target: Invoice}
+  - id: ReviewDetails
+    name: 審査
+    steps:
+      - {id: Documents, name: 書類確認, type: task, owner: 営業担当, description: 必要書類と注文内容の整合を確認する, position: {x: 100, y: 160}}
+      - {id: Credit, name: 与信判断, type: task, subprocess: CreditDetails, position: {x: 350, y: 160}}
+      - {id: Approve, name: 承認, type: task, owner: 審査責任者, position: {x: 600, y: 160}}
+    flows:
+      - {source: Documents, target: Credit}
+      - {source: Credit, target: Approve}
+  - id: CreditDetails
+    name: 与信判断
+    steps:
+      - {id: History, name: 取引履歴を確認, type: task, position: {x: 100, y: 160}}
+      - {id: Limit, name: 与信枠と照合, type: decision, position: {x: 350, y: 160}}
+      - {id: Pass, name: 審査結果を記録, type: task, position: {x: 600, y: 160}}
+      - {id: Consult, name: 責任者に相談, type: task, position: {x: 350, y: 360}}
+    flows:
+      - {source: History, target: Limit}
+      - {source: Limit, target: Pass, label: 枠内}
+      - {source: Limit, target: Consult, label: 枠外}
+      - {source: Consult, target: Pass, label: 判断を記録}

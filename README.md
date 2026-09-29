@@ -233,3 +233,10 @@ strscape dev samples/ontology/customer-contract.yaml
 - TraceとRelationを使った別の抽象度への探索
 
 キャンバス上での直接編集やドラッグ配置は、YAMLを正本とする次の段階の機能です。
+
+### 階層フローのプロトタイプ
+
+`node src/index.js dev samples/ontology/process-hierarchy.yaml --port 4176` で3段階の例を開けます。
+左側は工程の階層ツリー、中央は現在の階層のフローです。「詳細」の工程をクリックして掘り下げ、上部のパンくずから戻ります。
+
+作業（type: task）に `subprocess: ReviewDetails` のように詳細となるprocessのIDを指定します。詳細フローも既存の `processes` 配列に定義します。親は一つに限定し、循環・存在しない参照を検証します。未詳細化の工程には指定不要です。内容の編集は従来どおりYAMLで行います。図の出力は現在の階層が対象です。

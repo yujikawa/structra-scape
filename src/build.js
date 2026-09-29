@@ -31,6 +31,8 @@ export function renderModel(file) {
     .replace('<!-- STRUCTRA_MODEL_DATA -->', () => `window.__STRUCTRA_DATA__ = ${data};`)
     .replace('<!-- ONTOLOGY_CORE -->', () => fs.readFileSync(path.join(here, 'ontology.js'), 'utf8').replace(/^export /gm, ''))
     .replace('<!-- PROCESS_EDITOR -->', () => fs.readFileSync(path.join(here, 'templates', 'process-editor.js'), 'utf8'))
+    .replace('<!-- PROCESS_HIERARCHY -->', () => fs.readFileSync(path.join(here, 'templates', 'process-hierarchy.js'), 'utf8'))
+    .replace('<!-- VIEW_STATE -->', () => fs.readFileSync(path.join(here, 'templates', 'view-state.js'), 'utf8'))
     .replace('<!-- READER -->', () => fs.readFileSync(path.join(here, 'publication.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'completion.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'templates', 'reader.js'), 'utf8')+'\n'+fs.readFileSync(path.join(here, 'templates', 'completion-view.js'), 'utf8'))
     .replace('<!-- LANGUAGE_VIEW -->', () => fs.readFileSync(path.join(here, 'i18n.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'templates', 'language-view.js'), 'utf8'))
     .replace('<!-- YAML_BUNDLE -->', () => fs.readFileSync(path.join(here, '..', 'node_modules', 'js-yaml', 'dist', 'js-yaml.min.js'), 'utf8'));

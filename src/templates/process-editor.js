@@ -10,6 +10,18 @@ $('status').before(modeBar);
 const pc=cytoscape({container:$('process-cy'),elements:[],style:[{selector:'node',style:{label:'data(label)',width:175,height:76,shape:'round-rectangle','background-color':'#fff','border-color':'#568da1','border-width':2,'text-valign':'center','text-wrap':'wrap','text-max-width':158,'font-size':13,color:'#24475b'}},{selector:'node[type="start"],node[type="end"]',style:{shape:'ellipse',width:95,height:65,'background-color':'#e7f2ed'}},{selector:'node[type="decision"]',style:{shape:'diamond',width:145,height:105,'background-color':'#fff3d5'}},{selector:'node[type="parallel"],node[type="join"]',style:{shape:'diamond',width:145,height:105,'background-color':'#e8e7f7'}},{selector:'edge',style:{label:'data(label)','curve-style':'bezier','target-arrow-shape':'triangle','line-color':'#7894a0','target-arrow-color':'#7894a0','font-size':12,'text-background-color':'#f3f7f6','text-background-opacity':1}},{selector:':selected',style:{'border-color':'#d69a27','border-width':4}},{selector:'.flow-source',style:{'border-color':'#d69a27','border-width':5}}]});
 const process=()=> (model.processes||[]).find(p=>p.id===activeProcess);
 function processStatus(text){$('flow-hint').textContent=text}
+function frameProcess(readable=true){
+  pc.resize();
+  if(!pc.nodes().length)return;
+  pc.fit(pc.elements(),32);
+  if(readable){
+    pc.zoom(Math.max(.85,Math.min(1.2,pc.zoom())));
+    pc.center();
+    const bounds=pc.elements().renderedBoundingBox();
+    // Keep the start visible on wide flows; avoid a tiny diagram in empty space.
+    if(bounds.w>pc.width()-64)pc.panBy({x:32-bounds.x1,y:0});
+  }
+}
 function setProcessMode(enabled){processMode=enabled;setReview(false);document.querySelector('.workspace').hidden=enabled;processRoot.hidden=!enabled;$('review-toggle').hidden=enabled;$('mode-process').classList.toggle('active',enabled);$('mode-ontology').classList.toggle('active',!enabled);cancelFlow();if(enabled)renderProcess();else cy.resize()}
 $('mode-process').onclick=()=>setProcessMode(true);$('mode-ontology').onclick=()=>setProcessMode(false);
 function unique(items,prefix){let n=1;while(items.some(x=>x.id===prefix+n))n++;return prefix+n}
@@ -22,7 +34,7 @@ function renderProcess(){
   pc.elements().remove();
   if(!p){$('process-detail').innerHTML='<h2>最初の業務を作る</h2><p>例：申込みから契約まで</p>'; $('process-steps').innerHTML='';processStatus('左の「＋ 業務フロー」から始めましょう。');return}
   pc.add([...p.steps.map((s,i)=>({data:{id:s.id,type:s.type,label:s.name+'\n'+stepTypes[s.type]},position:s.position||{x:130+(i%3)*240,y:150+Math.floor(i/3)*170}})),...p.flows.map((f,i)=>({data:{id:'flow:'+i,source:f.source,target:f.target,label:f.label||''}}))]);
-  pc.resize();pc.fit(undefined,65);
+  frameProcess();
   $('process-steps').innerHTML='<h3>作業を選ぶ</h3>'+p.steps.map(s=>`<button data-step="${esc(s.id)}">${esc(s.name)}<small>${esc(stepTypes[s.type])}</small></button>`).join('');
   $('process-steps').querySelectorAll('button').forEach(b=>b.onclick=()=>pickStep(b.dataset.step));
   if(activeStep&&!p.steps.some(s=>s.id===activeStep))activeStep=null;
@@ -49,7 +61,7 @@ function flowForm(source,target,index){const p=process();$('process-detail').inn
 $('flow-connect').onclick=()=>{flowSource='';$('flow-cancel').hidden=false;processStatus('矢印の始点となる作業を選んでください。')};$('flow-cancel').onclick=()=>{cancelFlow();processStatus('接続をキャンセルしました。')};
 $('new-process').onclick=()=>{const id=unique(model.processes||[],'Process');activeProcess=id;activeStep=null;commitProcess(d=>(d.processes??=[]).push({id,name:'新しい業務フロー',steps:[],flows:[]}))};
 $('new-step').onclick=()=>{const p=process(),id=unique(p.steps,'Step');activeStep=id;commitProcess(d=>d.processes.find(x=>x.id===p.id).steps.push({id,name:'新しい作業',type:'task',items:[]}));$('step-name')?.focus();$('step-name')?.select()};
-$('flow-fit').onclick=()=>pc.fit(undefined,65);
+$('flow-fit').onclick=()=>frameProcess(false);
 $('flow-arrange').onclick=()=>{pc.layout({name:'breadthfirst',directed:true,padding:65,spacingFactor:1.3}).run();const p=process();if(p)commitProcess(d=>d.processes.find(x=>x.id===p.id).steps.forEach(s=>s.position={...pc.$id(s.id).position()}))};
 pc.on('tap','node',e=>pickStep(e.target.id()));pc.on('tap','edge',e=>{const i=Number(e.target.id().slice(5)),f=process().flows[i];cancelFlow();flowForm(f.source,f.target,i)});
 pc.on('dragfree','node',e=>{const p=process(),s=p.steps.find(x=>x.id===e.target.id());s.position={...e.target.position()};mark();updateReview()});

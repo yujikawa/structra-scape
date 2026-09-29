@@ -103,6 +103,24 @@ export function validateProcesses(model) {
       if(p.steps.find(s=>s.id===f.target)?.type==='start') errors.push('開始へ戻る矢印は接続できません');
     }
   }
+  const byId = new Map(model.processes.filter(Boolean).map(p => [p.id, p]));
+  const parents = new Set();
+  for (const p of byId.values()) for (const s of Array.isArray(p.steps) ? p.steps : []) {
+    if (!s || s.subprocess === undefined) continue;
+    if (typeof s.subprocess !== 'string' || !byId.has(s.subprocess)) errors.push(`${p.id}/${s.id}: 詳細フローの参照先が見つかりません`);
+    if (s.type !== 'task') errors.push(`${p.id}/${s.id}: 詳細フローは作業に指定してください`);
+    if (parents.has(s.subprocess)) errors.push(`${s.subprocess}: 詳細フローの親は一つにしてください`);
+    parents.add(s.subprocess);
+  }
+  const visiting = new Set(), visited = new Set();
+  function visit(id) {
+    if (visiting.has(id)) { errors.push(`${id}: 詳細フローの階層が循環しています`); return; }
+    if (visited.has(id) || !byId.has(id)) return;
+    visiting.add(id);
+    for (const s of Array.isArray(byId.get(id).steps) ? byId.get(id).steps : []) if (s?.subprocess) visit(s.subprocess);
+    visiting.delete(id); visited.add(id);
+  }
+  for (const id of byId.keys()) visit(id);
   return errors;
 }
 
