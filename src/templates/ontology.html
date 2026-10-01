@@ -268,8 +268,43 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const option=(value,label,current)=>`<option value="${esc(value)}" ${value===current?'selected':''}>${esc(label)}</option>`;
 const conceptOptions=(current,empty=false)=>(empty?option('','なし',current):'')+model.concepts.map(c=>option(c.id,c.name,current)).join('');
 const graphFont='"Hiragino Sans","BIZ UDPGothic","Noto Sans JP","Yu Gothic UI",Meiryo,system-ui,sans-serif';
+// Cytoscape only wraps at spaces, so Japanese labels overflow their nodes. Break each line by measured
+// width instead (keeping ASCII words whole), clamp long names with an ellipsis, and size the node to fit.
+// The full name is always shown in the detail pane.
+const labelMeasure=document.createElement('canvas').getContext('2d'), labelCache=new Map();
+function fitLabel(text,{width,size,weight=400,maxLines=3}){
+  const key=[text,width,size,weight,maxLines].join('\u0000');
+  if(labelCache.has(key))return labelCache.get(key);
+  labelMeasure.font=`${weight} ${size}px ${graphFont}`;
+  const measure=value=>labelMeasure.measureText(value.trimEnd()).width, lines=[];
+  for(const paragraph of String(text??'').split('\n')){
+    const wrapped=[];let line='';
+    for(const token of paragraph.match(/[\x21-\x7e]+\s*|\s+|./gu)||[]){
+      for(const piece of measure(token)>width?[...token]:[token]){
+        // Closing punctuation stays on the line it closes (simple kinsoku).
+        if(line.trim()&&measure(line+piece)>width&&!/^[、。，．・：；！？）」』】〕ー…]/.test(piece)){wrapped.push(line.trimEnd());line=piece.trimStart()}
+        else line+=piece;
+      }
+    }
+    wrapped.push(line.trimEnd());
+    if(wrapped.length>maxLines){
+      wrapped.length=maxLines;let last=[...wrapped[maxLines-1]];
+      while(last.length&&measure(last.join('')+'…')>width)last.pop();
+      wrapped[maxLines-1]=last.join('')+'…';
+    }
+    lines.push(...wrapped);
+  }
+  const result={text:lines.join('\n'),lines:lines.length};
+  labelCache.set(key,result);return result;
+}
+// Style properties for a node whose label is wrapped by fitLabel. A diamond only has room for text in its middle.
+function labelStyle({width,size,weight=400,maxLines=3,minHeight,diamond=false}){
+  const fit=ele=>fitLabel(ele.data('label'),{width,size,weight,maxLines}), lineHeight=1.35;
+  return {label:ele=>fit(ele).text,'font-size':size,'font-weight':weight,'line-height':lineHeight,'text-max-width':width+16,
+    height:ele=>{const text=fit(ele).lines*size*lineHeight;return Math.max(minHeight,Math.ceil(diamond?text/.42:text+26))}};
+}
 // Edge styles follow the legend: solid = relationship, dashed with a hollow head = subtype, dotted violet = classification rule.
-const cy=cytoscape({container:$('cy'),elements:[],layout:{name:'grid'},style:[{selector:'node',style:{label:'data(label)',shape:'round-rectangle',width:168,height:56,'background-color':'#fff','border-width':1.5,'border-color':'#8593a8',color:'#18263a','font-family':graphFont,'font-weight':600,'text-valign':'center','text-wrap':'wrap','text-max-width':148,'font-size':15}},{selector:'edge',style:{label:'data(label)','curve-style':'bezier',width:1.6,'target-arrow-shape':'triangle','arrow-scale':1.1,'line-color':'#4a576b','target-arrow-color':'#4a576b','font-family':graphFont,'font-size':12,color:'#2c3a4f','text-background-color':'#f3f5f8','text-background-opacity':1,'text-background-padding':4,'text-background-shape':'round-rectangle'}},{selector:'edge[kind="parent"]',style:{'line-style':'dashed','line-color':'#8a96a8','target-arrow-color':'#8a96a8','target-arrow-fill':'hollow','arrow-scale':1.4,color:'#5b6779'}},{selector:'edge[kind="restriction"]',style:{'line-style':'dotted',width:2.2,'line-color':'#5a3e9e','target-arrow-color':'#5a3e9e',color:'#4b3384'}},{selector:'node:selected',style:{'border-width':2.5,'border-color':'#24498a','background-color':'#e7edf7',color:'#1b3a70'}},{selector:'edge:selected',style:{width:3,'line-color':'#24498a','target-arrow-color':'#24498a'}},{selector:':selected',style:{'overlay-opacity':0}}]});
+const cy=cytoscape({container:$('cy'),elements:[],layout:{name:'grid'},style:[{selector:'node',style:{shape:'round-rectangle',width:168,'background-color':'#fff','border-width':1.5,'border-color':'#8593a8',color:'#18263a','font-family':graphFont,'text-valign':'center','text-wrap':'wrap',...labelStyle({width:144,size:15,weight:600,minHeight:56})}},{selector:'edge',style:{label:'data(label)','curve-style':'bezier',width:1.6,'target-arrow-shape':'triangle','arrow-scale':1.1,'line-color':'#4a576b','target-arrow-color':'#4a576b','font-family':graphFont,'font-size':12,color:'#2c3a4f','text-background-color':'#f3f5f8','text-background-opacity':1,'text-background-padding':4,'text-background-shape':'round-rectangle'}},{selector:'edge[kind="parent"]',style:{'line-style':'dashed','line-color':'#8a96a8','target-arrow-color':'#8a96a8','target-arrow-fill':'hollow','arrow-scale':1.4,color:'#5b6779'}},{selector:'edge[kind="restriction"]',style:{'line-style':'dotted',width:2.2,'line-color':'#5a3e9e','target-arrow-color':'#5a3e9e',color:'#4b3384'}},{selector:'node:selected',style:{'border-width':2.5,'border-color':'#24498a','background-color':'#e7edf7',color:'#1b3a70'}},{selector:'edge:selected',style:{width:3,'line-color':'#24498a','target-arrow-color':'#24498a'}},{selector:':selected',style:{'overlay-opacity':0}}]});
 function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error)}
 function mark(){dirty=true;$('dirty').textContent='未保存の変更あり'}
 function refresh(layout=false){
