@@ -64,8 +64,11 @@ export function diffModels(before, after) {
   const names = new Map([...local(before.concepts), ...local(before.properties), ...local(after.concepts), ...local(after.properties)].map(item => [item.id, item.name]));
   const name = id => names.get(id) || id;
   const subjectAgreed = r => isAgreed(local(before.concepts).find(c => c.id === r.subject));
-  changes.push(...compareEntries('restriction', before.restrictions, after.restrictions,
-    r => `${name(r.subject)}：${name(r.property)} ${r.operator} ${r.target !== undefined ? name(r.target) : r.count}（${r.mode}）`, {}, subjectAgreed));
+  // Same wording as the reader's rule descriptions, so a change reads like the rule itself.
+  const rule = r => `${name(r.subject)}：${r.operator === 'someValuesFrom' ? `「${name(r.property)}」でつながる「${name(r.target)}」が少なくとも1つ`
+    : r.operator === 'allValuesFrom' ? `「${name(r.property)}」の相手はすべて「${name(r.target)}」`
+      : `「${name(r.property)}」の相手は${({ minCardinality: '最低', maxCardinality: '最大', cardinality: 'ちょうど' })[r.operator] || r.operator}${r.count}`}（${r.mode === 'equivalent' ? '呼び分ける条件' : '必ず満たす'}）`;
+  changes.push(...compareEntries('restriction', before.restrictions, after.restrictions, rule, {}, subjectAgreed));
   changes.push(...compareById('process', before.processes, after.processes, ['id', 'steps', 'flows']));
   const beforeProcesses = new Map(local(before.processes).map(p => [p.id, p]));
   for (const p of local(after.processes)) {

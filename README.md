@@ -12,6 +12,16 @@
 
 YAMLが正本です。ビューアは閲覧専用で、内容の変更はAIかテキストエディタで行います。
 
+## インストール
+
+Node.js 20以上が必要です。
+
+```bash
+npm install -g structra-scape
+# npmに公開される前のバージョンを使う場合
+npm install -g github:yujikawa/structra-scape
+```
+
 ## 使い始める
 
 作業フォルダで `strscape init` を実行すると、`models/business.yaml` と、Codex・Claude Code用のスキルを作成します。
@@ -34,7 +44,6 @@ strscape build models/ --output dist   # 共有用の1ファイルHTMLを出力
 - 新しい領域は `strscape init models/contracts.yaml --no-skills` で追加します。
 - 既存プロジェクトには `strscape skills`（`--directory <フォルダ>`、`--agent codex|claude|both`）でスキルを追加できます。独自に編集されたスキルは上書きしません。意図して更新する場合だけ `--force` を指定してください。
 - スキルは `SKILL.md`（Codex版とClaude Code版で起動方法・プレビューの扱いが異なります）と、共通の参照資料 `references/`（モデル化の判断基準、ファイル分割と共通定義、動作確認済みの更新例、引き渡し前のチェック）で構成されます。
-- リポジトリ内で試すときは、`strscape` を `node src/index.js` に読み替えてください。
 
 ## 画面
 
@@ -49,11 +58,12 @@ strscape build models/ --output dist   # 共有用の1ファイルHTMLを出力
 
 YAMLを更新すると、表示モード・選択・ズームを保ったまま再読み込みします。YAMLが不正な場合は、最後に正常だった図を表示したままエラーを知らせます。
 
-「出力」から、現在の業務フロー／関係図をSVG・PNGで、全用語の定義をMarkdownで保存できます。CLIでも出力できます（PNGはブラウザのみ）。
+「出力」から、現在の業務フロー／関係図をSVG・PNGで、全用語の定義をMarkdownで保存できます。CLIでも出力でき、OWL Turtle（他のオントロジーツールへの受け渡し用）も出せます（PNGはブラウザのみ）。
 
 ```bash
 strscape export models/business.yaml --format svg --process Intake --output intake.svg
 strscape export models/business.yaml --format md --concept Application --output application.md
+strscape export models/business.yaml --format ttl --output business.ttl
 ```
 
 ### 未確認事項で確認すること
@@ -69,7 +79,7 @@ strscape export models/business.yaml --format md --concept Application --output 
 ## YAMLモデル
 
 ```yaml
-# 抜粋です。参照先を含む完全な例は samples/ontology/customer-contract.yaml にあります。
+# 抜粋です。参照先を含む完全な例は samples/customer-contract.yaml にあります。
 kind: ontology
 name: 顧客と契約の定義
 base: https://example.com/customer#
@@ -122,7 +132,7 @@ processes:
       - { source: Sign, target: End }
 ```
 
-完全な例は [samples/ontology/](samples/ontology/) にあります。項目の正式な定義は `strscape guide` が出力するAI向けの説明を参照してください。
+完全な例は [samples/](samples/) にあります。項目の正式な定義は `strscape guide` が出力するAI向けの説明を参照してください。
 
 - **ID** は英字で始まる英数字・`_`・`-` です。名前を変えてもIDは変えません。用語とつながりのIDは共通の名前空間です。
 - **つながり（properties）と属性（attributes）**：用語同士を結ぶものはつながり、日付や金額など値そのものは属性にします。
@@ -151,7 +161,7 @@ properties:
 - `imports` は `{"op":"upsert","entity":"model","value":{"imports":["common.yaml"]}}` で更新します。
 - 既にある用語を共通定義へ移すときは `strscape promote models/contracts.yaml Customer Organization --to models/common.yaml` を使います。属性と分類条件も一緒に移し、元ファイルに読み込みを追加し、関係するファイルをまとめて検証します。移す用語が元ファイルに残る用語に依存している場合は、`DEPENDENCY` で一緒に移すべきIDを示します。
 - CLIで共通定義を変更したとき、同じフォルダでそれを読み込むモデルが壊れる場合は、変更を拒否します。
-- `owl` 出力では、読み込んだ用語を元のファイルの `base` で参照し、`owl:imports` を付けます。
+- OWL Turtle 出力（`export --format ttl`）では、読み込んだ用語を元のファイルの `base` で参照し、`owl:imports` を付けます。
 
 ## AIによる更新と、合意済み定義の保護
 
@@ -187,8 +197,7 @@ strscape diff models/business.yaml --format md
 | `inspect` / `apply` / `concept` / `property` / `attribute` / `process` / `step` | AI向けの読み取り・更新（JSON入出力） |
 | `promote <file> <ids...> --to <file>` | 用語を共通定義ファイルへ移し、読み込みを追加 |
 | `diff <file>` | 意味上の変更点。`--base <rev\|file>`、`--format json\|md` |
-| `export <file>` | SVG（業務フロー／関係図）またはMarkdown（定義）を出力。既存ファイルへの上書きは拒否 |
-| `owl <file>` | OWL Turtle出力（互換用） |
+| `export <file> --format svg\|md\|ttl` | 図（SVG）、定義（Markdown）、OWL Turtle を出力。既存ファイルへの上書きは拒否 |
 
 ## できないこと
 
@@ -197,14 +206,13 @@ strscape diff models/business.yaml --format md
 - データ対応は記録のみです。データベースへの接続やSQLの実行による検証はしません。
 - 同時の共同編集はできません。
 
-## 探索モデル（旧形式）
-
-因果ループを扱う旧形式のモデルも引き続き読み込めます。説明は [docs/exploration.md](docs/exploration.md) を参照してください。
-
 ## 開発
 
 ```bash
 npm install
-npm test
-node src/index.js dev samples/ontology/ --port 4175
+npm test                 # CLI・検証・更新・スキルのテスト
+npm run test:browser     # ビルドした画面をヘッドレスChromiumで全表示確認（未導入なら npx playwright install chromium-headless-shell）
+npm run dev              # samples/ をプレビュー
 ```
+
+リポジトリ内では `strscape` を `node src/index.js` に読み替えてください。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。

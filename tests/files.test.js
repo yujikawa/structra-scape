@@ -13,7 +13,7 @@ import { renderBundle } from '../src/build.js';
 function workspace(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-files-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const name of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples/ontology', name), path.join(dir, name));
+  for (const name of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
   return dir;
 }
 
@@ -65,7 +65,7 @@ test('CLI writes keep comments and inline styles, and guard agreed definitions',
 });
 
 test('semantic diff keys changes by id, ignores layout and flags agreed definitions', () => {
-  const before = loadModel('samples/ontology/customer-contract.yaml', { resolve: false });
+  const before = loadModel('samples/customer-contract.yaml', { resolve: false });
   const after = structuredClone(before);
   before.concepts[0].review_state = 'agreed';
   after.concepts[0].review_state = 'discussion';

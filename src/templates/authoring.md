@@ -5,7 +5,7 @@ Inspect existing models before choosing to extend one or create another. Related
 workflows sharing definitions belong together, or share a definitions file through
 imports (see below). Ask when scope is ambiguous. Initialize with `strscape init` and
 preview the workspace with `strscape dev models/`. Add domains with
-`strscape init models/contracts.yaml --no-skills`. Preserve explicitly named legacy paths.
+`strscape init models/contracts.yaml --no-skills`. Respect a file the user names explicitly.
 
 The YAML file is the source of truth. Prefer the CLI transactions below to update it;
 the dev viewer watches it. All authoring commands emit JSON, exit 1 on failure.
@@ -70,7 +70,7 @@ shows the same comparison in its 変更点 tab.
 
 Commands (run the installed `strscape` CLI from the working folder):
 
-    strscape init business.yaml --ontology
+    strscape init models/business.yaml
     strscape guide
     strscape validate business.yaml --json
     strscape diff business.yaml --format md

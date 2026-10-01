@@ -18,7 +18,7 @@ test('UI translations preserve model text in dynamic messages and default to Jap
   assert.equal(translateUI('6個の作業 · 5本の流れ', 'en'), '6 steps · 5 flows');
   assert.equal(translateUI('作業 · 営業担当', 'en'), 'Task · 営業担当');
   assert.equal(translateUI('「顧客」の条件：「契約」でつながる「有効契約」が、少なくとも1つある。', 'en'), 'Rule for “顧客”: at least one “契約” relationship to “有効契約”.');
-  const html = renderModel('samples/ontology/customer-contract.yaml');
+  const html = renderModel('samples/customer-contract.yaml');
   assert.match(html, /structra-language/);
   assert.match(html, /modelTextValues/);
 });
@@ -54,7 +54,7 @@ test('completion flags cycles and impossible direct counts but not universal exi
 });
 
 test('offline build includes grouped unconfirmed view and mode navigation', () => {
-  const html = renderModel('samples/ontology/customer-contract.yaml');
+  const html = renderModel('samples/customer-contract.yaml');
   assert.match(html, /function assessCompletion/);
   assert.match(html, /data-completion-target/);
   assert.match(html, /modeBar.append\(completionButton\)/);
@@ -70,7 +70,7 @@ test('publication exports definitions and selected process with escaped labels',
  assert.throws(()=>publicationMarkdown(model,{concept:'missing'}));
 });
 
-const sample = () => loadModel('samples/ontology/customer-contract.yaml');
+const sample = () => loadModel('samples/customer-contract.yaml');
 test('shared definitions validate mapping status and evidence without executing conditions', () => {
   const m = sample();
   assert.deepEqual(validateModel(m), []);
@@ -105,14 +105,13 @@ test('rejects unsupported rules, invalid counts, dangling references and unsafe 
   assert.ok(validateModel({ kind: 'ontology', name: 'bad', concepts: {} }).length);
 });
 test('offline reader embeds compilable code and escapes user script endings', () => {
-  const html = renderModel('samples/ontology/customer-contract.yaml');
+  const html = renderModel('samples/customer-contract.yaml');
   assert.doesNotMatch(html, /<!-- (ONTOLOGY_CORE|YAML_BUNDLE|STRUCTRA_)/);
   for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
   assert.doesNotMatch(html, /id="owl"|id="turtle"|生成されるOWL/);
   // The reader is read-only: no in-browser authoring controls or YAML download.
   assert.doesNotMatch(html, /id="save"|id="add-concept"|id="new-step"|id="yaml-preview"/);
   assert.match(html, /id="review-toggle"/);
-  assert.match(renderModel('samples/support-backlog-loop.yaml'), /Causal guide/);
 });
 
 test('review notes and layout survive YAML serialization and reject invalid metadata', async () => {
@@ -128,7 +127,7 @@ test('review notes and layout survive YAML serialization and reject invalid meta
 });
 
 test('process hierarchy validates references, ownership and cycles', () => {
-  const m = loadModel('samples/ontology/process-hierarchy.yaml');
+  const m = loadModel('samples/process-hierarchy.yaml');
   assert.deepEqual(validateModel(m), []);
   const invalid = structuredClone(m);
   invalid.processes[0].steps[1].subprocess = 'Missing';
@@ -139,7 +138,7 @@ test('process hierarchy validates references, ownership and cycles', () => {
   const duplicate = structuredClone(m);
   duplicate.processes[0].steps[0].subprocess = 'ReviewDetails';
   assert.ok(validateModel(duplicate).some(e => e.includes('親は一つ')));
-  const html = renderModel('samples/ontology/process-hierarchy.yaml');
+  const html = renderModel('samples/process-hierarchy.yaml');
   assert.match(html, /process-breadcrumbs/);
   for (const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
 });
@@ -178,6 +177,6 @@ test('flow checks report owners, decisions, gateways, reachability and dead ends
   const messages = assessCompletion(m).issues.filter(i => i.kind === 'step' || i.kind === 'process').map(i => `${i.id}:${i.message}`);
   for (const expected of ['Review:担当（owner）を記録してください。', 'Decision:分岐の矢印に進む条件（label）を記録してください。', 'Orphan:開始からたどり着けません。', 'Orphan:次へ進む流れがなく、終了につながっていません。', 'Split:並行開始の行き先が2つ以上ありません。', 'ContractProcess:並行開始と合流の対応を確認してください。']) assert.ok(messages.includes(expected), expected);
   // Sketches without a start or end are not checked for reachability.
-  const sketch = loadModel('samples/ontology/process-hierarchy.yaml');
+  const sketch = loadModel('samples/process-hierarchy.yaml');
   assert.ok(!assessCompletion(sketch).issues.some(i => i.message.includes('たどり着けません')));
 });

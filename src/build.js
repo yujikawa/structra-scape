@@ -20,6 +20,7 @@ export function renderModel(file, options) {
 // `compare` names a git revision; each model then carries its baseline for the changes view.
 export function renderBundle(file, { compare } = {}) {
   const absolute = path.resolve(process.cwd(), file);
+  if (!fs.existsSync(absolute)) throw new Error(`File not found: ${file}`);
   const modelFiles = fs.statSync(absolute).isDirectory()
     ? fs.readdirSync(absolute).filter(name => /\.ya?ml$/i.test(name)).map(name => path.join(absolute, name))
     : [absolute];
@@ -30,12 +31,10 @@ export function renderBundle(file, { compare } = {}) {
     try { model = loadModel(modelFile); errors = validateModel(model); } catch (error) { errors = [error.message]; }
     if (errors.length) throw new Error(`Cannot build invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);
     sources.push(...importedFiles(model, modelFile));
-    const baseline = compare && model.kind === 'ontology' ? gitBaseline(modelFile, compare) : null;
+    const baseline = compare ? gitBaseline(modelFile, compare) : null;
     return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model, ...(baseline ? { baseline } : {}) };
   });
-  const isOntology = models.every(entry => entry.model.kind === 'ontology');
-  if (!isOntology && models.some(entry => entry.model.kind === 'ontology')) throw new Error('Build ontology and exploration models separately.');
-  const page = template(isOntology ? 'ontology.html' : 'viewer.html');
+  const page = template('ontology.html');
   const logo = template('structra-scape-mark.svg');
   const data = JSON.stringify({ models }).replace(/</g, '\\u003c');
   const cytoscape = fs.readFileSync(dependency('cytoscape/dist/cytoscape.min.js'), 'utf8');

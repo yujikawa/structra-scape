@@ -1,10 +1,12 @@
 import express from 'express';
 import chokidar from 'chokidar';
+import fs from 'node:fs';
 import path from 'node:path';
 import { renderBundle } from './build.js';
 
-export async function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } = {}) {
+export function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } = {}) {
   const absolute = path.resolve(process.cwd(), file);
+  if (!fs.existsSync(absolute)) throw new Error(`File not found: ${file}`);
   const app = express();
   const clients = new Set();
   let html = '', issue = '';
@@ -35,5 +37,9 @@ export async function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HE
     for (const client of clients) client.write(`data: ${JSON.stringify(issue?{error:issue}:{reload:true})}\n\n`);
     console.log(issue?'  ! Invalid YAML; keeping last valid view':'  ↻ YAML updated');
   });
-  app.listen(port, host, () => console.log(`  ✓ Preview: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}\n  Watching: ${file}`));
+  const server = app.listen(port, host, () => console.log(`  ✓ Preview: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}\n  Watching: ${file}`));
+  server.on('error', error => {
+    console.error(`  ✗ ${error.code === 'EADDRINUSE' ? `Port ${port} is already in use; choose another with --port` : error.message}`);
+    process.exit(1);
+  });
 }

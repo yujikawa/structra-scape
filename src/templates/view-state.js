@@ -14,7 +14,7 @@ function saveViewState() {
       slug: entries[Number(entryIndex)]?.slug, selected, activeProcess, activeStep, ancestors,
       mode: changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
       search: $('search').value, zoom: cy.zoom(), pan: cy.pan(), pz: pc.zoom(), pp: pc.pan(),
-      processFrameVersion: 2, hierarchy: [...hierarchyViews], collapsedBranches: [...collapsedBranches], scroll,
+      hierarchy: [...hierarchyViews], collapsedBranches: [...collapsedBranches], scroll,
       detailTab: [...document.querySelectorAll('.reader-tabs button')].findIndex(b=>b.getAttribute('aria-pressed')==='true')
     }));
   } catch { /* Browsing still works when storage is unavailable. */ }
@@ -43,13 +43,13 @@ setTimeout(() => {
   activeStep=activeProcess===state.activeProcess ? state.activeStep : null;
   $('search').value=typeof state.search==='string' ? state.search : '';
   refresh(true);
-  const mode=state.mode || (state.processMode?'process':'ontology');
+  const mode=state.mode;
   setProcessMode(mode==='process');
   if(mode==='unconfirmed')completionButton.click();
   if(mode==='changes'&&!changesButton.hidden)changesButton.click();
   if(mode==='definitions')setReview(true);
   restoreGraphView(cy,state.zoom,state.pan);
-  if(activeProcess===state.activeProcess && state.processFrameVersion===2)restoreGraphView(pc,state.pz,state.pp);
+  if(activeProcess===state.activeProcess)restoreGraphView(pc,state.pz,state.pp);
   hierarchyModel=model;
   collapsedBranches.clear();
   for(const id of Array.isArray(state.collapsedBranches)?state.collapsedBranches:[]) {

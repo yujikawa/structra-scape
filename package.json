@@ -1,23 +1,44 @@
 {
   "name": "structra-scape",
   "version": "0.1.0",
-  "description": "Turns AI-authored business process and ontology YAML into a self-contained HTML reader",
+  "description": "Business processes and the meaning of business terms, written as YAML by AI agents (Claude Code, Codex) and reviewed in a self-contained HTML viewer",
+  "keywords": [
+    "ontology",
+    "glossary",
+    "business-process",
+    "data-catalog",
+    "yaml",
+    "claude-code",
+    "codex",
+    "ai-agent"
+  ],
+  "homepage": "https://github.com/yujikawa/structra-scape#readme",
+  "bugs": {
+    "url": "https://github.com/yujikawa/structra-scape/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yujikawa/structra-scape.git"
+  },
+  "license": "MIT",
+  "author": "yujikawa",
   "type": "module",
   "bin": {
-    "strscape": "./src/index.js"
+    "strscape": "src/index.js"
   },
   "files": [
     "src",
     "samples",
-    "docs",
-    "README.md",
-    "LICENSE"
+    "CHANGELOG.md"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "build": "node src/index.js build samples/ontology/customer-contract.yaml --output dist",
-    "dev": "node src/index.js dev samples/ontology/",
-    "validate": "node src/index.js validate samples/ontology/customer-contract.yaml",
-    "test": "node --test tests/validate.test.js tests/ontology.test.js tests/mutate.test.js tests/skills.test.js tests/files.test.js"
+    "test": "node --test tests/ontology.test.js tests/mutate.test.js tests/skills.test.js tests/files.test.js",
+    "test:browser": "node --test tests/browser.test.js",
+    "dev": "node src/index.js dev samples/",
+    "build": "node src/index.js build samples/ --output dist"
   },
   "dependencies": {
     "chokidar": "^4.0.3",
@@ -26,5 +47,8 @@
     "express": "^4.21.2",
     "js-yaml": "^4.1.1",
     "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "playwright-core": "~1.58.0"
   }
 }
