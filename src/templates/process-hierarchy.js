@@ -7,25 +7,6 @@ const crumbs = document.createElement('nav');
 crumbs.id = 'process-breadcrumbs';
 crumbs.setAttribute('aria-label', '業務の現在地');
 document.querySelector('.process-canvas').prepend(crumbs);
-readerStyle.textContent += `
-#process-workspace{grid-template-columns:270px minmax(0,1fr) 300px}
-#process-breadcrumbs{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:14px 18px;background:#ffffffed;border-bottom:1px solid #dce6df}
-#process-breadcrumbs button{border:0;background:transparent;font-size:13px;padding:5px;color:#226b5c}
-#process-breadcrumbs button:last-child{font-weight:700;background:#e7f3ef}
-#process-cy{top:65px}.process-list{padding:18px 12px}
-.process-tree,.process-tree ul{list-style:none;padding:0;margin:0}
-.process-tree ul{margin-left:13px;padding-left:14px;border-left:1px solid #bdcfc6}
-.process-tree li{position:relative}.process-tree ul>li:before{content:'';position:absolute;left:-14px;top:22px;width:12px;border-top:1px solid #bdcfc6}
-.process-tree button{border:0;background:transparent;padding:10px 8px;font-size:13px;line-height:1.5}
-.process-tree button.active{background:#e3f1eb;color:#155e50;font-weight:700}
-.process-tree .branch-mark{float:right;color:#65857b;font-size:11px}
-.process-tree .tree-row{display:flex;align-items:center}
-.process-tree .tree-row>button:last-child{flex:1;min-width:0}
-.process-tree .tree-row>.tree-toggle{width:26px;flex:0 0 26px;padding:8px 0;margin:0;font-size:11px;text-align:center}
-.process-tree ul[hidden]{display:none}
-#process-steps{display:none}
-@media(max-width:800px){#process-workspace{display:flex}.process-list{max-height:300px;overflow:auto}}
-`;
 function hierarchyParents() {
   const parents = new Map();
   for (const p of model.processes || []) for (const s of p.steps) if (s.subprocess) parents.set(s.subprocess, {process:p.id, step:s.id, name:s.name});
@@ -35,8 +16,7 @@ function updateBranchVisibility() {
   $('process-list').querySelectorAll('[data-toggle-branch]').forEach(button=>{
     const expanded=!collapsedBranches.has(button.dataset.toggleBranch);
     button.setAttribute('aria-expanded',String(expanded));
-    button.textContent=expanded?'▼':'▶';
-    button.closest('li').querySelector(':scope > ul').hidden=!expanded;
+        button.closest('li').querySelector(':scope > ul').hidden=!expanded;
   });
 }
 function navigateHierarchy(id, step = null) {
@@ -58,7 +38,7 @@ renderProcess = function() {
     while(current&&!seen.has(current)){seen.add(current);collapsedBranches.delete(current);current=parents.get(current)?.process;}
     treeProcess=activeProcess;
   }
-  const toggle=(p)=>`<button class="tree-toggle" data-toggle-branch="${esc(p.id)}" aria-label="${esc(p.name)}の子工程を開閉" aria-expanded="true">▼</button>`;
+  const toggle=(p)=>`<button class="tree-toggle" data-toggle-branch="${esc(p.id)}" aria-label="${esc(p.name)}の子工程を開閉" aria-expanded="true"></button>`;
   function stepsTree(p, seen = new Set()) {
     if (seen.has(p.id)) return '';
     const next = new Set([...seen, p.id]);
@@ -80,7 +60,7 @@ renderProcess = function() {
   while (id && !seen.has(id)) { seen.add(id); const p=all.find(x=>x.id===id); if(!p)break; chain.unshift(p); id=parents.get(id)?.process; }
   crumbs.innerHTML=chain.map(p=>`<button data-level="${esc(p.id)}" ${p.id===activeProcess?'aria-current="page"':''}>${esc(p.name)}</button>`).join('<span aria-hidden="true">›</span>');
   crumbs.querySelectorAll('button').forEach(b=>b.onclick=()=>navigateHierarchy(b.dataset.level));
-  for(const s of process()?.steps || []) if(s.subprocess) pc.$id(s.id).data('label',s.name+'\n詳細を開く ›');
+  for(const s of process()?.steps || []) if(s.subprocess) pc.$id(s.id).data('label',s.name+'\n詳細を開く ›').addClass('has-detail');
   if(activeStep) pc.$id(activeStep).select();
 };
 const hierarchyDetailBase = processDetail;
@@ -88,7 +68,7 @@ processDetail = function() {
   hierarchyDetailBase();
   const s = process()?.steps.find(s=>s.id===activeStep);
   if (s?.subprocess) {
-    const b=document.createElement('button');b.textContent='詳細フローを開く →';
+    const b=document.createElement('button');b.className='primary-action';b.textContent='詳細フローを開く';
     b.onclick=()=>navigateHierarchy(s.subprocess);$('process-detail').append(b);
   }
 };

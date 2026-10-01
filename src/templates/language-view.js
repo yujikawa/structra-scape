@@ -7,7 +7,6 @@ languageSelect.setAttribute('aria-label', '表示言語 / Display language');
 languageSelect.innerHTML = '<option value="ja">日本語</option><option value="en">English</option>';
 languageSelect.value = uiLanguage;
 document.querySelector('header').insertBefore(languageSelect, exportMenu);
-readerStyle.textContent += '#ui-language{width:auto;font-size:12px;padding:8px;flex-shrink:0}.graph-controls button[aria-label="Zoom in"] .ui-icon,.graph-controls button[aria-label="Zoom out"] .ui-icon{margin:0}';
 
 const translatedNodes = new WeakMap();
 const translatedAttributes = new WeakMap();
