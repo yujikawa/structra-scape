@@ -7,6 +7,7 @@ concepts:
     description: 契約の当事者となる組織。名前が変わっても同じ法人として扱う。
   - id: Customer
     name: 契約顧客
+    aliases: [ 顧客, 取引先 ]
     parent: Organization
     description: 有効な契約を少なくとも1つ持つ法人。
     example: A社は有効な保守契約を持つため、契約顧客に含める。
@@ -32,6 +33,37 @@ concepts:
   - id: Contract
     name: 契約
     description: 当事者間の合意。
+    attributes:
+      - id: contractNo
+        name: 契約番号
+        type: identifier
+        required: true
+        description: 契約ごとに採番される番号。更新しても変わらない。
+        data_mapping:
+          source: example_warehouse.contracts.contract_no（架空の説明用カラム）
+          status: proposed
+      - id: startDate
+        name: 契約開始日
+        type: date
+        required: true
+        description: 契約の効力が始まる日。
+        data_mapping:
+          source: example_warehouse.contracts.start_date（架空の説明用カラム）
+          status: proposed
+          gap: 申込日を入れている行があるかもしれない。
+      - id: endDate
+        name: 契約終了日
+        type: date
+        description: 契約の効力が終わる日。自動更新の契約では未設定。
+      - id: status
+        name: 契約状態
+        type: code
+        description: 契約の手続き上の状態。
+        values:
+          - { value: active, name: 有効 }
+          - { value: suspended, name: 停止中 }
+          - { value: terminated, name: 解約済み }
+        question: 停止中の契約を有効契約に含める？
   - id: ActiveContract
     name: 有効契約
     parent: Contract

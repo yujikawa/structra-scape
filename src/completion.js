@@ -3,8 +3,15 @@ export function assessCompletion(model) {
   const issues = [];
   const text = value => typeof value === 'string' && value.trim().length > 0;
   const add = (category, message, target) => issues.push({ category, message, ...target });
-  const entries = [...model.concepts.map(item => ({ item, kind: 'concept' })), ...model.properties.map(item => ({ item, kind: 'property' }))];
+  // Imported definitions are reviewed in the model that owns them.
+  const local = item => !item.imported_from;
+  const entries = [...model.concepts.filter(local).map(item => ({ item, kind: 'concept' })), ...model.properties.filter(local).map(item => ({ item, kind: 'property' }))];
   if (!model.concepts.length) add('不足', '対象とする業務の概念を登録してください。');
+  const mappingIssues = (mapping, target, prefix = '') => {
+    if (text(mapping.gap)) add('データ対応', prefix + mapping.gap, target);
+    if (mapping.status !== 'verified') add('データ対応', prefix + 'データとの対応が未確認です。', target);
+    for (const [key, label] of [['grain', '1件が表すもの'], ['condition', '判定条件']]) if (!text(mapping[key])) add('データ対応', prefix + `${label}を記録してください。`, target);
+  };
   for (const { item, kind } of entries) {
     const target = { kind, id: item.id, name: item.name };
     if (text(item.question)) add('未決定', item.question, target);
@@ -14,15 +21,29 @@ export function assessCompletion(model) {
     if (!text(item.exclusion) && !(item.cases || []).some(c => c.result === 'excluded')) add('不足', '含まない具体例を記録してください。', target);
     if (!text(item.evidence)) add('不足', '定義の根拠・合意の記録を残してください。', target);
     if (item.review_state !== 'agreed') add('未合意', '業務担当者と定義を確認し、合意状態を記録してください。', target);
-    const mapping = item.data_mapping;
-    if (mapping) {
-      if (text(mapping.gap)) add('データ対応', mapping.gap, target);
-      if (mapping.status !== 'verified') add('データ対応', 'データとの対応が未確認です。', target);
-      for (const [key, label] of [['grain', '1件が表すもの'], ['condition', '判定条件']]) if (!text(mapping[key])) add('データ対応', `${label}を記録してください。`, target);
+    if (item.data_mapping) mappingIssues(item.data_mapping, target);
+    for (const a of item.attributes || []) {
+      const prefix = `属性「${a.name}」：`;
+      if (text(a.question)) add('未決定', prefix + a.question, target);
+      if (!text(a.description)) add('不足', prefix + '意味の説明を記録してください。', target);
+      if (!a.type) add('不足', prefix + '値の種類（type）を記録してください。', target);
+      if (a.type === 'code' && !a.values?.length) add('不足', prefix + '取りうる区分値を記録してください。', target);
+      if (a.data_mapping) mappingIssues(a.data_mapping, target, prefix);
     }
   }
+  // The same word must not point at two different definitions.
+  const labels = new Map();
+  for (const item of [...model.concepts, ...model.properties]) for (const label of [item.name, ...(item.aliases || [])]) {
+    const key = String(label).trim().toLowerCase();
+    if (!labels.has(key)) labels.set(key, new Set());
+    labels.get(key).add(item);
+  }
+  for (const { item, kind } of entries) for (const alias of item.aliases || []) {
+    const others = [...labels.get(alias.trim().toLowerCase())].filter(other => other !== item);
+    if (others.length) add('不整合', `別名「${alias}」が「${others.map(o => o.name).join('」「')}」の名前・別名と重なっています。`, { kind, id: item.id, name: item.name });
+  }
   // Report cycles and direct count contradictions without claiming full reasoning.
-  for (const c of model.concepts) {
+  for (const c of model.concepts.filter(local)) {
     const seen = new Set([c.id]);
     let parent = c.parent;
     while (parent) {
@@ -37,6 +58,35 @@ export function assessCompletion(model) {
       if (lower > upper) add('不整合', `「${p.name}」の個数条件を同時に満たせません。`, { kind: 'concept', id: c.id, name: c.name });
     }
   }
+  for (const p of model.processes || []) assessProcess(p, add, text);
   const ready = entries.filter(({ item, kind }) => !issues.some(issue => issue.kind === kind && issue.id === item.id)).length;
   return { issues, ready, total: entries.length };
+}
+
+// Structural checks of a recorded flow. Reachability and dead ends are checked only when the
+// flow declares a start or end, because an informal sketch of steps has no defined boundary.
+function assessProcess(p, add, text) {
+  const processTarget = { kind: 'process', id: p.id, name: p.name };
+  if (!p.steps.length) { add('不足', '作業を記録してください。', processTarget); return; }
+  const outgoing = id => p.flows.filter(f => f.source === id), incoming = id => p.flows.filter(f => f.target === id);
+  const strict = p.steps.some(s => s.type === 'start' || s.type === 'end');
+  const reached = new Set();
+  const queue = p.steps.filter(s => s.type === 'start').map(s => s.id);
+  while (queue.length) { const id = queue.shift(); if (reached.has(id)) continue; reached.add(id); queue.push(...outgoing(id).map(f => f.target)); }
+  for (const s of p.steps) {
+    const target = { kind: 'step', process: p.id, processName: p.name, id: s.id, name: s.name };
+    if (text(s.question)) add('未決定', s.question, target);
+    if (s.type === 'task' && !s.subprocess && !text(s.owner)) add('不足', '担当（owner）を記録してください。', target);
+    if (s.type === 'decision') {
+      if (outgoing(s.id).length < 2) add('フロー', '分岐の行き先が2つ以上ありません。', target);
+      if (outgoing(s.id).some(f => !text(f.label))) add('フロー', '分岐の矢印に進む条件（label）を記録してください。', target);
+    }
+    if (s.type === 'parallel' && outgoing(s.id).length < 2) add('フロー', '並行開始の行き先が2つ以上ありません。', target);
+    if (s.type === 'join' && incoming(s.id).length < 2) add('フロー', '合流する流れが2つ以上ありません。', target);
+    if (strict && s.type !== 'start' && !reached.has(s.id)) add('フロー', '開始からたどり着けません。', target);
+    if (strict && s.type !== 'end' && !outgoing(s.id).length) add('フロー', '次へ進む流れがなく、終了につながっていません。', target);
+  }
+  if (strict && !p.steps.some(s => s.type === 'start')) add('フロー', '開始を記録してください。', processTarget);
+  if (strict && !p.steps.some(s => s.type === 'end')) add('フロー', '終了を記録してください。', processTarget);
+  if (p.steps.some(s => s.type === 'parallel') !== p.steps.some(s => s.type === 'join')) add('フロー', '並行開始と合流の対応を確認してください。', processTarget);
 }

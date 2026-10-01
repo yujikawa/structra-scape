@@ -24,7 +24,7 @@ function navigateHierarchy(id, step = null) {
   hierarchyViews.set(activeProcess, {step:activeStep, zoom:pc.zoom(), pan:{...pc.pan()}});
   const saved = hierarchyViews.get(id);
   activeProcess = id; activeStep = step || saved?.step || null;
-  cancelFlow(); renderProcess();
+  renderProcess();
   if (saved) { pc.zoom(saved.zoom); pc.pan(saved.pan); }
   if (activeStep) pickStep(activeStep);
 }

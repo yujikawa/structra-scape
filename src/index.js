@@ -11,11 +11,14 @@ import { exportOntology } from './ontology.js';
 import { registerAuthoringCommands } from './mutate.js';
 import { installSkills } from './skills.js';
 import { publicationMarkdown, publicationSvg } from './publication.js';
+import { diffModels, changesMarkdown } from './diff.js';
+import { loadBaseline } from './baseline.js';
+import yaml from 'js-yaml';
 
 const program = new Command();
 program
   .name('strscape')
-  .description('YAML-driven systems thinking and process modeling visualizer')
+  .description('Business process and ontology YAML for AI agents, rendered as a self-contained HTML reader')
   .version('0.1.0');
 
 program.command('init [file]')
@@ -45,12 +48,16 @@ program.command('validate <file>')
 program.command('build <file>')
   .description('Build a YAML model or a directory of YAML models into a self-contained HTML viewer')
   .option('-o, --output <directory>', 'output directory', 'dist')
-  .action((file, options) => build(file, options.output));
+  .option('--compare <ref>', 'include changes since this git revision (e.g. HEAD, main)')
+  .action((file, options) => { try { build(file, options.output, { compare: options.compare }); } catch (e) { console.error(e.message); process.exitCode = 1; } });
 
 program.command('dev <file>')
   .description('Preview a YAML model or a directory of models and reload on changes')
   .option('-p, --port <port>', 'port', Number, 4173)
-  .action((file, options) => dev(file, options.port));
+  .option('--host <host>', 'interface to listen on (use 0.0.0.0 to share on the network)', '127.0.0.1')
+  .option('--compare <ref>', 'show changes since this git revision', 'HEAD')
+  .option('--no-compare', 'hide the changes view')
+  .action((file, options) => dev(file, options));
 
 program.command('owl <file>')
   .description('Export the supported ontology model to OWL Turtle')
@@ -71,4 +78,8 @@ program.command('export <file>').description('Export publication SVG or Markdown
  .requiredOption('--format <format>','svg or md').requiredOption('-o, --output <file>','destination (must not exist)')
  .option('--process <id>','process diagram for SVG').option('--concept <id>','concept for Markdown')
  .action((file,options)=>{try{const errors=validateFile(file);if(errors.length)throw new Error(errors.join('\n'));if(!['svg','md'].includes(options.format))throw new Error('format must be svg or md');if(options.process&&options.format!=='svg'||options.concept&&options.format!=='md')throw new Error('process requires svg; concept requires md');const model=loadModel(file);if(model.kind!=='ontology')throw new Error('Expected ontology model');const output=options.format==='svg'?publicationSvg(model,options):publicationMarkdown(model,options);fs.writeFileSync(options.output,output,{flag:'wx'});console.log(JSON.stringify({ok:true,output:options.output}));}catch(e){console.error(JSON.stringify({ok:false,error:e.message}));process.exitCode=1}});
+program.command('diff <file>').description('Show changes in meaning since a git revision or another YAML file')
+ .option('--base <ref-or-file>','git revision or YAML file to compare with','HEAD')
+ .option('--format <format>','json or md','json')
+ .action((file,options)=>{try{if(!['json','md'].includes(options.format))throw new Error('format must be json or md');const baseline=loadBaseline(file,options.base);const changes=diffModels(baseline.model,yaml.load(fs.readFileSync(file,'utf8')));if(options.format==='md')process.stdout.write(changesMarkdown(changes,{base:baseline.ref}));else console.log(JSON.stringify({ok:true,base:baseline.ref,agreed:changes.filter(c=>c.agreed).length,changes}));}catch(e){console.error(JSON.stringify({ok:false,error:e.message}));process.exitCode=1}});
 program.parse();

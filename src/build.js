@@ -1,29 +1,45 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { loadModel, validateModel } from './validate.js';
+import { importedFiles } from './imports.js';
+import { gitBaseline } from './baseline.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// Resolve dependencies through Node so hoisted installs (npm, pnpm) work too.
+const dependency = createRequire(import.meta.url).resolve;
+// Shared Node/browser modules are inlined as plain scripts: drop the `export` keywords.
+const shared = name => fs.readFileSync(path.join(here, name), 'utf8').replace(/^export /gm, '');
+const template = name => fs.readFileSync(path.join(here, 'templates', name), 'utf8');
 
-export function renderModel(file) {
+export function renderModel(file, options) {
+  return renderBundle(file, options).html;
+}
+
+// `compare` names a git revision; each model then carries its baseline for the changes view.
+export function renderBundle(file, { compare } = {}) {
   const absolute = path.resolve(process.cwd(), file);
   const modelFiles = fs.statSync(absolute).isDirectory()
     ? fs.readdirSync(absolute).filter(name => /\.ya?ml$/i.test(name)).map(name => path.join(absolute, name))
     : [absolute];
   if (modelFiles.length === 0) throw new Error(`No YAML files found in ${file}`);
+  const sources = [...modelFiles];
   const models = modelFiles.map(modelFile => {
-    const model = loadModel(modelFile);
-    const errors = validateModel(model);
+    let model, errors;
+    try { model = loadModel(modelFile); errors = validateModel(model); } catch (error) { errors = [error.message]; }
     if (errors.length) throw new Error(`Cannot build invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);
-    return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model };
+    sources.push(...importedFiles(model, modelFile));
+    const baseline = compare && model.kind === 'ontology' ? gitBaseline(modelFile, compare) : null;
+    return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model, ...(baseline ? { baseline } : {}) };
   });
   const isOntology = models.every(entry => entry.model.kind === 'ontology');
   if (!isOntology && models.some(entry => entry.model.kind === 'ontology')) throw new Error('Build ontology and exploration models separately.');
-  const template = fs.readFileSync(path.join(here, 'templates', isOntology ? 'ontology.html' : 'viewer.html'), 'utf8');
-  const logo = fs.readFileSync(path.join(here, 'templates', 'structra-scape-mark.svg'), 'utf8');
+  const page = template(isOntology ? 'ontology.html' : 'viewer.html');
+  const logo = template('structra-scape-mark.svg');
   const data = JSON.stringify({ models }).replace(/</g, '\\u003c');
-  const cytoscape = fs.readFileSync(path.join(here, '..', 'node_modules', 'cytoscape', 'dist', 'cytoscape.min.js'), 'utf8');
-  const html = template
+  const cytoscape = fs.readFileSync(dependency('cytoscape/dist/cytoscape.min.js'), 'utf8');
+  const html = page
     // Use replacement callbacks: Cytoscape's minified source contains `$&` and
     // other sequences with a special meaning in String#replace replacement text.
     .replace('<!-- STRUCTRA_CYTOSCAPE_BUNDLE -->', () => cytoscape)
@@ -31,18 +47,17 @@ export function renderModel(file) {
     // Inline the logo as the tab icon so the single-file output stays self-contained.
     .replace('<!-- STRUCTRA_FAVICON -->', () => `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(logo)}">`)
     .replace('<!-- STRUCTRA_MODEL_DATA -->', () => `window.__STRUCTRA_DATA__ = ${data};`)
-    .replace('<!-- ONTOLOGY_CORE -->', () => fs.readFileSync(path.join(here, 'ontology.js'), 'utf8').replace(/^export /gm, ''))
-    .replace('<!-- PROCESS_EDITOR -->', () => fs.readFileSync(path.join(here, 'templates', 'process-editor.js'), 'utf8'))
-    .replace('<!-- PROCESS_HIERARCHY -->', () => fs.readFileSync(path.join(here, 'templates', 'process-hierarchy.js'), 'utf8'))
-    .replace('<!-- VIEW_STATE -->', () => fs.readFileSync(path.join(here, 'templates', 'view-state.js'), 'utf8'))
-    .replace('<!-- READER -->', () => fs.readFileSync(path.join(here, 'publication.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'completion.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'templates', 'reader.js'), 'utf8')+'\n'+fs.readFileSync(path.join(here, 'templates', 'completion-view.js'), 'utf8'))
-    .replace('<!-- LANGUAGE_VIEW -->', () => fs.readFileSync(path.join(here, 'i18n.js'), 'utf8').replace(/^export /gm, '')+'\n'+fs.readFileSync(path.join(here, 'templates', 'language-view.js'), 'utf8'))
-    .replace('<!-- YAML_BUNDLE -->', () => fs.readFileSync(path.join(here, '..', 'node_modules', 'js-yaml', 'dist', 'js-yaml.min.js'), 'utf8'));
-  return html;
+    .replace('<!-- ONTOLOGY_CORE -->', () => shared('ontology.js'))
+    .replace('<!-- PROCESS_VIEW -->', () => template('process-view.js'))
+    .replace('<!-- PROCESS_HIERARCHY -->', () => template('process-hierarchy.js'))
+    .replace('<!-- VIEW_STATE -->', () => template('view-state.js'))
+    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('completion-view.js'), template('changes-view.js')].join('\n'))
+    .replace('<!-- LANGUAGE_VIEW -->', () => shared('i18n.js') + '\n' + template('language-view.js'));
+  return { html, files: [...new Set(sources)] };
 }
 
-export function build(file, outputDir) {
-  const html = renderModel(file);
+export function build(file, outputDir, options) {
+  const html = renderModel(file, options);
   const destination = path.resolve(process.cwd(), outputDir);
   fs.mkdirSync(destination, { recursive: true });
   const output = path.join(destination, 'index.html');

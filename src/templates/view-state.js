@@ -5,14 +5,14 @@ function saveViewState() {
   let id = activeProcess;
   while (id && !ancestors.includes(id)) { ancestors.push(id); id = parents.get(id)?.process; }
   const scroll = {};
-  for (const selector of ['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#review-board']) {
+  for (const selector of ['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#review-board']) {
     const element = document.querySelector(selector);
     if (element) scroll[selector] = element.scrollTop;
   }
   try {
     sessionStorage.setItem(viewStateKey, JSON.stringify({
       slug: entries[Number(entryIndex)]?.slug, selected, activeProcess, activeStep, ancestors,
-      mode: unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
+      mode: changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
       search: $('search').value, zoom: cy.zoom(), pan: cy.pan(), pz: pc.zoom(), pp: pc.pan(),
       processFrameVersion: 2, hierarchy: [...hierarchyViews], collapsedBranches: [...collapsedBranches], scroll,
       detailTab: [...document.querySelectorAll('.reader-tabs button')].findIndex(b=>b.getAttribute('aria-pressed')==='true')
@@ -46,6 +46,7 @@ setTimeout(() => {
   const mode=state.mode || (state.processMode?'process':'ontology');
   setProcessMode(mode==='process');
   if(mode==='unconfirmed')completionButton.click();
+  if(mode==='changes'&&!changesButton.hidden)changesButton.click();
   if(mode==='definitions')setReview(true);
   restoreGraphView(cy,state.zoom,state.pan);
   if(activeProcess===state.activeProcess && state.processFrameVersion===2)restoreGraphView(pc,state.pz,state.pp);
@@ -61,7 +62,7 @@ setTimeout(() => {
   }
   if(Number.isInteger(state.detailTab))document.querySelectorAll('.reader-tabs button')[state.detailTab]?.click();
   for(const [selector,top] of Object.entries(state.scroll || {})) {
-    if(['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#review-board'].includes(selector)&&Number.isFinite(top)) {
+    if(['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#review-board'].includes(selector)&&Number.isFinite(top)) {
       const element=document.querySelector(selector);if(element)element.scrollTop=top;
     }
   }

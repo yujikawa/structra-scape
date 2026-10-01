@@ -1,5 +1,5 @@
-// YAML is the source of truth. Keep browsing separate from authoring.
-const exportMenu=document.createElement('details');
+// Detail panes, header menus and icons for the read-only reader.
+const exportMenu=document.createElement('details');exportMenu.className='header-menu';
 exportMenu.innerHTML='<summary>出力</summary><div class="menu-panel"><p class="hint">図：現在の業務／オントロジー<br>定義：全用語</p><button data-export="svg">図をSVGで保存</button><button data-export="png">図をPNGで保存</button><button data-export="md">全用語をMarkdownで保存</button></div>';
 document.querySelector('header').append(exportMenu);
 exportMenu.querySelectorAll('[data-export]').forEach(button=>button.onclick=async()=>{
@@ -10,37 +10,35 @@ exportMenu.querySelectorAll('[data-export]').forEach(button=>button.onclick=asyn
  try{const picture=new Image();picture.src=url;await picture.decode();const canvas=document.createElement('canvas');const scale=Math.min(2,8192/Math.max(picture.width,picture.height));canvas.width=Math.ceil(picture.width*scale);canvas.height=Math.ceil(picture.height*scale);canvas.getContext('2d').drawImage(picture,0,0,canvas.width,canvas.height);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw new Error('PNGを生成できませんでした');const pngUrl=URL.createObjectURL(blob),a=document.createElement('a');a.href=pngUrl;a.download='diagram.png';a.click();setTimeout(()=>URL.revokeObjectURL(pngUrl),1000);}finally{URL.revokeObjectURL(url)}
  }catch(error){status('出力に失敗しました：'+error.message,true)}finally{exportMenu.open=false}
 });
-document.querySelector('.inspector .section-label').textContent='ことばの定義';
-focusSelection=function(){
- cy.resize();cy.stop();cy.elements().unselect();
- const element=cy.$id(selected.kind==='concept'?selected.id:'property:'+selected.id);
- if(!element.length)return;
- element.select();
- // Focus the selected term, not the bounding box of the entire model.
- const target=element.isNode()?element:element.source();
- cy.zoom(Math.max(1,Math.min(1.6,cy.zoom())));cy.center(target);
- document.querySelector('.inspector').scrollTop=0;
- document.querySelector('.list button.active')?.scrollIntoView({block:'nearest'});
-};
-openConcept=function(id){setProcessMode(false);selected={kind:'concept',id};$('search').value='';refresh();focusSelection();status('ことばの定義と、使われている作業を確認できます。')};
-$('status').textContent='YAMLから表示中 · 内容の変更はAIに依頼してください';
-modeBar.setAttribute('aria-label','表示を切り替え');
 // Business name first, stable ID underneath: the shared key between business users and data engineers.
-const headword=item=>`<h2>${esc(item.name)}</h2><p class="reader-id"><span>ID</span><code>${esc(item.id)}</code></p>`;
+const headword=item=>`<h2>${esc(item.name)}</h2><p class="reader-id"><span>ID</span><code>${esc(item.id)}</code></p>${item.imported_from?`<p class="imported-note"><span>共通定義から読み込み</span><code>${esc(item.imported_from)}</code></p>`:''}${item.aliases?.length?`<p class="aliases"><span>別名</span>${item.aliases.map(a=>`<span class="alias">${esc(a)}</span>`).join('')}</p>`:''}`;
+// Data items of a concept, including those inherited from its ancestors.
+const attributesSection=item=>{
+ const rows=conceptAttributes(model,item.id);
+ if(!rows.length)return '';
+ return `<section class="reader-section"><h3>属性（データ項目） · ${rows.length}件</h3><div class="attribute-list">${rows.map(({attribute:a,ownerName,inherited})=>`<article class="attribute"><div class="attribute-head"><strong>${esc(a.name)}</strong>${a.type?`<span class="attr-type">${esc(attributeTypes[a.type])}</span>`:''}${a.required?'<span class="attr-required">必須</span>':''}</div><code class="term-id">${esc(a.id)}</code>${a.description?`<p class="reader-text">${esc(a.description)}</p>`:''}${a.example?`<p class="hint"><span>例</span>　${esc(a.example)}</p>`:''}${a.values?.length?`<ul class="attr-values">${a.values.map(v=>`<li><code>${esc(v.value)}</code>${v.name?`<span>${esc(v.name)}</span>`:''}${v.description?`<small>${esc(v.description)}</small>`:''}</li>`).join('')}</ul>`:''}${a.question?`<p class="attr-question"><span>確認したいこと</span>${esc(a.question)}</p>`:''}${inherited?`<small class="attr-inherited"><span>上位概念から引き継ぎ</span> · ${esc(ownerName)}</small>`:''}</article>`).join('')}</div></section>`;
+};
+const mappingStatus=mapping=>mapping.status==='verified'?'確認済み':'対応案・未確認';
 const readerFields=item=>`<p class="reader-text">${esc(item.description||'説明はまだありません。')}</p>${item.example?`<section class="reader-section"><h3>具体例</h3><p class="reader-text">${esc(item.example)}</p></section>`:''}${item.question?`<section class="reader-section"><h3>確認したいこと</h3><p class="reader-text">${esc(item.question)}</p></section>`:''}`;
 const sharedUnderstanding=item=>{
  const mapping=item.data_mapping;
- return `<section class="reader-section"><h3>定義の確認状況</h3><p>${({draft:'案・未合意',discussion:'相談中',agreed:'合意済み'})[item.review_state]||'未確認'}</p>${item.exclusion?`<h3>含まない例</h3><p class="reader-text">${esc(item.exclusion)}</p>`:''}${item.evidence?`<h3>定義の根拠</h3><p class="reader-text">${esc(item.evidence)}</p>`:'<p class="hint">根拠はまだ記録されていません。</p>'}</section><details class="reader-section" ${mapping?.gap?'open':''}><summary>データとの対応 · ${mapping?(mapping.status==='verified'?'確認済み':'対応案・未確認'):'未整理'}</summary>${mapping?`<h3>データの所在</h3><p class="reader-text">${esc(mapping.source)}</p><h3>1件が表すもの</h3><p class="reader-text">${esc(mapping.grain||'未確認')}</p><h3>実装上の判定条件</h3><p class="reader-text">${esc(mapping.condition||'未確認')}</p>${mapping.gap?`<h3>業務定義との差・確認事項</h3><p class="reader-text">${esc(mapping.gap)}</p>`:''}`:'<p class="hint">データ担当者と所在・粒度・判定条件を確認してください。</p>'}<p class="hint">記録された対応情報です。データ接続やSQL実行による検証は行っていません。</p></details>`;
+ return `<section class="reader-section"><h3>定義の確認状況</h3><p>${({draft:'案・未合意',discussion:'相談中',agreed:'合意済み'})[item.review_state]||'未確認'}</p>${item.exclusion?`<h3>含まない例</h3><p class="reader-text">${esc(item.exclusion)}</p>`:''}${item.evidence?`<h3>定義の根拠</h3><p class="reader-text">${esc(item.evidence)}</p>`:'<p class="hint">根拠はまだ記録されていません。</p>'}</section><details class="reader-section" ${mapping?.gap?'open':''}><summary>データとの対応 · ${mapping?mappingStatus(mapping):'未整理'}</summary>${mapping?`<h3>データの所在</h3><p class="reader-text">${esc(mapping.source)}</p><h3>1件が表すもの</h3><p class="reader-text">${esc(mapping.grain||'未確認')}</p><h3>実装上の判定条件</h3><p class="reader-text">${esc(mapping.condition||'未確認')}</p>${mapping.gap?`<h3>業務定義との差・確認事項</h3><p class="reader-text">${esc(mapping.gap)}</p>`:''}`:'<p class="hint">データ担当者と所在・粒度・判定条件を確認してください。</p>'}${attributeMappings(item)}<p class="hint">記録された対応情報です。データ接続やSQL実行による検証は行っていません。</p></details>`;
 };
-detail=function(){
+function attributeMappings(item){
+ const rows=(item.attributes||[]).filter(a=>a.data_mapping);
+ if(!rows.length)return '';
+ return `<h3>属性のデータ対応</h3>${rows.map(a=>{const m=a.data_mapping;return `<div class="attr-mapping"><div class="attribute-head"><strong>${esc(a.name)}</strong><span class="attr-status ${m.status==='verified'?'verified':''}">${mappingStatus(m)}</span></div><code class="term-id">${esc(m.source)}</code>${m.condition?`<p class="reader-text">${esc(m.condition)}</p>`:''}${m.gap?`<p class="attr-question"><span>業務定義との差・確認事項</span>${esc(m.gap)}</p>`:''}</div>`}).join('')}`;
+}
+function detail(){
  const item=(selected.kind==='concept'?model.concepts:model.properties).find(x=>x.id===selected.id);
  if(!item){$('detail').innerHTML='<h2>ことばを選ぶ</h2><p class="hint">図や一覧から、定義と使われている業務を確認できます。</p>';return}
  const usages=selected.kind==='concept'?conceptUsages(model,item.id):[];
- $('detail').innerHTML=`${headword(item)}${readerFields(item)}<section class="reader-section"><h3>使われている作業 · ${usages.length}件</h3><div class="reader-links">${usages.map((u,i)=>`<button data-use="${i}">${esc(u.stepName)} ↗<small>${esc(u.processName)} · ${esc(usageRoles[u.role])}</small></button>`).join('')||'<p class="hint">関連する作業はありません。</p>'}</div></section><details class="reader-section"><summary>関係と分類条件</summary>${item.parent?`<p>${esc(term(item.parent))}の一種</p>`:''}${model.properties.filter(p=>p.domain===item.id||p.range===item.id||p.id===item.id).map(p=>`<p>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</p>`).join('')}${model.restrictions.filter(r=>r.subject===item.id).map(r=>`<p>${esc(businessRule(r))}</p>`).join('')}</details>`;
+ $('detail').innerHTML=`${headword(item)}${readerFields(item)}${selected.kind==='concept'?attributesSection(item):''}<section class="reader-section"><h3>使われている作業 · ${usages.length}件</h3><div class="reader-links">${usages.map((u,i)=>`<button data-use="${i}">${esc(u.stepName)} ↗<small>${esc(u.processName)} · ${esc(usageRoles[u.role])}</small></button>`).join('')||'<p class="hint">関連する作業はありません。</p>'}</div></section><details class="reader-section"><summary>関係と分類条件</summary>${item.parent?`<p>${esc(term(item.parent))}の一種</p>`:''}${model.properties.filter(p=>p.domain===item.id||p.range===item.id||p.id===item.id).map(p=>`<p>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</p>`).join('')}${model.restrictions.filter(r=>r.subject===item.id).map(r=>`<p>${esc(businessRule(r))}</p>`).join('')}</details>`;
  $('detail').querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>{const u=usages[Number(b.dataset.use)];activeProcess=u.process;activeStep=u.step;setProcessMode(true);pickStep(u.step)});
  $('detail').insertAdjacentHTML('beforeend',sharedUnderstanding(item));
  organizeDetail(item);
-};
+ if(item.review_state){const badge=document.createElement('p');badge.className='review-badge '+({agreed:'agreed',discussion:'pending'}[item.review_state]||'');badge.innerHTML=uiIcon(item.review_state==='agreed'?'check':'chat')+esc(({agreed:'合意済み',discussion:'要確認',draft:'検討中'})[item.review_state]);$('detail').querySelector('.reader-id').after(badge)}
+}
 function organizeDetail(item){
  const root=$('detail'), sections=[...root.children];
  const usage=root.querySelector('.reader-links').parentElement;
@@ -51,43 +49,25 @@ function organizeDetail(item){
  for(const section of sections.filter(x=>x.tagName!=='H2'&&!x.classList.contains('reader-id')))panes[section===usage?1:section===data?2:0].append(section);
  root.append(nav,...panes);
  if(item.cases?.length)panes[0].insertAdjacentHTML('beforeend',`<h3>このケースは含む？</h3>${item.cases.map(c=>`<article class="case-card ${esc(c.result)}"><strong>${esc(({included:'含む',excluded:'含まない',unresolved:'要確認'})[c.result])}</strong><p>${esc(c.description)}</p>${c.reason?`<p class="hint">${esc(c.reason)}</p>`:''}</article>`).join('')}`);
- if(item.question){const note=document.createElement('p');note.className='question-banner';note.textContent='相談したいこと：'+item.question;nav.before(note);}
+ if(item.question){const note=document.createElement('p');note.className='question-banner';note.innerHTML=uiIcon('chat');note.append('相談したいこと：'+item.question);nav.before(note);}
 }
-cy.off('tap','edge');
-cy.on('tap','edge',e=>{const edge=e.target;selected={kind:edge.data('kind')==='property'?'property':'concept',id:edge.data('ref')};detail();const explanation=edge.data('kind')==='parent'?`${term(edge.source().id())}は${term(edge.target().id())}の一種です。`:edge.data('kind')==='property'?`${term(edge.source().id())}から${term(edge.target().id())}への「${edge.data('label')}」という関係です。`:`${term(edge.source().id())}の分類条件：${edge.data('label')}。相手の種類は${term(edge.target().id())}です。`;const note=document.createElement('p');note.className='meaning-card';note.textContent=explanation;$('detail').prepend(note)});
-processDetail=function(){
+function processDetail(){
  const p=process();if(!p){$('process-detail').innerHTML='<h2>業務フローはまだありません</h2>';return}
  const s=p.steps.find(x=>x.id===activeStep);
  $('process-detail').innerHTML=s?`${headword(s)}<div class="step-meta"><span>${esc(stepTypes[s.type])}</span>${s.owner?`<span>${esc(s.owner)}</span>`:''}</div><div class="reader-section">${readerFields(s)}</div><section class="reader-section"><h3>登場することば</h3><div class="reader-links">${(s.items||[]).map(x=>`<button data-term="${esc(x.concept)}">${esc(term(x.concept))} ↗<small>${esc(usageRoles[x.role])}</small></button>`).join('')||'<p class="hint">関連することばはありません。</p>'}</div></section>`:`<h2>${esc(p.name)}</h2><p class="hint">${p.steps.length}個の作業 · ${p.flows.length}本の流れ</p><p>作業を選ぶと、内容と登場することばを確認できます。</p>`;
  $('process-detail').querySelectorAll('[data-term]').forEach(b=>b.onclick=()=>openConcept(b.dataset.term));
-};
-pc.off('tap','edge');pc.off('dragfree');cy.off('dragfree');
-pc.autoungrabify(true);cy.autoungrabify(false);
-// Dragging is a view adjustment only. Existing refresh() preserves node positions.
-cy.nodes().grabify();
+}
 // Consistent, labelled SVG icons across navigation and graph controls.
-const iconPaths={book:'M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16',flow:'M3 3h6v6H3z M15 15h6v6h-6z M6 9v9h9',data:'M3 6c0-5 18-5 18 0s-18 5-18 0 M3 6v12c0 5 18 5 18 0V6 M3 12c0 5 18 5 18 0',download:'M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5',fit:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',plus:'M12 5v14 M5 12h14',minus:'M5 12h14',check:'M4 12l5 5L20 6',chat:'M3 3h18v14H9l-6 4z',help:'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18v1',task:'M4 5h16v14H4z',decision:'M12 2l10 10-10 10L2 12z',circle:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18'};
+const iconPaths={book:'M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16',flow:'M3 3h6v6H3z M15 15h6v6h-6z M6 9v9h9',data:'M3 6c0-5 18-5 18 0s-18 5-18 0 M3 6v12c0 5 18 5 18 0V6 M3 12c0 5 18 5 18 0',download:'M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5',fit:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',plus:'M12 5v14 M5 12h14',minus:'M5 12h14',check:'M4 12l5 5L20 6',chat:'M3 3h18v14H9l-6 4z',help:'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18v1',task:'M4 5h16v14H4z',decision:'M12 2l10 10-10 10L2 12z',circle:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',diff:'M7 3v13 M4 13l3 3 3-3 M17 21V8 M14 11l3-3 3 3'};
 function uiIcon(name){return `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${iconPaths[name]||iconPaths.book}"/></svg>`}
 function labelIcon(element,name){if(element&&!element.querySelector('.ui-icon'))element.insertAdjacentHTML('afterbegin',uiIcon(name));}
-const viewSwitch=document.createElement('div');viewSwitch.className='view-switch';viewSwitch.setAttribute('role','group');viewSwitch.setAttribute('aria-label','ことばの表示形式');
-const diagramButton=document.createElement('button');diagramButton.innerHTML=uiIcon('flow')+'関係図';diagramButton.onclick=()=>setReview(false);
-const definitionsButton=$('review-toggle');definitionsButton.onclick=()=>setReview(true);
-viewSwitch.append(diagramButton,definitionsButton);document.querySelector('.canvas').append(viewSwitch);
-const originalSetReview=setReview;
-setReview=function(enabled){originalSetReview(enabled);definitionsButton.innerHTML=uiIcon('book')+'定義一覧';diagramButton.setAttribute('aria-pressed',String(!enabled));definitionsButton.setAttribute('aria-pressed',String(enabled))};
-setReview(false);$('review-board').setAttribute('aria-label','ことばの定義一覧');
-$('mode-ontology').textContent='ことばと関係';labelIcon($('mode-ontology'),'book');labelIcon($('mode-process'),'flow');
-exportMenu.classList.add('header-menu');labelIcon(exportMenu.querySelector('summary'),'download');
+labelIcon($('diagram-toggle'),'flow');labelIcon($('review-toggle'),'book');
+labelIcon($('mode-ontology'),'book');labelIcon($('mode-process'),'flow');
+labelIcon(exportMenu.querySelector('summary'),'download');
 const helpMenu=document.createElement('details');helpMenu.className='header-menu';helpMenu.innerHTML=`<summary>${uiIcon('help')}使い方</summary><div class="menu-panel"><strong>業務とことばを確認する</strong><p>左の一覧や図から対象を選びます。詳細のリンクで、作業と用語の定義を行き来できます。</p><p>内容の変更はAIに依頼してください。YAMLを保存すると、この画面に反映されます。</p><p>図はドラッグで移動、＋／−で拡大縮小できます。「全体」で表示を戻します。</p></div>`;document.querySelector('header').append(helpMenu);
 helpMenu.addEventListener('toggle',()=>{if(helpMenu.open)exportMenu.open=false});exportMenu.addEventListener('toggle',()=>{if(exportMenu.open)helpMenu.open=false});
 for(const [container,graph,fitId] of [[document.querySelector('.canvas'),cy,'fit'],[document.querySelector('.process-canvas'),pc,'flow-fit']]){
  const controls=document.createElement('div');controls.className='graph-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','図の表示操作');
  for(const [name,label,factor] of [['minus','縮小',1/1.2],['plus','拡大',1.2]]){const b=document.createElement('button');b.innerHTML=uiIcon(name);b.title=label;b.setAttribute('aria-label',label);b.onclick=()=>graph.zoom({level:Math.max(.1,Math.min(3,graph.zoom()*factor)),renderedPosition:{x:graph.width()/2,y:graph.height()/2}});controls.append(b)}
- const fit=$(fitId);fit.textContent='全体';fit.title='図全体を表示';fit.setAttribute('aria-label','図全体を表示');labelIcon(fit,'fit');controls.append(fit);container.append(controls);
+ const fit=$(fitId);fit.title='図全体を表示';fit.setAttribute('aria-label','図全体を表示');labelIcon(fit,'fit');controls.append(fit);container.append(controls);
 }
-const plainProcessRender=renderProcess;
-renderProcess=function(){plainProcessRender();const p=process();$('process-steps').querySelectorAll('[data-step]').forEach(b=>{const step=p?.steps.find(s=>s.id===b.dataset.step);labelIcon(b,['start','end'].includes(step?.type)?'circle':['decision','parallel','join'].includes(step?.type)?'decision':'task');b.classList.toggle('active',b.dataset.step===activeStep)})};
-const plainPickStep=pickStep;
-pickStep=function(id){plainPickStep(id);$('process-steps').querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('active',b.dataset.step===activeStep))};
-const plainDetail=detail;
-detail=function(){plainDetail();const item=(selected.kind==='concept'?model.concepts:model.properties).find(x=>x.id===selected.id);if(!item)return;labelIcon(document.querySelector('.question-banner'),'chat');if(item.review_state){const badge=document.createElement('p');badge.className='review-badge '+({agreed:'agreed',discussion:'pending'}[item.review_state]||'');badge.innerHTML=uiIcon(item.review_state==='agreed'?'check':'chat')+esc(({agreed:'合意済み',discussion:'要確認',draft:'検討中'})[item.review_state]);$('detail').querySelector('.reader-id').after(badge)}};

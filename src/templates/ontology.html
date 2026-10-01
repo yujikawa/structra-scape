@@ -30,11 +30,6 @@ button{cursor:pointer}
 .ui-icon{width:16px;height:16px;flex-shrink:0}
 .term-id{font-family:var(--mono);font-size:11.5px;font-weight:400;color:var(--data);overflow-wrap:anywhere}
 
-/* The YAML is the source of truth: authoring controls stay in the DOM but are never shown. */
-#open,#save,#dirty,#canvas-add,#connect,#arrange,#cancel-connect,#connect-hint,#add-concept,#add-property,
-#new-process,#new-step,#flow-connect,#flow-arrange,#flow-cancel,#flow-hint,#process-steps,
-.model-settings,.inspector>details,.canvas-tools,.process-toolbar,.process-list>p.hint{display:none!important}
-
 select,input[type=search]{height:34px;padding:0 10px;border:1px solid var(--rule-strong);border-radius:6px;background-color:var(--surface);font-size:13px}
 select{appearance:none;padding-right:30px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%234a576b' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
 select:hover,input[type=search]:hover{border-color:var(--ink-3)}
@@ -44,9 +39,11 @@ input[type=search]{width:100%}
 header{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--rule);flex-shrink:0}
 .brand{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
 .brand svg{width:26px;height:26px}
-#model-choice{max-width:260px;font-weight:600;color:var(--ink)}
-.mode-bar{align-self:stretch;display:flex;gap:2px;margin-right:auto;padding-left:8px}
-.mode-bar button{display:inline-flex;align-items:center;gap:7px;padding:0 14px;border:0;border-block:3px solid transparent;background:none;color:var(--ink-2);font-size:14px;font-weight:600;white-space:nowrap}
+#model-choice{min-width:0;max-width:240px;font-weight:600;color:var(--ink)}
+/* The tabs give way first when the header is crowded (long model names, English labels). */
+.mode-bar{align-self:stretch;display:flex;gap:2px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;padding-left:8px}
+header>details,header>select:not(#model-choice){flex-shrink:0}
+.mode-bar button{display:inline-flex;align-items:center;gap:7px;padding:0 12px;border:0;border-block:3px solid transparent;background:none;color:var(--ink-2);font-size:14px;font-weight:600;white-space:nowrap}
 .mode-bar button:hover{color:var(--ink);background:var(--paper)}
 .mode-bar button.active{color:var(--accent-ink);border-bottom-color:var(--accent)}
 .unconfirmed-count{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:12px;text-align:center}
@@ -98,6 +95,11 @@ header{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 20px;b
 .legend .shape.terminal{border-radius:999px;border-color:#3c7d55;background:var(--ok-soft)}
 .legend .shape.gate{width:14px;height:14px;margin:0 4px;border-radius:1px;transform:rotate(45deg);border-color:#b07a14;background:var(--warn-soft)}
 .legend .shape.detail{border:3px double var(--accent)}
+.legend .shape.imported{border-style:dashed;border-color:#8593a8;background:var(--sunken)}
+/* Definitions read from another file through imports: shown, but owned and reviewed elsewhere. */
+.imported-note{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--ink-3)}
+.imported-note code{font-family:var(--mono);font-size:11.5px;color:var(--data)}
+.list button small.imported-tag span{color:var(--ink-2);font-weight:600}
 
 /* Canvas controls */
 .view-switch,.graph-controls{position:absolute;z-index:4;display:flex;gap:2px;padding:3px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow)}
@@ -168,6 +170,26 @@ details.reader-section>summary~*{margin-left:2px}
 .case-card.included strong{background:var(--ok-soft);color:var(--ok)}
 .case-card.unresolved strong{background:var(--warn-soft);color:var(--warn)}
 .empty{padding:14px;border:1px dashed var(--rule-strong);border-radius:8px}
+/* Aliases and attributes: data items sit in the teal data layer. */
+.aliases{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:8px;font-size:12px;color:var(--ink-3)}
+.aliases .alias{padding:1px 8px;border:1px solid var(--rule);border-radius:999px;color:var(--ink-2)}
+.list button small.match-reason span{margin-right:6px;color:var(--accent)}
+.attribute-list{display:grid;gap:8px}
+.attribute,.attr-mapping{padding:10px 12px;border:1px solid var(--rule);border-left:3px solid var(--data);border-radius:0 8px 8px 0;font-size:13px}
+.attr-mapping{margin-top:8px}
+.attribute-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+.attribute-head strong{font-size:14px}
+.attr-type,.attr-required,.attr-status{padding:0 8px;border-radius:999px;background:var(--data-soft);color:var(--data);font-size:11.5px;font-weight:600}
+.attr-required{background:var(--accent-soft);color:var(--accent-ink)}
+.attr-status{background:var(--warn-soft);color:var(--warn)}
+.attr-status.verified{background:var(--ok-soft);color:var(--ok)}
+.attribute .reader-text,.attr-mapping .reader-text{margin-top:4px;font-size:13px}
+.attr-values{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px}
+.attr-values li{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.attr-values code{font-family:var(--mono);font-size:12px;color:var(--data)}
+.attr-question{margin-top:6px;padding:6px 10px;border-radius:6px;background:var(--warn-soft);color:var(--warn);font-size:12.5px;line-height:1.6}
+.attr-question span{display:block;font-weight:700}
+.attr-inherited{display:block;margin-top:4px}
 
 /* Process flows */
 .process-list{padding:16px 10px 0}
@@ -201,11 +223,11 @@ details.reader-section>summary~*{margin-left:2px}
 .step-meta span{padding:2px 9px;border-radius:999px;background:var(--sunken);color:var(--ink-2);font-size:12px}
 
 /* Open questions */
-#unconfirmed-workspace{flex:1;min-height:0;overflow:auto;padding:32px 24px 56px}
+#unconfirmed-workspace,#changes-workspace{flex:1;min-height:0;overflow:auto;padding:32px 24px 56px}
 .completion-content{max-width:960px;margin:0 auto}
 .completion-content h2{font-size:24px;letter-spacing:-.01em}
 .completion-content>p{margin-top:4px;color:var(--ink-2)}
-.completion-counts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin:20px 0 10px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.completion-counts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin:20px 0 10px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
 .completion-counts span{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-left:1px solid var(--rule);font-size:12px;color:var(--ink-2)}
 .completion-counts span:first-child{border-left:0}
 .completion-counts b{font-size:22px;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums}
@@ -222,7 +244,24 @@ details.reader-section>summary~*{margin-left:2px}
 .completion-issue small[data-category="unagreed"]{background:var(--accent-soft);color:var(--accent-ink)}
 .completion-issue small[data-category="conflict"]{background:var(--danger-soft);color:var(--danger)}
 .completion-issue small[data-category="data"]{background:var(--data-soft);color:var(--data)}
+.completion-issue small[data-category="flow"]{background:#efeaf8;color:var(--rule-line)}
+.kind-tag{font-size:11px;font-weight:600;color:var(--ink-3)}
 .completion-issue p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+/* Changes since the compared revision: before is struck through, after is the current text. */
+.change-entry.agreed{border-color:var(--warn-line)}
+.change-entry h3 .review-badge{margin-left:auto}
+.change-entry h3 small.change-type{margin-left:0;font-weight:600}
+.change-type{padding:1px 9px;border-radius:999px;font-size:12px;background:var(--sunken);color:var(--ink-2)}
+.change-type.added{background:var(--ok-soft);color:var(--ok)}
+.change-type.removed{background:var(--danger-soft);color:var(--danger)}
+.change-type.changed{background:var(--accent-soft);color:var(--accent-ink)}
+.change-field{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:12px;padding:10px 18px;border-top:1px solid var(--sunken);font-size:13px;line-height:1.7}
+.change-field>small{font-weight:600;color:var(--ink-2)}
+.change-field>div{white-space:pre-wrap;overflow-wrap:anywhere}
+.change-field code{font-family:var(--mono);font-size:11.5px}
+.change-before{color:var(--ink-3);text-decoration:line-through;text-decoration-color:#a23b3b80}
+.change-after{color:var(--ink)}
+#changes-workspace .question-banner{margin:14px 0 4px}
 .completion-policy{margin-top:24px;font-size:13px;color:var(--ink-2)}
 .completion-policy summary{cursor:pointer;font-weight:600}
 .completion-policy p{margin-top:8px}
@@ -248,25 +287,23 @@ details.reader-section>summary~*{margin-left:2px}
   #review-board{position:relative;inset:auto;min-height:60vh;padding:72px 16px 32px}
   .review-card{grid-template-columns:1fr;gap:10px}
   .completion-counts{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
-  .completion-issue{grid-template-columns:1fr;gap:4px}
-  #unconfirmed-workspace{overflow:visible;padding:24px 16px 40px}
+  .completion-issue,.change-field{grid-template-columns:1fr;gap:4px}
+  #unconfirmed-workspace,#changes-workspace{overflow:visible;padding:24px 16px 40px}
 }
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style></head><body>
-<header><div class="brand"><!-- STRUCTRA_LOGO -->structra-scape</div><select id="model-choice" aria-label="モデルを選択"></select><button id="open">YAMLを開く</button><button id="save">YAMLを保存</button><button id="review-toggle">みんなで確認</button><span id="dirty"></span><input type="file" id="file" accept=".yaml,.yml,.json" hidden></header>
-<div id="status" role="status">① ことばを置く　② 線でつなぐ　③ 意味と具体例を一緒に確認する</div>
-<div class="workspace"><aside class="catalog-pane"><details class="model-settings"><summary>モデル設定</summary><label for="name">モデル名</label><input id="name"><input id="base" hidden></details><label class="search-label" for="search">ことば・つながりを検索</label><input id="search" type="search" placeholder="例：顧客、契約"><section class="catalog"><div class="catalog-head"><h3>ことば <small id="concept-count"></small></h3><button id="add-concept">＋ ことば</button></div><div id="concepts" class="list"></div></section><section class="catalog"><div class="catalog-head"><h3>つながり <small id="property-count"></small></h3><button id="add-property">＋ つながり</button></div><div id="properties" class="list"></div></section><div class="legend"><div class="pane-title">線の見方</div><ul><li><i class="line"></i>つながり</li><li><i class="line dashed"></i>〜の一種</li><li><i class="line dotted"></i>分類条件</li></ul></div></aside>
-<section class="canvas" aria-label="ことばと関係の図"><div class="canvas-tools"><button id="canvas-add">＋ ことば</button><button id="connect">2つのことばをつなぐ</button><button id="arrange">自動整列</button><button id="cancel-connect" hidden>キャンセル</button></div><div id="connect-hint" role="status" hidden></div><div id="cy"></div><section id="review-board" hidden aria-label="みんなで確認するカード"></section><button class="fit" id="fit">全体を表示</button></section>
-<aside class="inspector"><div class="section-label">選んだことばを整理する</div><div id="detail"></div><details><summary>保存するYAMLを確認</summary><pre id="yaml-preview"></pre></details></aside></div>
-<script><!-- STRUCTRA_CYTOSCAPE_BUNDLE --></script><script><!-- YAML_BUNDLE --></script><script>
+<header><div class="brand"><!-- STRUCTRA_LOGO -->structra-scape</div><select id="model-choice" aria-label="モデルを選択"></select></header>
+<div id="status" role="status"></div>
+<div class="workspace"><aside class="catalog-pane"><label class="search-label" for="search">ことば・つながりを検索</label><input id="search" type="search" placeholder="例：顧客、契約"><section class="catalog"><div class="catalog-head"><h3>ことば <small id="concept-count"></small></h3></div><div id="concepts" class="list"></div></section><section class="catalog"><div class="catalog-head"><h3>つながり <small id="property-count"></small></h3></div><div id="properties" class="list"></div></section><div class="legend"><div class="pane-title">線の見方</div><ul><li><i class="line"></i>つながり</li><li><i class="line dashed"></i>〜の一種</li><li><i class="line dotted"></i>分類条件</li><li id="legend-imported" hidden><i class="shape imported"></i>共通定義（読み込み）</li></ul></div></aside>
+<section class="canvas" aria-label="ことばと関係の図"><div class="view-switch" role="group" aria-label="ことばの表示形式"><button id="diagram-toggle">関係図</button><button id="review-toggle">定義一覧</button></div><div id="cy"></div><section id="review-board" hidden aria-label="ことばの定義一覧"></section><button id="fit">全体</button></section>
+<aside class="inspector"><div class="section-label">ことばの定義</div><div id="detail"></div></aside></div>
+<script><!-- STRUCTRA_CYTOSCAPE_BUNDLE --></script><script>
 <!-- STRUCTRA_MODEL_DATA -->
 <!-- ONTOLOGY_CORE -->
+// A read-only reader: the YAML (edited by AI or a text editor) is the only source of model content.
 const $=id=>document.getElementById(id), entries=window.__STRUCTRA_DATA__.models;
-let model=structuredClone(entries[0].model), selected={kind:'concept',id:model.concepts[0]?.id}, dirty=false;
-let connecting=false, connectionSource=null;
+let model=structuredClone(entries[0].model), selected={kind:'concept',id:model.concepts[0]?.id}, entryIndex='0';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const option=(value,label,current)=>`<option value="${esc(value)}" ${value===current?'selected':''}>${esc(label)}</option>`;
-const conceptOptions=(current,empty=false)=>(empty?option('','なし',current):'')+model.concepts.map(c=>option(c.id,c.name,current)).join('');
 const graphFont='"Hiragino Sans","BIZ UDPGothic","Noto Sans JP","Yu Gothic UI",Meiryo,system-ui,sans-serif';
 // Cytoscape only wraps at spaces, so Japanese labels overflow their nodes. Break each line by measured
 // width instead (keeping ASCII words whole), clamp long names with an ellipsis, and size the node to fit.
@@ -304,14 +341,15 @@ function labelStyle({width,size,weight=400,maxLines=3,minHeight,diamond=false}){
     height:ele=>{const text=fit(ele).lines*size*lineHeight;return Math.max(minHeight,Math.ceil(diamond?text/.42:text+26))}};
 }
 // Edge styles follow the legend: solid = relationship, dashed with a hollow head = subtype, dotted violet = classification rule.
-const cy=cytoscape({container:$('cy'),elements:[],layout:{name:'grid'},style:[{selector:'node',style:{shape:'round-rectangle',width:168,'background-color':'#fff','border-width':1.5,'border-color':'#8593a8',color:'#18263a','font-family':graphFont,'text-valign':'center','text-wrap':'wrap',...labelStyle({width:144,size:15,weight:600,minHeight:56})}},{selector:'edge',style:{label:'data(label)','curve-style':'bezier',width:1.6,'target-arrow-shape':'triangle','arrow-scale':1.1,'line-color':'#4a576b','target-arrow-color':'#4a576b','font-family':graphFont,'font-size':12,color:'#2c3a4f','text-background-color':'#f3f5f8','text-background-opacity':1,'text-background-padding':4,'text-background-shape':'round-rectangle'}},{selector:'edge[kind="parent"]',style:{'line-style':'dashed','line-color':'#8a96a8','target-arrow-color':'#8a96a8','target-arrow-fill':'hollow','arrow-scale':1.4,color:'#5b6779'}},{selector:'edge[kind="restriction"]',style:{'line-style':'dotted',width:2.2,'line-color':'#5a3e9e','target-arrow-color':'#5a3e9e',color:'#4b3384'}},{selector:'node:selected',style:{'border-width':2.5,'border-color':'#24498a','background-color':'#e7edf7',color:'#1b3a70'}},{selector:'edge:selected',style:{width:3,'line-color':'#24498a','target-arrow-color':'#24498a'}},{selector:':selected',style:{'overlay-opacity':0}}]});
+const cy=cytoscape({container:$('cy'),elements:[],layout:{name:'grid'},style:[{selector:'node',style:{shape:'round-rectangle',width:168,'background-color':'#fff','border-width':1.5,'border-color':'#8593a8',color:'#18263a','font-family':graphFont,'text-valign':'center','text-wrap':'wrap',...labelStyle({width:144,size:15,weight:600,minHeight:56})}},{selector:'edge',style:{label:'data(label)','curve-style':'bezier',width:1.6,'target-arrow-shape':'triangle','arrow-scale':1.1,'line-color':'#4a576b','target-arrow-color':'#4a576b','font-family':graphFont,'font-size':12,color:'#2c3a4f','text-background-color':'#f3f5f8','text-background-opacity':1,'text-background-padding':4,'text-background-shape':'round-rectangle'}},{selector:'edge[kind="parent"]',style:{'line-style':'dashed','line-color':'#8a96a8','target-arrow-color':'#8a96a8','target-arrow-fill':'hollow','arrow-scale':1.4,color:'#5b6779'}},{selector:'edge[kind="restriction"]',style:{'line-style':'dotted',width:2.2,'line-color':'#5a3e9e','target-arrow-color':'#5a3e9e',color:'#4b3384'}},{selector:'node[?imported]',style:{'border-style':'dashed','background-color':'#eef1f5',color:'#4a576b'}},{selector:'node:selected',style:{'border-width':2.5,'border-color':'#24498a','background-color':'#e7edf7',color:'#1b3a70'}},{selector:'edge:selected',style:{width:3,'line-color':'#24498a','target-arrow-color':'#24498a'}},{selector:':selected',style:{'overlay-opacity':0}}]});
 function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error)}
-function mark(){dirty=true;$('dirty').textContent='未保存の変更あり'}
+const term=id=>[...model.concepts,...model.properties].find(x=>x.id===id)?.name||id;
+function businessRule(r){const subject=term(r.subject),property=term(r.property),target=term(r.target);const condition=r.operator==='someValuesFrom'?`「${property}」でつながる「${target}」が、少なくとも1つある。`:r.operator==='allValuesFrom'?`「${property}」の相手はすべて「${target}」。相手がいない場合も、この条件は満たす。`:`「${property}」でつながる相手は、${({minCardinality:'最低',maxCardinality:'最大',cardinality:'ちょうど'})[r.operator]}${r.count}。`;return `「${subject}」の条件：${condition}`;}
 function refresh(layout=false){
-  $('name').value=model.name;$('base').value=model.base;
   renderLists();
+  // Dragging is a view adjustment only: keep the current positions across re-renders.
   const positions=new Map(cy.nodes().map(n=>[n.id(),n.position()]));
-  cy.elements().remove();cy.add([...model.concepts.map(c=>({data:{id:c.id,label:c.name},position:positions.get(c.id)||c.position})),...model.concepts.filter(c=>c.parent).map(c=>({data:{id:'parent:'+c.id,source:c.id,target:c.parent,label:'〜の一種',kind:'parent',ref:c.id}})),...model.properties.map(p=>({data:{id:'property:'+p.id,source:p.domain,target:p.range,label:p.name,kind:'property',ref:p.id}})),...model.restrictions.filter(r=>r.target&&r.operator.endsWith('ValuesFrom')).map((r,i)=>({data:{id:'restriction:'+i,source:r.subject,target:r.target,label:term(r.property)+(r.operator==='someValuesFrom'?'：1つ以上':'：相手はすべて'),kind:'restriction',ref:r.subject}}))]);
+  cy.elements().remove();cy.add([...model.concepts.map(c=>({data:{id:c.id,label:c.name,imported:Boolean(c.imported_from)},position:positions.get(c.id)||c.position})),...model.concepts.filter(c=>c.parent).map(c=>({data:{id:'parent:'+c.id,source:c.id,target:c.parent,label:'〜の一種',kind:'parent',ref:c.id}})),...model.properties.map(p=>({data:{id:'property:'+p.id,source:p.domain,target:p.range,label:p.name,kind:'property',ref:p.id}})),...model.restrictions.filter(r=>r.target&&r.operator.endsWith('ValuesFrom')).map((r,i)=>({data:{id:'restriction:'+i,source:r.subject,target:r.target,label:term(r.property)+(r.operator==='someValuesFrom'?'：1つ以上':'：相手はすべて'),kind:'restriction',ref:r.subject}}))]);
   if(layout&&!model.concepts.every(c=>c.position)){
     // Ontology relationships can be cyclic: a directed hierarchy collapses them into one row.
     // Seed a grid, then spread connected terms in two dimensions without changing the YAML.
@@ -322,78 +360,46 @@ function refresh(layout=false){
   }
   detail();updateReview();
 }
-function detail(){
-  const isConcept=selected.kind==='concept', item=(isConcept?model.concepts:model.properties).find(x=>x.id===selected.id);
-  if(!item){$('detail').innerHTML='<p class="empty">概念または関係を追加・選択してください。</p>';return}
-  $('detail').innerHTML=`<h2>${esc(item.name)}</h2><div class="meaning-card">${esc(isConcept ? (item.parent ? `${item.name}は、${term(item.parent)}の一種です。` : `${item.name}とは何か、説明と例をそろえましょう。`) : `${term(item.domain)} → ${item.name} → ${term(item.range)}`)}</div><label for="item-name">名前</label><input id="item-name" value="${esc(item.name)}"><label for="description">どんな意味？</label><textarea id="description">${esc(item.description||'')}</textarea>${isConcept?`<label for="parent">何の一種？（任意）</label><select id="parent">${conceptOptions(item.parent,true)}</select>`:`<label for="domain">つながりの始点</label><select id="domain">${conceptOptions(item.domain)}</select><label for="range">つながる相手</label><select id="range">${conceptOptions(item.range)}</select><p class="hint">このつながりがある対象は、ここで選んだ始点・相手の種類に属するものとして定義します。</p>`}<label for="example">たとえば？</label><textarea id="example" placeholder="当てはまる具体例を書きます">${esc(item.example||'')}</textarea><label for="question">まだ決まっていないこと</label><textarea id="question" placeholder="例：契約が終了した会社も顧客に含める？">${esc(item.question||'')}</textarea><label for="review-state">話し合いの状態</label><select id="review-state">${option('draft','考え中',item.review_state||'draft')}${option('discussion','要相談',item.review_state)}${option('agreed','合意済み',item.review_state)}</select><div class="actions apply-actions"><button id="apply">内容を反映</button></div><button class="danger" id="delete">${isConcept?'概念':'関係'}を削除</button>${isConcept?'<h3>このことばの条件</h3><div id="rules"></div><button id="add-rule">＋ 条件を追加</button><p class="hint">「この条件で呼び分ける」を選んだ条件は、種類とあわせてすべて満たすことが必要です。「必ず満たす」だけでは、逆向きに分類しません。</p>':''}`;
-  $('apply').onclick=()=>{const previous=structuredClone(item);item.name=$('item-name').value;item.description=$('description').value;item.example=$('example').value;item.question=$('question').value;item.review_state=$('review-state').value;if(isConcept)item.parent=$('parent').value;else{item.domain=$('domain').value;item.range=$('range').value}const errors=validateOntology(model);if(errors.length){Object.keys(item).forEach(k=>delete item[k]);Object.assign(item,previous);return status(errors.join('\n'),true)}mark();status('定義を反映しました。YAMLで保存できます。');refresh()};
-  $('delete').onclick=()=>{const used=isConcept?model.concepts.some(c=>c.parent===item.id)||model.properties.some(p=>p.domain===item.id||p.range===item.id)||model.restrictions.some(r=>r.subject===item.id||r.target===item.id):model.restrictions.some(r=>r.property===item.id);if(used)return status('この項目は参照されています。先に関連する条件・関係を編集または削除してください。',true);model[isConcept?'concepts':'properties']=model[isConcept?'concepts':'properties'].filter(x=>x.id!==item.id);mark();refresh(true)};
-  if(!isConcept)return;
-  if(typeof showUsages==='function')showUsages(item);
-  $('rules').innerHTML=model.restrictions.map((r,i)=>r.subject===item.id?`<div class="rule"><p>${esc(businessRule(r))}</p><span class="condition-tag">${r.mode==='equivalent'?'この条件で呼び分ける':'必ず満たす条件'}</span><div class="actions"><button data-edit="${i}">編集</button><button data-remove="${i}">削除</button></div></div>`:'').join('')||'<p class="hint">条件はまだありません。</p>';
-  $('rules').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{model.restrictions.splice(Number(b.dataset.remove),1);mark();refresh()});
-  $('rules').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>ruleForm(Number(b.dataset.edit)));
-  $('add-rule').onclick=()=>ruleForm();
-}
-function ruleForm(index){
-  if(!model.properties.length)return status('先に関係を追加してください。',true);
-  const r=index===undefined?{subject:selected.id,property:model.properties[0].id,operator:'someValuesFrom',target:model.concepts[0].id,count:1,mode:'necessary'}:model.restrictions[index];
-  $('rules').innerHTML=`<div class="rule"><label for="r-property">関係</label><select id="r-property">${model.properties.map(p=>option(p.id,p.name,r.property)).join('')}</select><label for="r-operator">条件の意味</label><select id="r-operator">${Object.entries(restrictionLabels).map(([v,l])=>option(v,l,r.operator)).join('')}</select><div id="target-field"><label for="r-target">つながる相手</label><select id="r-target">${conceptOptions(r.target)}</select></div><div id="count-field"><label for="r-count">異なる関係先の数</label><input id="r-count" type="number" min="0" step="1" value="${r.count??1}"></div><label for="r-mode">分類との関係</label><select id="r-mode">${option('necessary','このことばに当てはまるなら、必ず満たす',r.mode)}${option('equivalent','この条件で、このことばに当てはまるか決める',r.mode)}</select><p id="rule-preview" class="meaning-card"></p><p class="hint">情報がないだけでは「当てはまらない」とは決めません。個数は重複を除いた相手の数です。</p><div class="actions"><button id="r-save">条件を反映</button><button id="r-cancel">キャンセル</button></div></div>`;
-  const toggle=()=>{const value=$('r-operator').value.endsWith('ValuesFrom');$('target-field').hidden=!value;$('count-field').hidden=value};const preview=()=>{toggle();$('rule-preview').textContent=businessRule({subject:selected.id,property:$('r-property').value,operator:$('r-operator').value,target:$('r-target').value,count:Number($('r-count').value),mode:$('r-mode').value})};for(const id of ['r-operator','r-property','r-target','r-count','r-mode'])$(id).oninput=preview;preview();
-  $('r-cancel').onclick=detail;$('r-save').onclick=()=>{const next={subject:selected.id,property:$('r-property').value,operator:$('r-operator').value,mode:$('r-mode').value};if(next.operator.endsWith('ValuesFrom'))next.target=$('r-target').value;else next.count=$('r-count').value===''?NaN:Number($('r-count').value);const draft=structuredClone(model);if(index===undefined)draft.restrictions.push(next);else draft.restrictions[index]=next;const errors=validateOntology(draft);if(errors.length)return status(errors.join('\n'),true);model=draft;mark();status('条件を反映しました。');refresh()};
-}
-function nextPosition(extent,id){const center={x:(extent.x1+extent.x2)/2,y:(extent.y1+extent.y2)/2};for(let ring=0;ring<model.concepts.length+2;ring++){for(let dx=-ring;dx<=ring;dx++){for(let dy=-ring;dy<=ring;dy++){if(Math.max(Math.abs(dx),Math.abs(dy))!==ring)continue;const p={x:center.x+dx*195,y:center.y+dy*110};if(!cy.nodes().some(n=>n.id()!==id&&Math.abs(n.position('x')-p.x)<180&&Math.abs(n.position('y')-p.y)<95))return p;}}}return center;}
-function nextId(prefix){let i=1;while([...model.concepts,...model.properties].some(x=>x.id===prefix+i))i++;return prefix+i}
 function renderLists(){
+  $('legend-imported').hidden=!model.concepts.some(c=>c.imported_from);
   const query=$('search').value.trim().toLowerCase();
   for(const [key,kind] of [['concepts','concept'],['properties','property']]){
-    const items=model[key].filter(x=>`${x.name} ${x.id}`.toLowerCase().includes(query));
+    // Match the headword and ID first; aliases and attribute names explain why other items matched.
+    const found=x=>{if(`${x.name} ${x.id}`.toLowerCase().includes(query))return {};const alias=(x.aliases||[]).find(a=>a.toLowerCase().includes(query));if(alias)return {label:'別名',text:alias};const attribute=(x.attributes||[]).find(a=>`${a.name} ${a.id}`.toLowerCase().includes(query));return attribute?{label:'属性',text:attribute.name}:null};
+    const items=model[key].map(x=>({x,match:found(x)})).filter(entry=>entry.match);
     $(kind+'-count').textContent=`${items.length} / ${model[key].length}`;
-    $(key).innerHTML=items.map(x=>`<button data-id="${esc(x.id)}" class="${selected.id===x.id?'active':''}">${esc(x.name)}<code class="term-id">${esc(x.id)}</code>${kind==='property'?`<small>${esc(model.concepts.find(c=>c.id===x.domain)?.name)} → ${esc(model.concepts.find(c=>c.id===x.range)?.name)}</small>`:''}</button>`).join('')||'<small>該当する項目はありません</small>';
-    $(key).querySelectorAll('button').forEach(b=>b.onclick=()=>{if(connecting&&kind==='concept')return pickEndpoint(b.dataset.id);setReview(false);selected={kind,id:b.dataset.id};refresh();focusSelection()});
+    $(key).innerHTML=items.map(({x,match})=>`<button data-id="${esc(x.id)}" class="${selected.id===x.id?'active':''}">${esc(x.name)}<code class="term-id">${esc(x.id)}</code>${kind==='property'?`<small>${esc(term(x.domain))} → ${esc(term(x.range))}</small>`:''}${x.imported_from?`<small class="imported-tag"><span>共通定義</span> · ${esc(x.imported_from)}</small>`:''}${match.label?`<small class="match-reason"><span>${match.label}</span>${esc(match.text)}</small>`:''}</button>`).join('')||'<small>該当する項目はありません</small>';
+    $(key).querySelectorAll('button').forEach(b=>b.onclick=()=>{setReview(false);selected={kind,id:b.dataset.id};refresh();focusSelection()});
   }
 }
-function focusSelection(){const element=cy.$id(selected.kind==='concept'?selected.id:'property:'+selected.id);if(element.length){element.select();cy.animate({center:{eles:element},duration:180})}document.querySelector('.inspector').scrollTop=0;const active=document.querySelector('.list button.active');if(active)active.scrollIntoView({block:'nearest'});}
-function connectionState(enabled,source=null){connecting=enabled;connectionSource=source;$('connect').classList.toggle('active',enabled);$('cancel-connect').hidden=!enabled;$('connect-hint').hidden=!enabled;cy.nodes().removeClass('connection-source');if(source)cy.$id(source).addClass('connection-source');$('connect-hint').textContent=source?`「${model.concepts.find(c=>c.id===source)?.name}」からつなぐ相手を選んでください。`:'始点の概念を図または一覧から選んでください。';}
-function pickEndpoint(id){if(!connectionSource){connectionState(true,id);return}relationForm(connectionSource,id);connectionState(false)}
-function relationForm(source=selected.kind==='concept'?selected.id:model.concepts[0]?.id,target=model.concepts[0]?.id){
-  if(!model.concepts.length)return status('先に概念を追加してください。',true);
-  $('detail').innerHTML=`<h2>関係を作る</h2><p class="hint">始点 → 関係の名前 → 終点</p><label for="new-source">始点の概念</label><select id="new-source">${conceptOptions(source)}</select><label for="new-relation">関係の名前</label><input id="new-relation" placeholder="例：契約を持つ"><label for="new-target">終点の概念</label><select id="new-target">${conceptOptions(target)}</select><div class="actions"><button id="create-relation">関係を作成</button><button id="discard-relation">キャンセル</button></div>`;
-  document.querySelector('.inspector').scrollTop=0;$('new-relation').focus();
-  $('discard-relation').onclick=detail;$('create-relation').onclick=()=>{const name=$('new-relation').value.trim();if(!name)return status('関係の名前を入力してください。',true);const id=nextId('Property');model.properties.push({id,name,domain:$('new-source').value,range:$('new-target').value});selected={kind:'property',id};$('search').value='';mark();refresh();focusSelection();status('関係を作成しました。線を選ぶと編集できます。')};
+function focusSelection(){
+  cy.resize();cy.stop();cy.elements().unselect();
+  const element=cy.$id(selected.kind==='concept'?selected.id:'property:'+selected.id);
+  if(!element.length)return;
+  element.select();
+  // Focus the selected term, not the bounding box of the entire model.
+  const target=element.isNode()?element:element.source();
+  cy.zoom(Math.max(1,Math.min(1.6,cy.zoom())));cy.center(target);
+  document.querySelector('.inspector').scrollTop=0;
+  document.querySelector('.list button.active')?.scrollIntoView({block:'nearest'});
 }
-$('search').oninput=renderLists;
-$('add-concept').onclick=()=>{setReview(false);const id=nextId('Concept'),extent=cy.extent();model.concepts.push({id,name:'新しい概念'});selected={kind:'concept',id};$('search').value='';mark();refresh();cy.$id(id).position(nextPosition(extent,id));focusSelection();$('item-name').focus();$('item-name').select();status('概念を追加しました。右側で名前を入力してください。')};
-$('canvas-add').onclick=()=>$('add-concept').click();
-$('add-property').onclick=()=>{setReview(false);relationForm()};
-$('connect').onclick=()=>{const enabled=!connecting;setReview(false);connectionState(enabled)};
-$('cancel-connect').onclick=()=>connectionState(false);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')connectionState(false)});
-$('arrange').onclick=()=>{setReview(false);cy.layout({name:'grid',padding:65,avoidOverlap:true,spacingFactor:1.2}).run();model.concepts.forEach(c=>c.position={...cy.$id(c.id).position()});mark();updateReview()};
-cy.style().selector('node.connection-source').style({'border-color':'#e49d29','border-width':5}).update();
-for(const field of ['name','base'])$(field).onchange=()=>{const old=model[field];model[field]=$(field).value;const errors=validateOntology(model);if(errors.length){model[field]=old;$(field).value=old;return status(errors.join('\n'),true)}mark();refresh()};
-function download(filename,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-$('save').onclick=()=>{model.concepts.forEach(c=>{c.position={...cy.$id(c.id).position()}});const errors=validateOntology(model);if(errors.length)return status(errors.join('\n'),true);download('ontology.yaml',jsyaml.dump(model),'application/yaml');dirty=false;$('dirty').textContent='';status('YAMLのダウンロードを開始しました。')};
-$('open').onclick=()=>$('file').click();$('file').onchange=async()=>{const file=$('file').files[0];if(!file)return;try{const next=jsyaml.load(await file.text()),errors=validateOntology(next);if(errors.length)throw new Error(errors.join('\n'));if(dirty&&!confirm('未保存の変更を破棄して開きますか？'))return;model=next;selected={kind:'concept',id:model.concepts[0]?.id};dirty=false;$('dirty').textContent='';$('model-choice').value='';status('モデルを読み込みました。');refresh(true)}catch(e){status(e.message,true)}finally{$('file').value=''}};
-$('model-choice').innerHTML=entries.map((e,i)=>option(String(i),e.name,'0')).join('');let entryIndex='0';$('model-choice').onchange=()=>{if(dirty&&!confirm('未保存の変更を破棄して切り替えますか？')){$('model-choice').value=entryIndex;return}entryIndex=$('model-choice').value;model=structuredClone(entries[Number(entryIndex)].model);selected={kind:'concept',id:model.concepts[0]?.id};dirty=false;$('dirty').textContent='';refresh(true)};
-cy.on('tap','node',e=>{if(connecting)return pickEndpoint(e.target.id());selected={kind:'concept',id:e.target.id()};refresh();focusSelection()});cy.on('tap','edge',e=>{if(connecting)return;selected={kind:e.target.data('kind')==='property'?'property':'concept',id:e.target.data('ref')};refresh();focusSelection()});$('fit').onclick=()=>cy.fit(undefined,50);
-const term=id=>[...model.concepts,...model.properties].find(x=>x.id===id)?.name||id;
-function businessRule(r){const subject=term(r.subject),property=term(r.property),target=term(r.target);const condition=r.operator==='someValuesFrom'?`「${property}」でつながる「${target}」が、少なくとも1つある。`:r.operator==='allValuesFrom'?`「${property}」の相手はすべて「${target}」。相手がいない場合も、この条件は満たす。`:`「${property}」でつながる相手は、${({minCardinality:'最低',maxCardinality:'最大',cardinality:'ちょうど'})[r.operator]}${r.count}。`;return `「${subject}」の条件：${condition}`;}
 function updateReview(){
-  $('yaml-preview').textContent=jsyaml.dump(model);
   const agreed=model.concepts.filter(c=>c.review_state==='agreed').length;
-  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card"><div class="entry-head"><span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span><h3>${esc(c.name)}</h3><code class="term-id">${esc(c.id)}</code>${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}</div><div class="entry-body"><p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}</ul></div></article>`).join('')}</div>`;
+  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card"><div class="entry-head"><span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span><h3>${esc(c.name)}</h3><code class="term-id">${esc(c.id)}</code>${c.imported_from?`<p class="imported-note"><span>共通定義から読み込み</span><code>${esc(c.imported_from)}</code></p>`:''}${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}${c.aliases?.length?`<p class="aliases"><span>別名</span>${c.aliases.map(a=>`<span class="alias">${esc(a)}</span>`).join('')}</p>`:''}</div><div class="entry-body"><p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}${(c.attributes||[]).map(a=>`<li><span class="kind-tag">属性</span> ${esc(a.name)}${a.type?` <small>${esc(attributeTypes[a.type])}</small>`:''}</li>`).join('')}</ul></div></article>`).join('')}</div>`;
 }
-function setReview(enabled){connectionState(false);document.body.classList.toggle('reviewing',enabled);$('review-board').hidden=!enabled;$('review-toggle').textContent=enabled?'図に戻る':'みんなで確認';if(enabled)updateReview();cy.resize()}
-$('review-toggle').onclick=()=>setReview(!document.body.classList.contains('reviewing'));
-cy.on('dragfree','node',e=>{const c=model.concepts.find(c=>c.id===e.target.id());if(c){c.position={...e.target.position()};mark();updateReview()}});
-<!-- PROCESS_EDITOR -->
+function setReview(enabled){document.body.classList.toggle('reviewing',enabled);$('review-board').hidden=!enabled;$('diagram-toggle').setAttribute('aria-pressed',String(!enabled));$('review-toggle').setAttribute('aria-pressed',String(enabled));if(enabled)updateReview();cy.resize()}
+$('diagram-toggle').onclick=()=>setReview(false);$('review-toggle').onclick=()=>setReview(true);
+$('search').oninput=renderLists;
+function download(filename,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+$('model-choice').innerHTML=entries.map((e,i)=>`<option value="${i}">${esc(e.name)}</option>`).join('');
+$('model-choice').onchange=()=>{entryIndex=$('model-choice').value;model=structuredClone(entries[Number(entryIndex)].model);selected={kind:'concept',id:model.concepts[0]?.id};cy.elements().remove();refresh(true)};
+cy.on('tap','node',e=>{selected={kind:'concept',id:e.target.id()};refresh();focusSelection()});
+cy.on('tap','edge',e=>{const edge=e.target;selected={kind:edge.data('kind')==='property'?'property':'concept',id:edge.data('ref')};detail();const explanation=edge.data('kind')==='parent'?`${term(edge.source().id())}は${term(edge.target().id())}の一種です。`:edge.data('kind')==='property'?`${term(edge.source().id())}から${term(edge.target().id())}への「${edge.data('label')}」という関係です。`:`${term(edge.source().id())}の分類条件：${edge.data('label')}。相手の種類は${term(edge.target().id())}です。`;const note=document.createElement('p');note.className='meaning-card';note.textContent=explanation;$('detail').prepend(note)});
+$('fit').onclick=()=>cy.fit(undefined,50);
+<!-- PROCESS_VIEW -->
 <!-- READER -->
 <!-- PROCESS_HIERARCHY -->
 <!-- LANGUAGE_VIEW -->
 <!-- VIEW_STATE -->
-window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});refresh(true);
+setReview(false);refresh(true);
 </script></body></html>
-
-
-

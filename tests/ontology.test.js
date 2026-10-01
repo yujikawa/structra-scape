@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { loadModel, validateModel } from '../src/validate.js';
-import { exportOntology } from '../src/ontology.js';
+import { exportOntology, conceptAttributes } from '../src/ontology.js';
 import { renderModel } from '../src/build.js';
 import { publicationMarkdown, publicationSvg } from '../src/publication.js';
 import { assessCompletion } from '../src/completion.js';
@@ -13,7 +13,8 @@ test('UI translations preserve model text in dynamic messages and default to Jap
   assert.equal(translateUI('未確認事項', 'ja'), '未確認事項');
   assert.equal(translateUI('契約顧客', 'en'), '契約顧客');
   assert.equal(translateUI('判定が未決定：契約開始日が来月の法人', 'en'), 'Undecided case: 契約開始日が来月の法人');
-  assert.equal(translateUI('顧客と契約 · 5つの用語・関係に、確認が必要な項目があります。', 'en'), '顧客と契約 · 5 terms / relationships need review.');
+  assert.equal(translateUI('顧客と契約 · 5つの用語・関係・作業に、確認が必要な項目があります。', 'en'), '顧客と契約 · 5 terms, relationships or steps need review.');
+  assert.equal(translateUI('属性「契約状態」：取りうる区分値を記録してください。', 'en'), 'Attribute “契約状態”: Record the allowed code values.');
   assert.equal(translateUI('6個の作業 · 5本の流れ', 'en'), '6 steps · 5 flows');
   assert.equal(translateUI('作業 · 営業担当', 'en'), 'Task · 営業担当');
   assert.equal(translateUI('「顧客」の条件：「契約」でつながる「有効契約」が、少なくとも1つある。', 'en'), 'Rule for “顧客”: at least one “契約” relationship to “有効契約”.');
@@ -103,13 +104,14 @@ test('rejects unsupported rules, invalid counts, dangling references and unsafe 
   m.base = 'https://example.com/> .'; assert.throws(() => exportOntology(m));
   assert.ok(validateModel({ kind: 'ontology', name: 'bad', concepts: {} }).length);
 });
-test('offline editor embeds compilable code and escapes user script endings', () => {
+test('offline reader embeds compilable code and escapes user script endings', () => {
   const html = renderModel('samples/ontology/customer-contract.yaml');
   assert.doesNotMatch(html, /<!-- (ONTOLOGY_CORE|YAML_BUNDLE|STRUCTRA_)/);
   for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
-  assert.match(html, /YAMLを保存/);
   assert.doesNotMatch(html, /id="owl"|id="turtle"|生成されるOWL/);
-  assert.match(html, /みんなで確認/);
+  // The reader is read-only: no in-browser authoring controls or YAML download.
+  assert.doesNotMatch(html, /id="save"|id="add-concept"|id="new-step"|id="yaml-preview"/);
+  assert.match(html, /id="review-toggle"/);
   assert.match(renderModel('samples/support-backlog-loop.yaml'), /Causal guide/);
 });
 
@@ -140,4 +142,42 @@ test('process hierarchy validates references, ownership and cycles', () => {
   const html = renderModel('samples/ontology/process-hierarchy.yaml');
   assert.match(html, /process-breadcrumbs/);
   for (const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
+});
+
+test('attributes and aliases validate, inherit, export and appear in open questions', () => {
+  const m = sample();
+  assert.deepEqual(validateModel(m), []);
+  const contract = m.concepts.find(c => c.id === 'Contract');
+  assert.deepEqual(conceptAttributes(m, 'ActiveContract').map(r => [r.attribute.id, r.inherited]), contract.attributes.map(a => [a.id, true]));
+  const ttl = exportOntology(m);
+  assert.match(ttl, /skos:altLabel "取引先"/);
+  assert.match(ttl, /<https:\/\/example.com\/customer#Contract.startDate> a owl:DatatypeProperty ; rdfs:label "契約開始日" ; rdfs:domain :Contract ; rdfs:range xsd:date/);
+  const issues = assessCompletion(m).issues.filter(i => i.id === 'Contract').map(i => i.message);
+  assert.ok(issues.includes('属性「契約状態」：停止中の契約を有効契約に含める？'));
+  assert.ok(issues.some(i => i.startsWith('属性「契約開始日」：申込日')));
+  assert.match(publicationMarkdown(m, { concept: 'Contract' }), /\| 契約開始日 \| startDate \| date \| はい \|/);
+  for (const [patch, pattern] of [[{ type: 'money' }, /type は/], [{ id: 'bad id' }, /無効な属性ID/], [{ values: [{ value: 'x' }] }, /type: code/], [{ required: 'yes' }, /required/]]) {
+    const broken = sample();
+    Object.assign(broken.concepts.find(c => c.id === 'Contract').attributes[2], patch);
+    assert.ok(validateModel(broken).some(e => pattern.test(e)), String(pattern));
+  }
+  const duplicate = sample();
+  duplicate.concepts[0].aliases = ['顧客'];
+  assert.ok(assessCompletion(duplicate).issues.some(i => i.category === '不整合' && i.message.includes('別名「顧客」')));
+  duplicate.concepts[0].aliases = ['x', 'x'];
+  assert.ok(validateModel(duplicate).some(e => e.includes('aliases')));
+});
+
+test('flow checks report owners, decisions, gateways, reachability and dead ends', () => {
+  const m = sample();
+  assert.deepEqual(assessCompletion(m).issues.filter(i => i.kind === 'step' || i.kind === 'process'), []);
+  const p = m.processes[0];
+  p.steps.push({ id: 'Orphan', name: '孤立した作業', type: 'task', owner: '誰か' }, { id: 'Split', name: '並行', type: 'parallel' });
+  p.flows.find(f => f.label === '審査NG').label = '';
+  p.steps.find(s => s.id === 'Review').owner = undefined;
+  const messages = assessCompletion(m).issues.filter(i => i.kind === 'step' || i.kind === 'process').map(i => `${i.id}:${i.message}`);
+  for (const expected of ['Review:担当（owner）を記録してください。', 'Decision:分岐の矢印に進む条件（label）を記録してください。', 'Orphan:開始からたどり着けません。', 'Orphan:次へ進む流れがなく、終了につながっていません。', 'Split:並行開始の行き先が2つ以上ありません。', 'ContractProcess:並行開始と合流の対応を確認してください。']) assert.ok(messages.includes(expected), expected);
+  // Sketches without a start or end are not checked for reachability.
+  const sketch = loadModel('samples/ontology/process-hierarchy.yaml');
+  assert.ok(!assessCompletion(sketch).issues.some(i => i.message.includes('たどり着けません')));
 });

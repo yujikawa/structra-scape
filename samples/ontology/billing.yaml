@@ -1,0 +1,71 @@
+kind: ontology
+name: 請求の定義
+base: https://example.com/billing#
+# 顧客と契約の定義は customer-contract.yaml を正とし、ここでは読み込んで参照する。
+imports:
+  - customer-contract.yaml
+concepts:
+  - id: Invoice
+    name: 請求書
+    aliases: [請求]
+    description: 契約に基づいて、契約顧客に支払いを求める書類。
+    example: 4月分の保守料金を請求する請求書。
+    attributes:
+      - id: invoiceNo
+        name: 請求番号
+        type: identifier
+        required: true
+        description: 請求書ごとに採番される番号。
+      - id: amount
+        name: 請求金額
+        type: amount
+        required: true
+        description: 税込みの請求額。
+        question: 値引き後の金額か、値引き前の金額か？
+      - id: issueDate
+        name: 発行日
+        type: date
+        description: 請求書を顧客に送付した日。
+properties:
+  - id: billedTo
+    name: 請求先
+    domain: Invoice
+    range: Customer
+    description: 請求書の支払いを求める相手。
+  - id: basedOn
+    name: 根拠となる契約
+    domain: Invoice
+    range: Contract
+restrictions:
+  - subject: Invoice
+    property: billedTo
+    operator: cardinality
+    count: 1
+    mode: necessary
+processes:
+  - id: Billing
+    name: 月次請求
+    steps:
+      - id: Start
+        name: 締め日を迎える
+        type: start
+      - id: Aggregate
+        name: 請求額を集計する
+        type: task
+        owner: 経理担当
+        items:
+          - { concept: Contract, role: reads }
+      - id: Issue
+        name: 請求書を発行する
+        type: task
+        owner: 経理担当
+        items:
+          - { concept: Invoice, role: creates }
+          - { concept: Customer, role: reads }
+      - id: End
+        name: 送付完了
+        type: end
+    flows:
+      - { source: Start, target: Aggregate }
+      - { source: Aggregate, target: Issue }
+      - { source: Issue, target: End }

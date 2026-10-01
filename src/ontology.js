@@ -13,6 +13,7 @@ export function validateOntology(model) {
   if (model.kind !== 'ontology') errors.push('kind は ontology にしてください');
   if (typeof model.name !== 'string' || !model.name.trim()) errors.push('モデル名が必要です');
   if (typeof model.base !== 'string' || !/^https?:\/\/[^\s<>"{}|^`\\]+[#/]$/.test(model.base)) errors.push('base は # または / で終わる HTTP(S) IRI にしてください');
+  if (model.imports !== undefined && (!Array.isArray(model.imports) || model.imports.some(p => typeof p !== 'string' || !p.trim()))) errors.push('imports は共通定義YAMLへの相対パスの配列にしてください');
   const collections = ['concepts', 'properties', 'restrictions'];
   for (const key of collections) if (!Array.isArray(model[key])) errors.push(`${key} は配列にしてください`);
   if (errors.length) return errors;
@@ -26,17 +27,8 @@ export function validateOntology(model) {
     for (const field of ['exclusion', 'evidence']) {
       if (item[field] !== undefined && typeof item[field] !== 'string') errors.push(`${item.id}.${field}: 文字列にしてください`);
     }
-    if (item.data_mapping !== undefined) {
-      const mapping = item.data_mapping;
-      if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) errors.push(`${item.id}.data_mapping: オブジェクトにしてください`);
-      else {
-        for (const field of ['source', 'grain', 'condition', 'gap']) {
-          if (mapping[field] !== undefined && typeof mapping[field] !== 'string') errors.push(`${item.id}.data_mapping.${field}: 文字列にしてください`);
-        }
-        if (typeof mapping.source !== 'string' || !mapping.source.trim()) errors.push(`${item.id}.data_mapping.source: データの所在が必要です`);
-        if (!['proposed', 'verified'].includes(mapping.status)) errors.push(`${item.id}.data_mapping.status: proposed または verified にしてください`);
-      }
-    }
+    if (item.data_mapping !== undefined) errors.push(...validateMapping(item.id, item.data_mapping));
+    if (item.aliases !== undefined && (!Array.isArray(item.aliases) || item.aliases.some(a => typeof a !== 'string' || !a.trim()) || new Set(item.aliases).size !== item.aliases.length)) errors.push(`${item.id}.aliases: 重複のない空でない文字列の配列にしてください`);
     if (typeof item.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(item.id)) errors.push(`無効なID: ${item.id}`);
     if (ids.has(item.id)) errors.push(`重複ID: ${item.id}`);
     ids.add(item.id);
@@ -51,8 +43,10 @@ export function validateOntology(model) {
   for (const c of model.concepts.filter(Boolean)) {
     if (c.parent && !concepts.has(c.parent)) errors.push(`${c.id}: 上位概念が見つかりません`);
     if (c.parent === c.id) errors.push(`${c.id}: 自分自身を上位概念には指定できません`);
+    if (c.attributes !== undefined) errors.push(...validateAttributes(c));
   }
   for (const p of model.properties.filter(Boolean)) {
+    if (p.attributes !== undefined) errors.push(`${p.id}: 属性は概念に指定してください`);
     if (!concepts.has(p.domain) || !concepts.has(p.range)) errors.push(`${p.id}: 主語・関係先の概念が見つかりません`);
   }
   for (const r of model.restrictions) {
@@ -66,6 +60,50 @@ export function validateOntology(model) {
   }
   if (model.processes !== undefined) errors.push(...validateProcesses(model));
   return errors;
+}
+
+function validateMapping(owner, mapping) {
+  const errors = [];
+  if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) return [`${owner}.data_mapping: オブジェクトにしてください`];
+  for (const field of ['source', 'grain', 'condition', 'gap']) {
+    if (mapping[field] !== undefined && typeof mapping[field] !== 'string') errors.push(`${owner}.data_mapping.${field}: 文字列にしてください`);
+  }
+  if (typeof mapping.source !== 'string' || !mapping.source.trim()) errors.push(`${owner}.data_mapping.source: データの所在が必要です`);
+  if (!['proposed', 'verified'].includes(mapping.status)) errors.push(`${owner}.data_mapping.status: proposed または verified にしてください`);
+  return errors;
+}
+// Data items carried by a concept (OWL datatype properties). The type is the business-level kind of value.
+export const attributeTypes = { text: '文字列', integer: '整数', decimal: '数値', amount: '金額', boolean: 'はい／いいえ', date: '日付', datetime: '日時', code: '区分値', identifier: '識別子' };
+function validateAttributes(concept) {
+  if (!Array.isArray(concept.attributes)) return [`${concept.id}.attributes: 配列にしてください`];
+  const errors = [], ids = new Set();
+  for (const a of concept.attributes) {
+    if (!a || typeof a !== 'object' || Array.isArray(a)) { errors.push(`${concept.id}.attributes: 属性はオブジェクトで指定してください`); continue; }
+    const at = `${concept.id}.${a.id}`;
+    if (typeof a.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(a.id)) errors.push(`${concept.id}: 無効な属性ID: ${a.id}`);
+    else if (ids.has(a.id)) errors.push(`${concept.id}: 重複した属性ID: ${a.id}`);
+    ids.add(a.id);
+    if (typeof a.name !== 'string' || !a.name.trim()) errors.push(`${at}: 名前が必要です`);
+    if (a.type !== undefined && !Object.hasOwn(attributeTypes, a.type)) errors.push(`${at}: type は ${Object.keys(attributeTypes).join(' / ')} のいずれかにしてください`);
+    for (const field of ['description', 'example', 'question']) if (a[field] !== undefined && typeof a[field] !== 'string') errors.push(`${at}.${field}: 文字列にしてください`);
+    if (a.required !== undefined && typeof a.required !== 'boolean') errors.push(`${at}.required: true または false にしてください`);
+    if (a.values !== undefined) {
+      if (a.type !== 'code') errors.push(`${at}.values: 区分値は type: code の属性に指定してください`);
+      if (!Array.isArray(a.values) || a.values.some(v => !v || typeof v.value !== 'string' || !v.value.trim() || ['name', 'description'].some(k => v[k] !== undefined && typeof v[k] !== 'string'))) errors.push(`${at}.values: [{value, name?, description?}] の配列にしてください`);
+      else if (new Set(a.values.map(v => v.value)).size !== a.values.length) errors.push(`${at}.values: value が重複しています`);
+    }
+    if (a.data_mapping !== undefined) errors.push(...validateMapping(at, a.data_mapping));
+  }
+  return errors;
+}
+// Own attributes first, then those inherited from ancestors (nearest first). Cycles are reported elsewhere.
+export function conceptAttributes(model, conceptId) {
+  const result = [], seen = new Set();
+  for (let c = model.concepts.find(x => x.id === conceptId), inherited = false; c && !seen.has(c.id); c = model.concepts.find(x => x.id === c.parent), inherited = true) {
+    seen.add(c.id);
+    for (const attribute of c.attributes || []) result.push({ attribute, owner: c.id, ownerName: c.name, inherited });
+  }
+  return result;
 }
 
 export const usageRoles = { creates: '作成する', reads: '参照する', updates: '更新する', participates: '参加する' };
@@ -87,7 +125,7 @@ export function validateProcesses(model) {
       if (!s || !validId(s.id) || ids.has(s.id)) { errors.push(`${p.id}: 作業IDが無効または重複しています`); continue; }
       ids.add(s.id);
       if (typeof s.name !== 'string' || !s.name.trim() || !Object.hasOwn(stepTypes,s.type)) errors.push(`${s.id}: 名前と有効な種類が必要です`);
-      for (const field of ['owner','description']) if(s[field] !== undefined && typeof s[field] !== 'string') errors.push(`${s.id}: ${field} は文字列にしてください`);
+      for (const field of ['owner','description','example','question']) if(s[field] !== undefined && typeof s[field] !== 'string') errors.push(`${s.id}: ${field} は文字列にしてください`);
       if(s.position !== undefined && (!s.position || !Number.isFinite(s.position.x) || !Number.isFinite(s.position.y))) errors.push(`${s.id}: 配置が無効です`);
       if(s.items !== undefined && !Array.isArray(s.items)) { errors.push(`${s.id}: items は配列にしてください`); continue; }
       const seen = new Set();
@@ -137,20 +175,32 @@ export function exportOntology(model) {
   const errors = validateOntology(model);
   if (errors.length) throw new Error(errors.join('\n'));
   const literal = value => JSON.stringify(String(value));
-  const lines = ['@prefix : <' + model.base + '> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '', `<${model.base}> a owl:Ontology ; rdfs:label ${literal(model.name)} .`, ''];
-  for (const c of model.concepts) {
-    lines.push(`:${c.id} a owl:Class ; rdfs:label ${literal(c.name)}${c.description ? ' ; rdfs:comment ' + literal(c.description) : ''} .`);
-    if (c.parent) lines.push(`:${c.id} rdfs:subClassOf :${c.parent} .`);
+  const lines = ['@prefix : <' + model.base + '> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '', `<${model.base}> a owl:Ontology ; rdfs:label ${literal(model.name)} .`, ''];
+  // Imported definitions are declared by the file that owns them; reference it with owl:imports.
+  for (const imported of model.imported_models || []) if (imported.base) lines.push(`<${model.base}> owl:imports <${imported.base}> .`);
+  if (model.imported_models?.length) lines.push('');
+  const own = item => !item.imported_from;
+  // An imported term lives under the base IRI of the file that declares it.
+  const bases = new Map((model.imported_models || []).map(m => [m.path, m.base]));
+  const owners = new Map([...model.concepts, ...model.properties].filter(x => x.imported_from).map(x => [x.id, bases.get(x.imported_from)]));
+  const ref = id => owners.get(id) ? `<${owners.get(id)}${id}>` : `:${id}`;
+  const aliases = item => (item.aliases || []).map(a => ' ; skos:altLabel ' + literal(a)).join('');
+  const xsd = { integer: 'integer', decimal: 'decimal', amount: 'decimal', boolean: 'boolean', date: 'date', datetime: 'dateTime' };
+  for (const c of model.concepts.filter(own)) {
+    lines.push(`:${c.id} a owl:Class ; rdfs:label ${literal(c.name)}${aliases(c)}${c.description ? ' ; rdfs:comment ' + literal(c.description) : ''} .`);
+    if (c.parent) lines.push(`:${c.id} rdfs:subClassOf ${ref(c.parent)} .`);
+    // Attribute IDs are unique per concept only, so their IRIs are scoped by the concept.
+    for (const a of c.attributes || []) lines.push(`<${model.base}${c.id}.${a.id}> a owl:DatatypeProperty ; rdfs:label ${literal(a.name)} ; rdfs:domain :${c.id} ; rdfs:range xsd:${xsd[a.type] || 'string'}${a.description ? ' ; rdfs:comment ' + literal(a.description) : ''} .`);
   }
-  for (const p of model.properties) lines.push(`:${p.id} a owl:ObjectProperty ; rdfs:label ${literal(p.name)} ; rdfs:domain :${p.domain} ; rdfs:range :${p.range}${p.description ? ' ; rdfs:comment ' + literal(p.description) : ''} .`);
+  for (const p of model.properties.filter(own)) lines.push(`:${p.id} a owl:ObjectProperty ; rdfs:label ${literal(p.name)}${aliases(p)} ; rdfs:domain ${ref(p.domain)} ; rdfs:range ${ref(p.range)}${p.description ? ' ; rdfs:comment ' + literal(p.description) : ''} .`);
   // Equivalent conditions for one concept form ONE conjunction, not several equivalences.
-  const expression = r => `[ a owl:Restriction ; owl:onProperty :${r.property} ; owl:${r.operator} ${r.operator.endsWith('ValuesFrom') ? ':' + r.target : '"' + r.count + '"^^xsd:nonNegativeInteger'} ]`;
-  for (const c of model.concepts) {
-    const rows = model.restrictions.filter(r => r.subject === c.id);
+  const expression = r => `[ a owl:Restriction ; owl:onProperty ${ref(r.property)} ; owl:${r.operator} ${r.operator.endsWith('ValuesFrom') ? ref(r.target) : '"' + r.count + '"^^xsd:nonNegativeInteger'} ]`;
+  for (const c of model.concepts.filter(own)) {
+    const rows = model.restrictions.filter(r => r.subject === c.id && own(r));
     for (const r of rows.filter(r => r.mode === 'necessary')) lines.push(`:${c.id} rdfs:subClassOf ${expression(r)} .`);
     const eq = rows.filter(r => r.mode === 'equivalent');
     if (eq.length) {
-      const parts = [...(c.parent ? [':' + c.parent] : []), ...eq.map(expression)];
+      const parts = [...(c.parent ? [ref(c.parent)] : []), ...eq.map(expression)];
       lines.push(`:${c.id} owl:equivalentClass ${parts.length === 1 ? parts[0] : '[ a owl:Class ; owl:intersectionOf ( ' + parts.join(' ') + ' ) ]'} .`);
     }
   }

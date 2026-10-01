@@ -1,23 +1,30 @@
 {
   "name": "structra-scape",
   "version": "0.1.0",
-  "description": "A YAML-driven systems thinking and process modeling visualizer",
+  "description": "Turns AI-authored business process and ontology YAML into a self-contained HTML reader",
   "type": "module",
   "bin": {
     "strscape": "./src/index.js"
   },
-  "files": ["src", "samples", "README.md", "LICENSE"],
+  "files": [
+    "src",
+    "samples",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "node src/index.js build samples/support-backlog-loop.yaml --output dist",
-    "dev": "node src/index.js dev samples/support-backlog-loop.yaml",
-    "validate": "node src/index.js validate samples/support-backlog-loop.yaml",
-    "test": "node --test tests/validate.test.js tests/ontology.test.js tests/mutate.test.js tests/skills.test.js"
+    "build": "node src/index.js build samples/ontology/customer-contract.yaml --output dist",
+    "dev": "node src/index.js dev samples/ontology/",
+    "validate": "node src/index.js validate samples/ontology/customer-contract.yaml",
+    "test": "node --test tests/validate.test.js tests/ontology.test.js tests/mutate.test.js tests/skills.test.js tests/files.test.js"
   },
   "dependencies": {
     "chokidar": "^4.0.3",
     "commander": "^12.1.0",
     "cytoscape": "^3.33.1",
     "express": "^4.21.2",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.1",
+    "yaml": "^2.9.1"
   }
 }

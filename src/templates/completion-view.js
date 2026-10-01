@@ -9,20 +9,29 @@ completionRoot.setAttribute('aria-labelledby', 'completion-title');
 document.body.append(completionRoot);
 let unconfirmedMode = false;
 // Stable keys for styling each category; the labels themselves come from assessCompletion.
-const categoryKeys = { '未決定': 'undecided', '不足': 'missing', '未合意': 'unagreed', '不整合': 'conflict', 'データ対応': 'data' };
+const categoryKeys = { '未決定': 'undecided', '不足': 'missing', '未合意': 'unagreed', '不整合': 'conflict', 'データ対応': 'data', 'フロー': 'flow' };
 function renderUnconfirmed() {
   const report = assessCompletion(model);
   completionButton.innerHTML = uiIcon('chat') + `未確認事項<span class="unconfirmed-count"${report.issues.length ? '' : ' data-empty'}>${report.issues.length}</span>`;
   const groups = new Map();
   report.issues.forEach((issue, index) => {
-    const key = issue.id ? `${issue.kind}:${issue.id}` : 'model';
+    const key = issue.id ? `${issue.kind}:${issue.process || ''}:${issue.id}` : 'model';
     if (!groups.has(key)) groups.set(key, { ...issue, index, issues: [] });
     groups.get(key).issues.push(issue);
   });
   const affected = [...groups.values()].filter(group => group.id).length;
-  completionRoot.innerHTML = `<div class="completion-content"><h2 id="completion-title">未確認事項</h2><p>${esc(model.name)} · ${affected ? `${affected}つの用語・関係に、確認が必要な項目があります。` : report.issues.length ? 'モデルに確認が必要な項目があります。' : '記録上の未確認事項はありません。'}</p><div class="completion-counts">${Object.keys(categoryKeys).map(category => { const count = report.issues.filter(issue => issue.category === category).length; return `<span${count ? '' : ' data-zero'}><b>${count}</b>${category}</span>`; }).join('')}</div><p class="hint">用語名を押すと定義を確認できます。決まった内容は、根拠や具体例とともにAIへ反映を依頼してください。</p>${[...groups.values()].map(group => `<article class="completion-group"><h3>${group.id ? `<button data-completion-target="${group.index}">${esc(group.name)} ↗</button><code class="term-id">${esc(group.id)}</code>` : 'モデル全体'}<small>${group.issues.length}件</small></h3>${group.issues.map(issue => `<div class="completion-issue"><small data-category="${categoryKeys[issue.category] || ''}">${esc(issue.category)}</small><p>${esc(issue.message)}</p></div>`).join('')}</article>`).join('')}<details class="completion-policy"><summary>確認対象について</summary><p>用語・関係の説明、含む例、含まない例、根拠、合意状態、未決定のケースを確認します。データ対応は登録されている場合に確認します。</p><p>上位概念の循環と直接指定した個数条件の矛盾も確認しますが、すべての論理矛盾や業務上の抜けを検出するものではありません。未確認事項がなくなった後も、対象業務の範囲と定義の妥当性は業務担当者と確認してください。</p></details></div>`;
+  const groupTitle = group => group.kind === 'step' ? `${esc(group.processName)} › ${esc(group.name)}` : esc(group.name);
+  const kindLabel = { concept: 'ことば', property: 'つながり', process: '業務フロー', step: '作業' };
+  completionRoot.innerHTML = `<div class="completion-content"><h2 id="completion-title">未確認事項</h2><p>${esc(model.name)} · ${affected ? `${affected}つの用語・関係・作業に、確認が必要な項目があります。` : report.issues.length ? 'モデルに確認が必要な項目があります。' : '記録上の未確認事項はありません。'}</p><div class="completion-counts">${Object.keys(categoryKeys).map(category => { const count = report.issues.filter(issue => issue.category === category).length; return `<span${count ? '' : ' data-zero'}><b>${count}</b>${category}</span>`; }).join('')}</div><p class="hint">用語名を押すと定義を確認できます。決まった内容は、根拠や具体例とともにAIへ反映を依頼してください。</p>${[...groups.values()].map(group => `<article class="completion-group"><h3>${group.id ? `<button data-completion-target="${group.index}">${groupTitle(group)} ↗</button><span class="kind-tag">${kindLabel[group.kind]}</span><code class="term-id">${esc(group.id)}</code>` : 'モデル全体'}<small>${group.issues.length}件</small></h3>${group.issues.map(issue => `<div class="completion-issue"><small data-category="${categoryKeys[issue.category] || ''}">${esc(issue.category)}</small><p>${esc(issue.message)}</p></div>`).join('')}</article>`).join('')}<details class="completion-policy"><summary>確認対象について</summary><p>用語・関係の説明、含む例、含まない例、根拠、合意状態、未決定のケース、属性の説明と値の種類を確認します。データ対応は登録されている場合に確認します。</p><p>業務フローでは、作業の担当、分岐・並行・合流の矢印を確認します。開始・終了を置いたフローでは、開始からたどり着けない作業と行き止まりも確認します。</p><p>上位概念の循環と直接指定した個数条件の矛盾も確認しますが、すべての論理矛盾や業務上の抜けを検出するものではありません。未確認事項がなくなった後も、対象業務の範囲と定義の妥当性は業務担当者と確認してください。</p></details></div>`;
   completionRoot.querySelectorAll('[data-completion-target]').forEach(button => button.onclick = () => {
     const issue = report.issues[Number(button.dataset.completionTarget)];
+    if (issue.kind === 'step' || issue.kind === 'process') {
+      activeProcess = issue.kind === 'step' ? issue.process : issue.id;
+      activeStep = issue.kind === 'step' ? issue.id : null;
+      setProcessMode(true);
+      if (activeStep) pickStep(activeStep);
+      return;
+    }
     setProcessMode(false);
     selected = { kind: issue.kind, id: issue.id };
     $('search').value = '';
