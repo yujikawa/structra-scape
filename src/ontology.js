@@ -13,7 +13,8 @@ export function validateOntology(model) {
   if (model.kind !== 'ontology') errors.push('kind は ontology にしてください');
   if (typeof model.name !== 'string' || !model.name.trim()) errors.push('モデル名が必要です');
   if (typeof model.base !== 'string' || !/^https?:\/\/[^\s<>"{}|^`\\]+[#/]$/.test(model.base)) errors.push('base は # または / で終わる HTTP(S) IRI にしてください');
-  if (model.imports !== undefined && (!Array.isArray(model.imports) || model.imports.some(p => typeof p !== 'string' || !p.trim()))) errors.push('imports は共通定義YAMLへの相対パスの配列にしてください');
+  // Relative paths only, so a model cannot pull in files from arbitrary places on the machine.
+  if (model.imports !== undefined && (!Array.isArray(model.imports) || model.imports.some(p => typeof p !== 'string' || !p.trim() || /^([\\/]|[A-Za-z]:)/.test(p)))) errors.push('imports は共通定義YAMLへの相対パスの配列にしてください');
   const collections = ['concepts', 'properties', 'restrictions'];
   for (const key of collections) if (!Array.isArray(model[key])) errors.push(`${key} は配列にしてください`);
   if (errors.length) return errors;

@@ -19,15 +19,15 @@ function changeValue(value) {
 }
 function renderChanges() {
   const entry = entries[Number(entryIndex)];
-  changesButton.hidden = !entry?.baseline;
-  if (!entry?.baseline) { if (changesMode) setProcessMode(false); return; }
-  const changes = diffModels(entry.baseline.model, entry.model), agreed = changes.filter(c => c.agreed);
+  changesButton.hidden = !entry?.changes;
+  if (!entry?.changes) { if (changesMode) setProcessMode(false); return; }
+  const changes = entry.changes.list, agreed = changes.filter(c => c.agreed);
   changesButton.innerHTML = uiIcon('diff') + `変更点<span class="unconfirmed-count"${changes.length ? '' : ' data-empty'}>${changes.length}</span>`;
   const owner = c => c.entity === 'attribute' ? `${esc(c.conceptName)} › ` : ['step', 'flow'].includes(c.entity) ? `${esc(c.processName)} › ` : '';
   // Removed items and entries without an id (rules, flows) have nothing to open in the current model.
   const target = c => ({ concept: c.id, attribute: c.concept, property: c.id, process: c.id, step: c.id })[c.entity];
   const openable = c => target(c) !== undefined && (c.entity === 'attribute' ? entry.model.concepts.some(x => x.id === c.concept) : c.change !== 'removed');
-  changesRoot.innerHTML = `<div class="completion-content"><h2 id="changes-title">変更点</h2><p><span>比較元</span> <code class="term-id">${esc(entry.baseline.ref)}</code> · <span>${changes.length ? `${changes.length}件の変更` : '意味の変更はありません。'}</span></p>${entry.baseline.model ? '' : '<p class="hint">比較元のコミットにこのファイルはありません。すべて新規として表示します。</p>'}${agreed.length ? `<p class="question-banner">${uiIcon('chat')}合意済みの定義に関わる変更が${agreed.length}件あります。業務担当者と内容を確認してください。</p>` : ''}<p class="hint">図の配置（position）の変更は含みません。</p>${changes.map((c, i) => `<article class="completion-group change-entry${c.agreed ? ' agreed' : ''}"><h3><small class="change-type ${c.change}">${changeTypeLabels[c.change]}</small><span class="kind-tag">${changeKindLabels[c.entity]}</span>${openable(c) ? `<button data-change="${i}">${owner(c)}${esc(c.name)} ↗</button>` : `<span>${owner(c)}${esc(c.name)}</span>`}${c.id ? `<code class="term-id">${esc(c.id)}</code>` : ''}${c.agreed ? '<span class="review-badge agreed">合意済み</span>' : ''}</h3>${(c.fields || []).map(f => `<div class="change-field"><small>${esc(changeFieldLabels[f.field] || f.field)}</small><div class="change-before">${changeValue(f.before)}</div><div class="change-after">${changeValue(f.after)}</div></div>`).join('')}</article>`).join('')}</div>`;
+  changesRoot.innerHTML = `<div class="completion-content"><h2 id="changes-title">変更点</h2><p><span>比較元</span> <code class="term-id">${esc(entry.changes.ref)}</code> · <span>${changes.length ? `${changes.length}件の変更` : '意味の変更はありません。'}</span></p>${entry.changes.newFile ? '<p class="hint">比較元のコミットにこのファイルはありません。すべて新規として表示します。</p>' : ''}${agreed.length ? `<p class="question-banner">${uiIcon('chat')}合意済みの定義に関わる変更が${agreed.length}件あります。業務担当者と内容を確認してください。</p>` : ''}<p class="hint">図の配置（position）の変更は含みません。</p>${changes.map((c, i) => `<article class="completion-group change-entry${c.agreed ? ' agreed' : ''}"><h3><small class="change-type ${c.change}">${changeTypeLabels[c.change]}</small><span class="kind-tag">${changeKindLabels[c.entity]}</span>${openable(c) ? `<button data-change="${i}">${owner(c)}${esc(c.name)} ↗</button>` : `<span>${owner(c)}${esc(c.name)}</span>`}${c.id ? `<code class="term-id">${esc(c.id)}</code>` : ''}${c.agreed ? '<span class="review-badge agreed">合意済み</span>' : ''}</h3>${(c.fields || []).map(f => `<div class="change-field"><small>${esc(changeFieldLabels[f.field] || f.field)}</small><div class="change-before">${changeValue(f.before)}</div><div class="change-after">${changeValue(f.after)}</div></div>`).join('')}</article>`).join('')}</div>`;
   changesRoot.querySelectorAll('[data-change]').forEach(button => button.onclick = () => {
     const c = changes[Number(button.dataset.change)];
     if (c.entity === 'process' || c.entity === 'step') {

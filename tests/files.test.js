@@ -9,6 +9,8 @@ import { exportOntology } from '../src/ontology.js';
 import { readDocument, updateDocument, inspectDocument, promoteDefinitions } from '../src/mutate.js';
 import { diffModels } from '../src/diff.js';
 import { renderBundle } from '../src/build.js';
+import { dev } from '../src/dev.js';
+import http from 'node:http';
 
 function workspace(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-files-'));
@@ -81,17 +83,20 @@ test('semantic diff keys changes by id, ignores layout and flags agreed definiti
 test('build compares each model with a git revision', t => {
   const dir = workspace(t), git = (...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
   git('init', '-q'); git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-q', '--allow-empty', '-m', 'init');
+  updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Secret', value: { name: '旧い用語', description: '旧版だけにある機密の説明' } }] });
   git('add', 'customer-contract.yaml'); git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-q', '-m', 'model');
-  updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Contract', value: { example: '保守契約' } }] });
+  updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Contract', value: { example: '保守契約' } }, { op: 'remove', entity: 'concept', id: 'Secret' }] });
   const { html, files } = renderBundle(dir, { compare: 'HEAD' });
   const data = JSON.parse(html.match(/window.__STRUCTRA_DATA__ = (.*);/)[1]);
   const byName = Object.fromEntries(data.models.map(m => [m.slug, m]));
-  assert.deepEqual(diffModels(byName['customer-contract'].baseline.model, byName['customer-contract'].model).map(c => c.id), ['Contract']);
-  assert.equal(byName.billing.baseline.model, null);
+  assert.deepEqual(byName['customer-contract'].changes.list.map(c => [c.change, c.id]), [['changed', 'Contract'], ['removed', 'Secret']]);
+  assert.equal(byName.billing.changes.newFile, true);
+  // Only the changes are embedded: a value that exists only in the old revision does not leak.
+  assert.equal(html.includes('旧版だけにある機密の説明'), false);
   assert.ok(files.includes(path.join(dir, 'customer-contract.yaml')));
   const cli = spawnSync(process.execPath, [path.resolve('src/index.js'), 'diff', 'customer-contract.yaml', '--format', 'md'], { cwd: dir, encoding: 'utf8' });
   assert.match(cli.stdout, /変更・ことば：契約 \(Contract\)\n  - 具体例: （なし） → 保守契約/);
-  assert.equal(renderBundle(path.join(dir, 'billing.yaml')).html.includes('"baseline"'), false);
+  assert.equal(renderBundle(path.join(dir, 'billing.yaml')).html.includes('"changes":{'), false);
 });
 
 test('promote moves definitions into a shared file that other models already import', t => {
@@ -115,4 +120,29 @@ test('promote moves definitions into a shared file that other models already imp
   assert.equal(readDocument(path.join(dir, 'shared', 'billing-terms.yaml')).model.base, 'https://example.com/common#');
   assert.throws(() => updateDocument(source, { operations: [{ op: 'upsert', entity: 'model', value: { concepts: [] } }] }), { code: 'VALUE' });
   assert.equal(fs.readdirSync(dir).some(n => n.endsWith('.lock')), false);
+});
+
+test('hardening: dev answers only local hosts, stale locks are recovered, unsafe inputs are refused', async t => {
+  const dir = workspace(t), file = path.join(dir, 'customer-contract.yaml');
+  const server = dev(file, { port: 0, compare: false });
+  t.after(() => server.close());
+  await new Promise(resolve => server.once('listening', resolve));
+  const port = server.address().port;
+  const get = host => new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port, path: '/', headers: { host } }, res => { res.resume(); resolve(res.statusCode); }).on('error', reject));
+  assert.equal(await get(`localhost:${port}`), 200);
+  assert.equal(await get(`127.0.0.1:${port}`), 200);
+  // A rebinding attack reaches 127.0.0.1 under the attacker's host name.
+  assert.equal(await get(`attacker.example:${port}`), 403);
+
+  const lock = file + '.lock';
+  fs.writeFileSync(lock, `${os.hostname()} 999999`);
+  assert.equal(updateDocument(file, { operations: [{ op: 'upsert', entity: 'concept', id: 'Contract', value: { example: 'x' } }] }).saved, true);
+  fs.writeFileSync(lock, `${os.hostname()} ${process.pid}`);
+  assert.throws(() => updateDocument(file, { operations: [{ op: 'upsert', entity: 'concept', id: 'Contract', value: { example: 'y' } }] }), { code: 'LOCKED' });
+  fs.rmSync(lock);
+
+  const billing = path.join(dir, 'billing.yaml');
+  fs.writeFileSync(billing, fs.readFileSync(billing, 'utf8').replace('  - customer-contract.yaml', `  - ${file}`));
+  assert.match(validateFile(billing).join(), /相対パス/);
+  assert.throws(() => renderBundle(file, { compare: '--output=pwned' }), /Invalid git revision/);
 });

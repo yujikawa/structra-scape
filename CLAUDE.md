@@ -29,7 +29,7 @@ Inside this repo, use `node src/index.js` wherever the docs say `strscape`. No l
 
 **Build is string templating, with no bundler.** `build.js#renderBundle` reads one YAML file, or every `*.yaml` file directly inside a directory. It validates them, then replaces `<!-- PLACEHOLDER -->` comments in the HTML template with inlined sources, and returns the HTML plus every source file (including imports) for the dev watcher. `renderModel` returns only the HTML.
 - the `cytoscape` minified build, resolved through `require.resolve`
-- the model JSON as `window.__STRUCTRA_DATA__`; with `compare`, each entry also carries `baseline: {ref, model}` read from git by `baseline.js`
+- the model JSON as `window.__STRUCTRA_DATA__`; with `compare`, each entry also carries `changes: {ref, newFile, list}` computed from the git baseline (`baseline.js`). The old model itself is never embedded
 - **shared Node/browser modules** (`ontology.js`, `publication.js`, `completion.js`, `diff.js`, `i18n.js`), with `^export ` stripped
 - browser-only scripts from `src/templates/*.js`
 
@@ -44,7 +44,7 @@ Code in those shared modules runs both in Node (CLI and tests) and as plain brow
 - Colors are tokens on `:root`. Navy (`--accent`) marks business meaning and navigation, teal (`--data`) marks the data layer (IDs, attributes, data mapping), and amber (`--warn`) marks open items.
 - New UI text must be added to `i18n.js`. Translation works per DOM text node, so keep each label in its own node and model text in separate nodes.
 
-**Dev server.** `dev.js` serves `renderBundle` output with Express on `127.0.0.1` by default, comparing with git `HEAD` unless `--no-compare`. Chokidar watches the YAML and its imports and pushes reload or error messages over SSE at `/events`. When the YAML is invalid, it keeps serving the last valid HTML. Templates are read at render time.
+**Dev server.** `dev.js` serves `renderBundle` output with Express on `127.0.0.1` by default, rejects requests whose Host header is not a local name (DNS rebinding), comparing with git `HEAD` unless `--no-compare`. Chokidar watches the YAML and its imports and pushes reload or error messages over SSE at `/events`. When the YAML is invalid, it keeps serving the last valid HTML. Templates are read at render time.
 
 **AI mutation CLI.** `mutate.js#registerAuthoringCommands` adds these subcommands: `inspect`, `concept|property|process|step get/upsert/remove`, and `apply`.
 - These commands work on ontology models only.

@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { loadModel, validateModel } from './validate.js';
 import { importedFiles } from './imports.js';
 import { gitBaseline } from './baseline.js';
+import { diffModels } from './diff.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Resolve dependencies through Node so hoisted installs (npm, pnpm) work too.
@@ -17,7 +18,8 @@ export function renderModel(file, options) {
   return renderBundle(file, options).html;
 }
 
-// `compare` names a git revision; each model then carries its baseline for the changes view.
+// `compare` names a git revision; each model then carries its changes since that revision. Only the
+// changes are embedded, not the old model, so a shared page does not carry the previous version.
 export function renderBundle(file, { compare } = {}) {
   const absolute = path.resolve(process.cwd(), file);
   if (!fs.existsSync(absolute)) throw new Error(`File not found: ${file}`);
@@ -32,7 +34,8 @@ export function renderBundle(file, { compare } = {}) {
     if (errors.length) throw new Error(`Cannot build invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);
     sources.push(...importedFiles(model, modelFile));
     const baseline = compare ? gitBaseline(modelFile, compare) : null;
-    return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model, ...(baseline ? { baseline } : {}) };
+    const changes = baseline && { ref: baseline.ref, newFile: !baseline.model, list: diffModels(baseline.model, model) };
+    return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model, ...(changes ? { changes } : {}) };
   });
   const page = template('ontology.html');
   const logo = template('structra-scape-mark.svg');

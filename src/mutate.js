@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import yaml from 'js-yaml';
@@ -92,13 +93,37 @@ function guardAgreed(before, after, allowed) {
   if (agreed.length && !allowed) throw Object.assign(new Error('Agreed definitions would change. Confirm with the user, then retry with --allow-agreed-change'), { code: 'AGREED_CHANGE', errors: agreed.map(describeChange) });
   return changes.map(c => ({ entity: c.entity, change: c.change, id: c.id, name: c.name, ...(c.process ? { process: c.process } : {}), ...(c.concept ? { concept: c.concept } : {}), ...(c.fields ? { fields: c.fields.map(f => f.field) } : {}), ...(c.agreed ? { agreed: true } : {}) }));
 }
+// A lock records "<host> <pid>". It is stale when that process on this host no longer runs, or
+// when it is empty (the writer died before recording itself) and older than a few seconds.
+function staleLock(lock) {
+  let text, stat;
+  try { text = fs.readFileSync(lock, 'utf8').trim(); stat = fs.statSync(lock); } catch { return false; }
+  if (!text) return Date.now() - stat.mtimeMs > 5000;
+  const [host, pid] = text.split(' ');
+  if (host !== os.hostname() || !/^\d+$/.test(pid)) return false;
+  try { process.kill(Number(pid), 0); return false; } catch (e) { return e.code === 'ESRCH'; }
+}
+function acquire(lock) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = fs.openSync(lock, 'wx');
+      fs.writeSync(fd, `${os.hostname()} ${process.pid}`);
+      return fd;
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      // Take over a lock left by a crashed writer; another live writer keeps it.
+      if (attempt === 0 && staleLock(lock)) { fs.rmSync(lock, { force: true }); continue; }
+      fail('LOCKED', `Another CLI writer holds ${lock}; retry after it finishes`);
+    }
+  }
+}
 // Hold the CLI lock of every file for the duration of fn. Locks are taken in a fixed order.
 function withLocks(files, fn) {
   const held = [];
   try {
     for (const file of [...new Set(files)].sort()) {
       const lock = file + '.lock';
-      try { held.push([fs.openSync(lock, 'wx'), lock]); } catch (e) { if (e.code === 'EEXIST') fail('LOCKED', `Another CLI writer holds ${lock}; retry after it finishes`); throw e; }
+      held.push([acquire(lock), lock]);
     }
     return fn();
   } finally {

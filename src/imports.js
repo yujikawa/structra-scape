@@ -13,7 +13,7 @@ const slash = value => value.split(path.sep).join('/');
 export function resolveImports(model, file, stack = [], overrides = new Map()) {
   if (model?.kind !== 'ontology' || model.imports === undefined) return model;
   const absolute = path.resolve(file), dir = path.dirname(absolute);
-  if (!Array.isArray(model.imports) || model.imports.some(p => typeof p !== 'string' || !p.trim())) throw new Error('imports は共通定義YAMLへの相対パスの配列にしてください');
+  if (!Array.isArray(model.imports) || model.imports.some(p => typeof p !== 'string' || !p.trim() || path.isAbsolute(p) || /^[A-Za-z]:/.test(p))) throw new Error('imports は共通定義YAMLへの相対パスの配列にしてください');
   for (const key of ['concepts', 'properties', 'restrictions']) {
     if (Array.isArray(model[key]) && model[key].some(item => item?.imported_from !== undefined)) throw new Error('imported_from は読み込み時に付与されます。YAMLには書かないでください');
   }

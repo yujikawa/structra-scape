@@ -8,6 +8,8 @@ const git = (cwd, args) => execFileSync('git', ['-C', cwd, ...args], { encoding:
 // The model as it was at a git revision. Returns null when the file is not in a git work tree or
 // the revision does not exist; an empty model when the file did not exist at that revision.
 export function gitBaseline(file, ref = 'HEAD') {
+  // A revision is never an option: refuse values git would parse as flags.
+  if (typeof ref !== 'string' || !ref || ref.startsWith('-')) throw new Error(`Invalid git revision: ${ref}`);
   const absolute = path.resolve(file), cwd = path.dirname(absolute);
   try { git(cwd, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]); } catch { return null; }
   let text;
