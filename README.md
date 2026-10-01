@@ -14,7 +14,7 @@ YAMLが正本です。ビューアは閲覧専用で、内容の変更はAIか�
 
 ## インストール
 
-Node.js 20以上が必要です。
+Node.js 22以上が必要です。
 
 ```bash
 npm install -g structra-scape
