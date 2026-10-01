@@ -28,6 +28,8 @@ export function renderModel(file) {
     // other sequences with a special meaning in String#replace replacement text.
     .replace('<!-- STRUCTRA_CYTOSCAPE_BUNDLE -->', () => cytoscape)
     .replace('<!-- STRUCTRA_LOGO -->', () => logo)
+    // Inline the logo as the tab icon so the single-file output stays self-contained.
+    .replace('<!-- STRUCTRA_FAVICON -->', () => `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(logo)}">`)
     .replace('<!-- STRUCTRA_MODEL_DATA -->', () => `window.__STRUCTRA_DATA__ = ${data};`)
     .replace('<!-- ONTOLOGY_CORE -->', () => fs.readFileSync(path.join(here, 'ontology.js'), 'utf8').replace(/^export /gm, ''))
     .replace('<!-- PROCESS_EDITOR -->', () => fs.readFileSync(path.join(here, 'templates', 'process-editor.js'), 'utf8'))
