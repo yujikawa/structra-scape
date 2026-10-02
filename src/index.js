@@ -8,7 +8,8 @@ import { createModel } from './init.js';
 import { loadModel, validateFile } from './validate.js';
 import { dev } from './dev.js';
 import { exportOntology } from './ontology.js';
-import { registerAuthoringCommands } from './mutate.js';
+import { registerAuthoringCommands, jsonAction } from './mutate.js';
+import { registerAnswerCommands } from './answers.js';
 import { installSkills } from './skills.js';
 import { publicationMarkdown, publicationSvg } from './publication.js';
 import { diffModels, changesMarkdown } from './diff.js';
@@ -99,4 +100,5 @@ program.command('guide').description('Print the YAML authoring guide for AI agen
 
 // AI-facing commands: JSON in, JSON out.
 registerAuthoringCommands(program);
+registerAnswerCommands(program, jsonAction);
 program.parse();

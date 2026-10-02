@@ -4,7 +4,10 @@
 export function assessCompletion(model) {
   const issues = [];
   const text = value => typeof value === 'string' && value.trim().length > 0;
-  const add = (category, message, target, ask) => issues.push({ category, message, ...(ask ? { ask } : {}), ...target });
+  const add = (category, message, target, ask) => {
+    const issue = { category, message, ...(ask ? { ask } : {}), ...target };
+    issues.push({ key: completionIssueKey(issue), ...issue });
+  };
   // Imported definitions are reviewed in the model that owns them.
   const local = item => !item.imported_from;
   const entries = [...model.concepts.filter(local).map(item => ({ item, kind: 'concept' })), ...model.properties.filter(local).map(item => ({ item, kind: 'property' }))];
@@ -63,6 +66,15 @@ export function assessCompletion(model) {
   for (const p of model.processes || []) assessProcess(p, add, text);
   const ready = entries.filter(({ item, kind }) => !issues.some(issue => issue.kind === kind && issue.id === item.id)).length;
   return { issues, ready, total: entries.length };
+}
+
+// Stable key of an open item, shared by the viewer's answer form and `strscape answers`. It
+// covers the question text, so an answer never carries over to a reworded question.
+export function completionIssueKey(issue) {
+  const text = [issue.category, issue.kind || '', issue.process || '', issue.id || '', issue.ask || issue.message].join('\u0000');
+  let hash = 0x811c9dc5;
+  for (const char of text) hash = Math.imul(hash ^ char.codePointAt(0), 0x01000193) >>> 0;
+  return 'q' + hash.toString(16).padStart(8, '0');
 }
 
 // Structural checks of a recorded flow. Reachability and dead ends are checked only when the

@@ -20,7 +20,7 @@ test('init scaffolds both agents in working folder and protects existing files',
  for(const folder of ['.agents','.claude']){
   const skill=path.join(dir,folder,'skills/strscape-modeling');
   assert.ok(fs.readFileSync(path.join(skill,'SKILL.md'),'utf8').includes('expect-revision'));
-  for(const reference of ['modeling.md','workspace.md','cli-recipes.md','review.md'])assert.ok(fs.existsSync(path.join(skill,'references',reference)),reference);
+  for(const reference of ['modeling.md','workspace.md','cli-recipes.md','review.md','answers.md'])assert.ok(fs.existsSync(path.join(skill,'references',reference)),reference);
  }
  // The variants differ where the agents differ: invocation, arguments and the preview server.
  const claudeSkill=fs.readFileSync(path.join(dir,'.claude/skills/strscape-modeling/SKILL.md'),'utf8'),codexSkill=fs.readFileSync(path.join(dir,'.agents/skills/strscape-modeling/SKILL.md'),'utf8');

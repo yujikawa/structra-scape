@@ -10,11 +10,23 @@
   from `assessCompletion` now carries an `ask` next to its `message`), with gentler category
   names (決めたいこと, 教えてほしいこと, …). The data view keeps the recording tasks.
 - Definition cards open the term's full detail when its name is selected.
+- Business users can answer open questions in the business view. Answers are kept in the
+  browser and exported as `answers-<model>-<time>.json`; under `strscape dev` they are saved
+  to `answers/` next to the models instead. An answer disappears once its question is no
+  longer asked by the model.
+
+### CLI
+- `questions <file>` lists the business view's open questions with stable keys (each issue
+  from `assessCompletion` now has a `key`).
+- `answers <file|dir>` reads exported answers and marks whether each question is still
+  open; `--resolve <keys...>` removes recorded answers and deletes the file once empty.
+- Builds embed each model's file name and revision, which exported answers carry.
 
 ### Skills
 - `references/modeling.md`: write `question` as a plain question business users can answer
   (they see it as-is in the business view); data-team questions go in `data_mapping.gap`.
 - `references/review.md`: the hand-off report mentions the データ向け switch.
+- `references/answers.md`: how to record answers from business users and remove them.
 
 ## 0.1.0 — 2026-10-01
 

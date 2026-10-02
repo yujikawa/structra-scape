@@ -35,7 +35,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test tests/ontology.test.js tests/mutate.test.js tests/skills.test.js tests/files.test.js",
+    "test": "node --test tests/ontology.test.js tests/mutate.test.js tests/skills.test.js tests/files.test.js tests/answers.test.js",
     "test:browser": "node --test tests/browser.test.js",
     "dev": "node src/index.js dev samples/",
     "build": "node src/index.js build samples/ --output dist"

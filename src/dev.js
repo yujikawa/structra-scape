@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { renderBundle } from './build.js';
+import { saveAnswers } from './answers.js';
 
 export function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } = {}) {
   const absolute = path.resolve(process.cwd(), file);
@@ -29,18 +30,32 @@ export function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } 
     // Re-render on each page load so a new commit is picked up as the comparison baseline.
     refresh();
     try {
-      const reload = '<script>const stream=new EventSource("/events");stream.onmessage=e=>{const message=JSON.parse(e.data);if(message.reload){location.reload();return}let panel=document.getElementById("sync-status");if(!message.error){panel?.remove();return}if(!panel){panel=document.createElement("div");panel.id="sync-status";panel.setAttribute("role","alert");panel.style.cssText="padding:10px 20px;background:#fff3d5;white-space:pre-wrap;font:12px system-ui";document.body.prepend(panel)}panel.textContent="YAMLの修正待ち（最後の正常な図を表示）\\n"+message.error};stream.onerror=()=>{document.title="接続待ち · structra-scape"}</script>';
+      const reload = '<script>window.__STRUCTRA_DEV__=true;const stream=new EventSource("/events");stream.onmessage=e=>{const message=JSON.parse(e.data);if(message.reload){location.reload();return}let panel=document.getElementById("sync-status");if(!message.error){panel?.remove();return}if(!panel){panel=document.createElement("div");panel.id="sync-status";panel.setAttribute("role","alert");panel.style.cssText="padding:10px 20px;background:#fff3d5;white-space:pre-wrap;font:12px system-ui";document.body.prepend(panel)}panel.textContent="YAMLの修正待ち（最後の正常な図を表示）\\n"+message.error};stream.onerror=()=>{document.title="接続待ち · structra-scape"}</script>';
       res.type('html').send((html || '<html><body><h1>YAMLの修正を待っています</h1></body></html>').replace('</body>', `${reload}</body>`));
     } catch (error) {
       res.status(400).type('text').send(`Model error:\n${error.message}`);
     }
+  });
+  // Answers from the viewer go to answers/ next to the models, for the AI to pick up. Only this
+  // page may post: a JSON body needs a CORS preflight, which is never granted, and the Origin
+  // must be the page itself.
+  const answersDir = fs.statSync(absolute).isDirectory() ? absolute : path.dirname(absolute);
+  app.post('/answers', express.json({ limit: '2mb' }), (req, res) => {
+    if (req.headers.origin !== `http://${req.headers.host}`) return res.status(403).json({ ok: false, errors: ['Origin not allowed'] });
+    try {
+      const file = saveAnswers(answersDir, req.body);
+      console.log(`  ✓ Answers saved: ${path.relative(process.cwd(), file)}`);
+      res.json({ ok: true, file: path.relative(process.cwd(), file) });
+    } catch (error) { res.status(error.code === 'INVALID' ? 400 : 500).json({ ok: false, errors: [error.message] }); }
   });
   app.get('/events', (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
     clients.add(res); req.on('close', () => clients.delete(res));
     res.write(`data: ${JSON.stringify({error:issue})}\n\n`);
   });
-  watcher.on('all', () => {
+  // Only YAML matters: answers saved under the models folder (and the folder itself) must not reload the page.
+  watcher.on('all', (_event, changed) => {
+    if (!/\.ya?ml$/i.test(changed)) return;
     refresh();
     for (const client of clients) client.write(`data: ${JSON.stringify(issue?{error:issue}:{reload:true})}\n\n`);
     console.log(issue?'  ! Invalid YAML; keeping last valid view':'  ↻ YAML updated');

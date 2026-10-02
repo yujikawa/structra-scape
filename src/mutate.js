@@ -236,8 +236,11 @@ function promoteLocked(source, target, ids, to, file, { dryRun, expectRevision, 
   });
 }
 
+// Wraps a command for agents: prints its result as JSON, or {ok: false, code, errors} with exit code 1.
+export const jsonAction = fn => (...args) => { try { console.log(JSON.stringify(fn(...args))); } catch (e) { console.log(JSON.stringify({ ok: false, code: e.code || 'ERROR', ...(e.errors ? { message: e.message } : {}), ...(e.missing ? { missing: e.missing } : {}), errors: e.errors || [e.message] })); process.exitCode = 1; } };
+
 export function registerAuthoringCommands(program) {
-  const run = fn => (...args) => { try { console.log(JSON.stringify(fn(...args))); } catch (e) { console.log(JSON.stringify({ ok: false, code: e.code || 'ERROR', ...(e.errors ? { message: e.message } : {}), ...(e.missing ? { missing: e.missing } : {}), errors: e.errors || [e.message] })); process.exitCode = 1; } };
+  const run = jsonAction;
   const input = file => JSON.parse(fs.readFileSync(file === '-' ? 0 : file, 'utf8'));
   program.command('inspect <file>').description('Read model and revision as JSON').action(run(file => inspectDocument(file)));
   program.command('apply <file>').description('Apply a JSON transaction; input - reads stdin')

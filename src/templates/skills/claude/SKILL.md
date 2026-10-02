@@ -1,6 +1,6 @@
 ---
 name: strscape-modeling
-description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions, record open questions about meaning, or change anything under models/*.yaml, even if they do not name structra-scape.
+description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
 argument-hint: "[整理したい業務・用語・変更内容]"
 allowed-tools: Bash(strscape:*)
 ---
@@ -19,6 +19,7 @@ Read them when the step below points to them:
 - `references/workspace.md` — which file to write, imports, moving terms to common.yaml
 - `references/cli-recipes.md` — tested patch JSON for each kind of change, and error codes
 - `references/review.md` — checks before handing off, and the report format
+- `references/answers.md` — taking in answers business users wrote in the viewer
 
 ## 1. Get oriented
 
@@ -37,6 +38,10 @@ Use `references/modeling.md` to choose between concept, attribute, property, ali
 subtype, rule and case. Ask the user only when the answer changes the model (same or
 different meaning, who decides, which domain). Otherwise proceed and record what you
 assumed as a `question` so it shows up in the viewer's 未確認事項.
+
+Answers from business users (an `answers-*.json` file, or `models/answers/`) are
+handled with `references/answers.md`: read them with `strscape answers`, record what they
+settle, then remove the recorded ones with `--resolve`.
 
 ## 3. Write through the CLI
 

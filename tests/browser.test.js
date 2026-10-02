@@ -55,7 +55,29 @@ test('every view of the built reader runs without page errors', async t => {
   await page.click('#mode-unconfirmed');
   assert.equal(await page.locator('.completion-issue small[data-category="data"]').count(), 0);
   assert.ok(await page.locator('.completion-issue p', { hasText: 'どんなものが含まれますか？' }).count() > 0);
+  // Business users answer in place and export the answers as a file for the data team.
+  await page.fill('#answer-name', '営業部 山田');
+  await page.locator('.answer-field textarea').first().fill('株式会社や合同会社');
+  assert.equal(await page.innerText('.answer-summary'), '1件の回答を入力済み');
+  const [saved] = await Promise.all([page.waitForEvent('download'), page.click('#answer-export')]);
+  const exported = JSON.parse(fs.readFileSync(await saved.path(), 'utf8'));
+  assert.equal(exported.kind, 'strscape-answers');
+  assert.equal(exported.model, 'customer-contract.yaml');
+  assert.equal(exported.answered_by, '営業部 山田');
+  assert.deepEqual(exported.answers.map(a => a.answer), ['株式会社や合同会社']);
+  assert.match(exported.answers[0].key, /^q[0-9a-f]{8}$/);
+  assert.equal(await page.isVisible('.answer-exported'), true);
+  // Answers survive a reload; an answer whose question is no longer asked is dropped.
+  await page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem(answerStoreKey()));
+    stored.answers.qdeadbeef = { answer: '反映済み', exported: true };
+    localStorage.setItem(answerStoreKey(), JSON.stringify(stored));
+  });
+  await page.reload();
+  assert.equal(await page.inputValue('.answer-field textarea >> nth=0'), '株式会社や合同会社');
+  assert.deepEqual(Object.keys(await page.evaluate(() => JSON.parse(localStorage.getItem(answerStoreKey())).answers)), [exported.answers[0].key]);
   await page.selectOption('#audience', 'data');
+  assert.equal(await page.locator('.answer-field').count(), 0);
   assert.ok(await page.locator('.completion-issue small[data-category="data"]').count() > 0);
   assert.ok(await page.locator('.completion-issue p', { hasText: '含む具体例を記録してください。' }).count() > 0);
 

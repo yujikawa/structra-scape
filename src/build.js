@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { loadModel, validateModel } from './validate.js';
 import { importedFiles } from './imports.js';
 import { gitBaseline } from './baseline.js';
@@ -35,7 +36,9 @@ export function renderBundle(file, { compare } = {}) {
     sources.push(...importedFiles(model, modelFile));
     const baseline = compare ? gitBaseline(modelFile, compare) : null;
     const changes = baseline && { ref: baseline.ref, newFile: !baseline.model, list: diffModels(baseline.model, model) };
-    return { slug: path.basename(modelFile, path.extname(modelFile)), name: model.name || path.basename(modelFile), model, ...(changes ? { changes } : {}) };
+    // file and revision identify the YAML an exported answers file refers to.
+    const revision = createHash('sha256').update(fs.readFileSync(modelFile, 'utf8')).digest('hex');
+    return { slug: path.basename(modelFile, path.extname(modelFile)), file: path.basename(modelFile), revision, name: model.name || path.basename(modelFile), model, ...(changes ? { changes } : {}) };
   });
   const page = template('ontology.html');
   const logo = template('structra-scape-mark.svg');
@@ -53,7 +56,7 @@ export function renderBundle(file, { compare } = {}) {
     .replace('<!-- PROCESS_VIEW -->', () => template('process-view.js'))
     .replace('<!-- PROCESS_HIERARCHY -->', () => template('process-hierarchy.js'))
     .replace('<!-- VIEW_STATE -->', () => template('view-state.js'))
-    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('audience-view.js'), template('completion-view.js'), template('changes-view.js')].join('\n'))
+    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('audience-view.js'), template('completion-view.js'), template('answers-view.js'), template('changes-view.js')].join('\n'))
     .replace('<!-- LANGUAGE_VIEW -->', () => shared('i18n.js') + '\n' + template('language-view.js'));
   return { html, files: [...new Set(sources)] };
 }
