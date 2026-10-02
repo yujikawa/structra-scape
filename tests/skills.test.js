@@ -12,7 +12,14 @@ test('init scaffolds both agents in working folder and protects existing files',
  const initialized=run(['init']);assert.equal(initialized.status,0);
  assert.ok(fs.existsSync(path.join(dir,'models/business.yaml')));
  assert.match(initialized.stdout,/strscape dev "models\/"/);
+ // The models folder carries the reading guide; a README already there is left alone.
+ const readme=path.join(dir,'models/README.md'),reading=fs.readFileSync('src/templates/reading.md','utf8');
+ assert.equal(fs.readFileSync(readme,'utf8'),reading);
+ assert.equal(run(['guide','--read']).stdout,reading);
+ assert.match(run(['guide']).stdout,/^# AI authoring guide/);
+ fs.writeFileSync(readme,'custom');
  assert.equal(run(['init','models/contracts.yaml','--no-skills']).status,0);
+ assert.equal(fs.readFileSync(readme,'utf8'),'custom');
  assert.equal(run(['build','models/','--output','dist']).status,0);
  assert.ok(fs.readFileSync(path.join(dir,'dist/index.html'),'utf8').includes('"slug":"contracts"'));
  fs.renameSync(path.join(dir,'models/business.yaml'),path.join(dir,'models/initial.yaml'));
@@ -36,6 +43,7 @@ test('init scaffolds both agents in working folder and protects existing files',
  assert.equal(fs.existsSync(codexSkillFile),false);
  assert.equal(run(['init','other.yaml']).status,1);assert.equal(fs.existsSync(path.join(dir,'other.yaml')),false);
  assert.equal(run(['init','plain.yaml','--no-skills']).status,0);
+ assert.equal(fs.existsSync(path.join(dir,'README.md')),false);
  installSkills({directory:dir,force:true});assert.notEqual(fs.readFileSync(target,'utf8'),'custom');assert.ok(fs.existsSync(codexSkillFile));
 });
 

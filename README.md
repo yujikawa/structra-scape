@@ -29,6 +29,7 @@ npm install -g github:yujikawa/structra-scape
 ```text
 作業フォルダ/
   models/business.yaml
+  models/README.md                            # モデルの読み方（YAMLを受け取ったAI向け）
   .agents/skills/strscape-modeling/SKILL.md   # Codex
   .claude/skills/strscape-modeling/SKILL.md   # Claude Code
 ```
@@ -42,6 +43,7 @@ strscape build models/ --output dist   # 共有用の1ファイルHTMLを出力
 
 - `init --codex` / `init --claude` でどちらか一方のスキルだけを入れられます。`--no-skills` はYAMLのみを作成します。既存のYAMLは上書きしません。
 - 新しい領域は `strscape init models/contracts.yaml --no-skills` で追加します。
+- `models/README.md` は、YAMLだけを渡されたAI向けの読み方ガイドです（合意済みと案の見分け方、分類条件の読み方、取り込み先が欠けているときの扱いなど）。`models/` を共有するときは一緒に渡してください。既にある `README.md` は上書きしません。既存のフォルダには `strscape guide --read > models/README.md` で作れます。
 - 既存プロジェクトには `strscape skills`（`--directory <フォルダ>`、`--agent codex|claude|both`）でスキルを追加できます。独自に編集されたスキルは上書きしません。意図して更新する場合だけ `--force` を指定してください。
 - スキルは `SKILL.md`（Codex版とClaude Code版で起動方法・プレビューの扱いが異なります）と、共通の参照資料 `references/`（モデル化の判断基準、ファイル分割と共通定義、動作確認済みの更新例、引き渡し前のチェック）で構成されます。
 
@@ -217,7 +219,7 @@ strscape diff models/business.yaml --format md
 |---|---|
 | `init [file]` | モデルとスキルを作成（既定は `models/business.yaml`） |
 | `skills` | Codex / Claude Code用のスキルを追加 |
-| `guide` | AI向けのYAML記述ルールを表示 |
+| `guide [--read]` | AI向けのYAML記述ルールを表示。`--read` はYAMLを読むAI向けの読み方ガイド（`models/README.md` と同じ内容） |
 | `validate <file> [--json]` | 検証。`--json` は `{valid, errors}` を出力し、失敗時は終了コード1 |
 | `dev <file\|dir>` | プレビューサーバー。`--port`、`--host`（既定 `127.0.0.1`。LANで共有する場合は `0.0.0.0`）、`--compare <rev>` / `--no-compare` |
 | `build <file\|dir>` | 1ファイルのHTMLを出力。`--output`、`--compare <rev>` |

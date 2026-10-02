@@ -24,6 +24,13 @@
   diagram). Dragged positions last while the page is open and are never saved to the YAML.
 
 ### CLI
+- `guide --read` prints a guide for AIs that are handed a model rather than editing it: how
+  settled each statement is (agreed vs. draft, open questions, unresolved cases, proposed
+  data mappings), how to read classification rules, and what to do when an imported file is
+  missing. `init` puts the same guide in the models folder as `README.md` (never in the
+  project root, never over an existing README). Tested with fresh agents: without it, a
+  smaller model misread `equivalent` and `allValuesFrom` rules and treated a proposed data
+  mapping as usable; with it, it answered all of them correctly.
 - `overview <dir>` prints the same overview as JSON or Markdown (`--format md`).
 - `questions <file>` lists the open questions that have an answer box, with stable keys (each issue
   from `assessCompletion` now has a `key`).

@@ -17,13 +17,14 @@ node --test --test-name-pattern "UI translations" tests/ontology.test.js   # run
 npm run validate / build / dev             # run against samples/
 node src/index.js dev samples/ --port 4175
 node src/index.js guide                    # prints src/templates/authoring.md (the AI authoring contract)
+node src/index.js guide --read             # prints src/templates/reading.md (how an AI given only the YAML should read it; init copies it to models/README.md)
 ```
 
 Inside this repo, use `node src/index.js` wherever the docs say `strscape`. No lint or format tooling is configured. `npm test` lists its test files explicitly in `package.json`, so a new test file must be added there.
 
 ## Architecture
 
-**One model format.** A model is `kind: ontology` YAML: `concepts` (with optional `aliases` and `attributes`) / `properties` / `restrictions` / `processes` (with `steps` and `flows`). It is validated by `ontology.js#validateOntology` and rendered with `templates/ontology.html`. The project is pre-release: there is no backward compatibility to keep, so change formats and commands freely and update samples, recipes and docs with them.
+**One model format.** A model is `kind: ontology` YAML: `concepts` (with optional `aliases` and `attributes`) / `properties` / `restrictions` / `processes` (with `steps` and `flows`). It is validated by `ontology.js#validateOntology` and rendered with `templates/ontology.html`. The project is pre-release: there is no backward compatibility to keep, so change formats and commands freely and update samples, recipes and docs with them, including `templates/reading.md` (the reading guide for AIs handed a model).
 
 **Imports.** An ontology model may list `imports` (relative YAML paths). `imports.js#resolveImports` merges their concepts/properties/restrictions, tagged with `imported_from`, plus an `imported_models` list. `validate.js#loadModel` resolves by default (`{ resolve: false }` for the raw file). Anything that writes or diffs must use the raw model; completion, diff and OWL export skip `imported_from` entries.
 

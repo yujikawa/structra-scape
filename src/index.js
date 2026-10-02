@@ -108,8 +108,9 @@ program.command('skills')
   .option('--force', 'replace skill files that were edited')
   .action(human(options => { for (const file of installSkills(options)) console.log(`  ✓ Skill: ${file}`); }));
 
-program.command('guide').description('Print the YAML authoring guide for AI agents')
-  .action(() => process.stdout.write(fs.readFileSync(fileURLToPath(new URL('./templates/authoring.md', import.meta.url)), 'utf8')));
+program.command('guide').description('Print the YAML authoring guide for AI agents; --read prints the guide for reading a model')
+  .option('--read', 'how to read a model (for AIs that are given the YAML, not editing it)')
+  .action(options => process.stdout.write(fs.readFileSync(fileURLToPath(new URL(`./templates/${options.read ? 'reading' : 'authoring'}.md`, import.meta.url)), 'utf8')));
 
 // AI-facing commands: JSON in, JSON out.
 registerAuthoringCommands(program);

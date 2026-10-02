@@ -13,6 +13,9 @@ models/
   build read direct children only.
 - Respect a file the user names, including older files outside `models/`. Never move,
   rename or merge files on your own.
+- `models/README.md` (created by `init`) tells an AI that is handed the models how to read
+  them. When the user shares or uploads models, suggest including it; if it is missing,
+  `strscape guide --read > models/README.md` creates it.
 
 ## Extend, split or share?
 
