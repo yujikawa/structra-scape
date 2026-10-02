@@ -39,23 +39,67 @@ test('every view of the built reader runs without page errors', async t => {
   const models = await page.$$eval('#model-choice option', options => options.map(o => o.value));
   assert.ok(models.length >= 3);
 
-  // Business users are the default audience: no IDs, no data mapping tab, terms open on the definitions list.
-  assert.equal(await page.inputValue('#audience'), 'business');
+  // Several domains open on the overview: domains are boxes, and selecting one opens its model.
+  assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'true');
+  assert.match(await page.innerText('#overview-summary'), /^3つのドメイン/);
+  assert.ok(await page.locator('#overview-details .overview-table').count() === 1);
+  const boxes = await page.evaluate(() => overviewGraph.nodes('[kind="domain"]').length);
+  assert.equal(boxes, 3);
+  const crossing = await page.evaluate(() => overviewGraph.nodes('[kind="concept"]').length);
+  await page.uncheck('#overview-cross');
+  assert.ok(await page.evaluate(() => overviewGraph.nodes('[kind="concept"]').length) > crossing);
+  // Every diagram can be dragged; positions survive a redraw but are never written anywhere.
+  const drag = async (container, graph, id) => {
+    const area = await page.locator(container).boundingBox();
+    const from = await page.evaluate(([g, n]) => window.eval(g).$id(n).renderedPosition(), [graph, id]);
+    await page.mouse.move(area.x + from.x, area.y + from.y);
+    await page.mouse.down();
+    await page.mouse.move(area.x + from.x + 90, area.y + from.y + 70, { steps: 6 });
+    await page.mouse.up();
+    return page.evaluate(([g, n]) => window.eval(g).$id(n).position(), [graph, id]);
+  };
+  const invoice = 'concept:billing.yaml#Invoice';
+  const before = await page.evaluate(id => overviewGraph.$id(id).position(), invoice);
+  const moved = await drag('#overview-cy', 'overviewGraph', invoice);
+  assert.notDeepEqual(moved, before);
+  await page.check('#overview-cross');
+  await page.uncheck('#overview-cross');
+  assert.deepEqual(await page.evaluate(id => overviewGraph.$id(id).position(), invoice), moved);
+  assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'true');
+  await page.evaluate(() => overviewGraph.$id('domain:billing.yaml').emit('tap'));
+  assert.equal(await page.$eval('#model-choice', select => select.selectedOptions[0].textContent), '請求の定義');
+  assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'false');
+  await page.click('#mode-process');
+  const step = await page.evaluate(() => pc.nodes()[1].id());
+  const stepMoved = await drag('#process-cy', 'pc', step);
+  await page.click('#mode-ontology');
+  await page.click('#mode-process');
+  assert.deepEqual(await page.evaluate(id => pc.$id(id).position(), step), stepMoved);
+  await page.click('#mode-overview');
+  await page.evaluate(() => overviewGraph.$id('concept:customer-contract.yaml#Contract').emit('tap'));
+  assert.equal(await page.innerText('#detail h2'), '契約');
+
+  // One view for everyone: IDs and the data mapping tab are shown; terms open on the definitions list.
+  assert.equal(await page.locator('#audience').count(), 0);
   await page.selectOption('#model-choice', { label: '顧客と契約の定義' });
   await page.click('#mode-ontology');
   assert.equal(await page.isVisible('#review-board'), true);
   await page.locator('#concepts button').first().click();
-  assert.equal(await page.isVisible('.reader-id'), false);
-  assert.equal(await page.locator('.reader-tabs button:visible').count(), 2);
+  assert.equal(await page.isVisible('.reader-id'), true);
+  assert.equal(await page.locator('.reader-tabs button:visible').count(), 3);
   await page.click('#mode-ontology');
   await page.locator('[data-review-term]').nth(1).click();
   assert.equal(await page.isVisible('#review-board'), false);
   assert.equal(await page.locator('#concepts button.active').count(), 1);
-  assert.equal(await page.innerText('#detail h2'), (await page.innerText('#concepts button.active')).trim());
+  assert.equal(await page.innerText('#detail h2'), await page.$eval('#concepts button.active', button => button.firstChild.textContent.trim()));
   await page.click('#mode-unconfirmed');
-  assert.equal(await page.locator('.completion-issue small[data-category="data"]').count(), 0);
+  // Open items read as questions, with the recording task underneath; data mappings have no answer box.
   assert.ok(await page.locator('.completion-issue p', { hasText: 'どんなものが含まれますか？' }).count() > 0);
-  // Business users answer in place and export the answers as a file for the data team.
+  assert.ok(await page.locator('.completion-issue p.issue-task', { hasText: '含む具体例を記録してください。' }).count() > 0);
+  const dataItems = page.locator('.completion-issue:has(small[data-category="data"])');
+  assert.ok(await dataItems.count() > 0);
+  assert.equal(await dataItems.locator('.answer-field').count(), 0);
+  // Answers are written in place and exported as a file for whoever maintains the model.
   await page.fill('#answer-name', '営業部 山田');
   await page.locator('.answer-field textarea').first().fill('株式会社や合同会社');
   assert.equal(await page.innerText('.answer-summary'), '1件の回答を入力済み');
@@ -76,14 +120,9 @@ test('every view of the built reader runs without page errors', async t => {
   await page.reload();
   assert.equal(await page.inputValue('.answer-field textarea >> nth=0'), '株式会社や合同会社');
   assert.deepEqual(Object.keys(await page.evaluate(() => JSON.parse(localStorage.getItem(answerStoreKey())).answers)), [exported.answers[0].key]);
-  await page.selectOption('#audience', 'data');
-  assert.equal(await page.locator('.answer-field').count(), 0);
-  assert.ok(await page.locator('.completion-issue small[data-category="data"]').count() > 0);
-  assert.ok(await page.locator('.completion-issue p', { hasText: '含む具体例を記録してください。' }).count() > 0);
 
-  for (const [language, audience] of [['ja', 'data'], ['en', 'business']]) {
+  for (const language of ['ja', 'en']) {
     await page.selectOption('#ui-language', language);
-    await page.selectOption('#audience', audience);
     for (const model of models) {
       await page.selectOption('#model-choice', model);
       await page.click('#mode-ontology');
@@ -101,6 +140,8 @@ test('every view of the built reader runs without page errors', async t => {
       await page.click('#mode-process');
       // Open each step, and drill into detail flows through the tree.
       await clickAll('#process-list button:not(.tree-toggle)');
+      await page.click('#mode-overview');
+      await page.click('#overview-fit');
       await page.click('#mode-unconfirmed');
       const targets = await page.$$('[data-completion-target]');
       if (targets.length) { await targets.at(-1).click(); await page.click('#mode-unconfirmed'); }

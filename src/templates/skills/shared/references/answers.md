@@ -1,6 +1,6 @@
 # Taking in answers from business users
 
-Business users answer open questions in the viewer's business view (未確認事項). They hand
+Business users answer open questions in the viewer's 未確認事項 view. They hand
 the answers over as a JSON file (`answers-<model>-<time>.json`), or the dev server saves
 them under `models/answers/`. Your job is to record what the answers settle in the model,
 then remove the answers you recorded. The YAML stays the only record; the answers file is

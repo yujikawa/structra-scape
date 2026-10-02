@@ -5,14 +5,14 @@ function saveViewState() {
   let id = activeProcess;
   while (id && !ancestors.includes(id)) { ancestors.push(id); id = parents.get(id)?.process; }
   const scroll = {};
-  for (const selector of ['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#review-board']) {
+  for (const selector of ['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#overview-workspace','#review-board']) {
     const element = document.querySelector(selector);
     if (element) scroll[selector] = element.scrollTop;
   }
   try {
     sessionStorage.setItem(viewStateKey, JSON.stringify({
       slug: entries[Number(entryIndex)]?.slug, selected, activeProcess, activeStep, ancestors,
-      mode: changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
+      mode: overviewMode ? 'overview' : changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
       search: $('search').value, zoom: cy.zoom(), pan: cy.pan(), pz: pc.zoom(), pp: pc.pan(),
       hierarchy: [...hierarchyViews], collapsedBranches: [...collapsedBranches], scroll,
       detailTab: [...document.querySelectorAll('.reader-tabs button')].findIndex(b=>b.getAttribute('aria-pressed')==='true')
@@ -28,7 +28,8 @@ window.addEventListener('pagehide', saveViewState);
 setTimeout(() => {
   let state;
   try { state = JSON.parse(sessionStorage.getItem(viewStateKey)); } catch {}
-  if (!state || typeof state !== 'object') { if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
+  // A workspace of several domains opens on its overview.
+  if (!state || typeof state !== 'object') { if(!overviewButton.hidden)overviewButton.click(); else if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
   const index = entries.findIndex(e=>e.slug===state.slug);
   if (state.slug && index < 0) { if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
   if (index >= 0) {
@@ -47,6 +48,7 @@ setTimeout(() => {
   setProcessMode(mode==='process');
   if(mode==='unconfirmed')completionButton.click();
   if(mode==='changes'&&!changesButton.hidden)changesButton.click();
+  if(mode==='overview'&&!overviewButton.hidden)overviewButton.click();
   if(mode==='definitions')setReview(true);
   restoreGraphView(cy,state.zoom,state.pan);
   if(activeProcess===state.activeProcess)restoreGraphView(pc,state.pz,state.pp);
@@ -60,9 +62,9 @@ setTimeout(() => {
   for(const entry of Array.isArray(state.hierarchy)?state.hierarchy:[]) {
     if(Array.isArray(entry)&&model.processes?.some(p=>p.id===entry[0])&&entry[1])hierarchyViews.set(entry[0],entry[1]);
   }
-  if(Number.isInteger(state.detailTab)){ const tab=document.querySelectorAll('.reader-tabs button')[state.detailTab]; if(tab&&(showsDataLayer()||!tab.classList.contains('data-only')))tab.click(); }
+  if(Number.isInteger(state.detailTab)){ const tab=document.querySelectorAll('.reader-tabs button')[state.detailTab]; if(tab)tab.click(); }
   for(const [selector,top] of Object.entries(state.scroll || {})) {
-    if(['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#review-board'].includes(selector)&&Number.isFinite(top)) {
+    if(['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#overview-workspace','#review-board'].includes(selector)&&Number.isFinite(top)) {
       const element=document.querySelector(selector);if(element)element.scrollTop=top;
     }
   }

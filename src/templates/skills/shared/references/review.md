@@ -40,7 +40,7 @@ Write in the user's language. Keep it short and concrete:
 
 ## 確認方法
 `strscape dev models/` を開き、「変更点」と「未確認事項」タブを見てください。
-IDとデータ対応の残件は、ヘッダーで「データ向け」に切り替えると表示されます。
+未確認事項の回答欄に書いて書き出すと、次の更新で取り込めます。
 ```
 
 Mention any agreed definitions that changed (and that the user confirmed them), any file

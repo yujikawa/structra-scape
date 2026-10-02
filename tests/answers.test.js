@@ -35,7 +35,7 @@ test('open item keys are stable and change with the question', () => {
   assert.notDeepEqual(after, before);
 });
 
-test('questions list the business view items; answers track whether each is still asked', t => {
+test('questions list the items that take answers; answers track whether each is still asked', t => {
   const dir = workspace(t), file = path.join(dir, 'customer-contract.yaml');
   const questions = openQuestions(file);
   assert.equal(questions.model, 'customer-contract.yaml');
@@ -95,7 +95,8 @@ test('the build embeds the file name and revision that exported answers refer to
 test('dev saves answers posted by its own page under answers/', async t => {
   const dir = workspace(t), file = path.join(dir, 'customer-contract.yaml');
   const server = dev(dir, { port: 0, compare: false });
-  t.after(() => server.close());
+  // The reload stream below stays open: drop the connections so the server can close.
+  t.after(() => { server.closeAllConnections(); server.close(); });
   await new Promise(resolve => server.once('listening', resolve));
   const port = server.address().port, host = `localhost:${port}`;
   const post = (body, headers) => new Promise((resolve, reject) => {
@@ -107,7 +108,6 @@ test('dev saves answers posted by its own page under answers/', async t => {
   // Listen to the reload stream: saving answers must not reload the page.
   const messages = [];
   const events = http.get({ host: '127.0.0.1', port, path: '/events', headers: { host } }, res => res.on('data', chunk => messages.push(String(chunk))));
-  t.after(() => events.destroy());
   const questions = openQuestions(file), payload = answersFor(questions, [[questions.questions[0], 'はい']]);
   assert.equal((await post(payload, { origin: 'http://attacker.example' })).status, 403);
   assert.equal((await post(payload, {})).status, 403);

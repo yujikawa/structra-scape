@@ -16,7 +16,11 @@ models/
 
 ## Extend, split or share?
 
-Before adding anything, list `models/*.yaml` and `inspect` the candidates.
+Before adding anything, list `models/*.yaml` and `inspect` the candidates. With several
+domain files, `strscape overview models/ --format md` shows how they connect: hand-overs
+between processes, terms used across files, and words already defined in another domain.
+A new term whose name or alias another domain already uses is either the same thing
+(import it) or needs telling apart (record the difference as a question).
 
 | Situation | Do this |
 |---|---|

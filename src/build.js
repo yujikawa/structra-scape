@@ -21,24 +21,32 @@ export function renderModel(file, options) {
 
 // `compare` names a git revision; each model then carries its changes since that revision. Only the
 // changes are embedded, not the old model, so a shared page does not carry the previous version.
-export function renderBundle(file, { compare } = {}) {
+// One YAML file, or every YAML file directly inside a folder, validated with imports resolved.
+export function loadWorkspace(file) {
   const absolute = path.resolve(process.cwd(), file);
   if (!fs.existsSync(absolute)) throw new Error(`File not found: ${file}`);
   const modelFiles = fs.statSync(absolute).isDirectory()
     ? fs.readdirSync(absolute).filter(name => /\.ya?ml$/i.test(name)).map(name => path.join(absolute, name))
     : [absolute];
   if (modelFiles.length === 0) throw new Error(`No YAML files found in ${file}`);
-  const sources = [...modelFiles];
-  const models = modelFiles.map(modelFile => {
+  return modelFiles.map(modelFile => {
     let model, errors;
     try { model = loadModel(modelFile); errors = validateModel(model); } catch (error) { errors = [error.message]; }
-    if (errors.length) throw new Error(`Cannot build invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);
-    sources.push(...importedFiles(model, modelFile));
+    if (errors.length) throw new Error(`Invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);
+    return { path: modelFile, slug: path.basename(modelFile, path.extname(modelFile)), file: path.basename(modelFile), name: model.name || path.basename(modelFile), model };
+  });
+}
+
+export function renderBundle(file, { compare } = {}) {
+  const workspace = loadWorkspace(file);
+  const sources = workspace.map(entry => entry.path);
+  const models = workspace.map(({ path: modelFile, ...entry }) => {
+    sources.push(...importedFiles(entry.model, modelFile));
     const baseline = compare ? gitBaseline(modelFile, compare) : null;
-    const changes = baseline && { ref: baseline.ref, newFile: !baseline.model, list: diffModels(baseline.model, model) };
+    const changes = baseline && { ref: baseline.ref, newFile: !baseline.model, list: diffModels(baseline.model, entry.model) };
     // file and revision identify the YAML an exported answers file refers to.
     const revision = createHash('sha256').update(fs.readFileSync(modelFile, 'utf8')).digest('hex');
-    return { slug: path.basename(modelFile, path.extname(modelFile)), file: path.basename(modelFile), revision, name: model.name || path.basename(modelFile), model, ...(changes ? { changes } : {}) };
+    return { slug: entry.slug, file: entry.file, revision, name: entry.name, model: entry.model, ...(changes ? { changes } : {}) };
   });
   const page = template('ontology.html');
   const logo = template('structra-scape-mark.svg');
@@ -56,7 +64,7 @@ export function renderBundle(file, { compare } = {}) {
     .replace('<!-- PROCESS_VIEW -->', () => template('process-view.js'))
     .replace('<!-- PROCESS_HIERARCHY -->', () => template('process-hierarchy.js'))
     .replace('<!-- VIEW_STATE -->', () => template('view-state.js'))
-    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('audience-view.js'), template('completion-view.js'), template('answers-view.js'), template('changes-view.js')].join('\n'))
+    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('completion-view.js'), template('answers-view.js'), template('changes-view.js'), shared('workspace.js'), template('overview-view.js')].join('\n'))
     .replace('<!-- LANGUAGE_VIEW -->', () => shared('i18n.js') + '\n' + template('language-view.js'));
   return { html, files: [...new Set(sources)] };
 }

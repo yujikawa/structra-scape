@@ -12,7 +12,7 @@ const object = value => value && typeof value === 'object' && !Array.isArray(val
 const text = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 const ANSWERS_KIND = 'strscape-answers';
 
-// The questions shown in the viewer's business view: everything except data-mapping work.
+// The questions the viewer offers an answer box for: everything except data-mapping work.
 export function openQuestions(file) {
   const absolute = path.resolve(process.cwd(), file);
   const source = fs.readFileSync(absolute, 'utf8');

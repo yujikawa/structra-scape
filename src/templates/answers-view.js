@@ -23,7 +23,7 @@ renderUnconfirmed = function() {
   const stale = Object.keys(answerStore.answers).filter(key => !open.has(key));
   for (const key of stale) delete answerStore.answers[key];
   if (stale.length) writeAnswerStore(answerStore);
-  if (showsDataLayer() || !open.size) return;
+  if (!open.size) return;
   const content = completionRoot.querySelector('.completion-content');
   const bar = document.createElement('section');
   bar.className = 'answer-bar';

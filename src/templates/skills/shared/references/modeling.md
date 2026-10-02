@@ -56,10 +56,11 @@ Rules of thumb:
 - `evidence`: where the definition came from (a meeting, a document, a person's role).
   Write "assumption by AI from <source>" when you inferred it.
 - `question`: anything you had to guess. A concept with a question gets
-  `review_state: discussion`. The viewer's default business view shows it as-is to business
+  `review_state: discussion`. The viewer shows it as-is, with an answer box, to business
   users, so write a plain question they can answer directly, without IDs, table or column
   names (「停止中の契約は有効契約に含めますか？」). Questions only the data team can answer
-  go in `data_mapping.gap` (section 5), which only the data view shows.
+  go in `data_mapping.gap` (section 5), which is listed as data-mapping work without an
+  answer box.
 - `review_state`: leave `draft` (or omit) for new definitions. Set `agreed` only when the
   user states that the business owners agreed. Never infer agreement from confidence.
 

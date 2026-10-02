@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import yaml from 'js-yaml';
-import { build } from './build.js';
+import { build, loadWorkspace } from './build.js';
+import { workspaceOverview, overviewMarkdown } from './workspace.js';
 import { createModel } from './init.js';
 import { loadModel, validateFile } from './validate.js';
 import { dev } from './dev.js';
@@ -85,6 +86,18 @@ program.command('diff <file>')
       const changes = diffModels(baseline.model, yaml.load(fs.readFileSync(file, 'utf8')));
       if (options.format === 'md') process.stdout.write(changesMarkdown(changes, { base: baseline.ref }));
       else console.log(JSON.stringify({ ok: true, base: baseline.ref, agreed: changes.filter(c => c.agreed).length, changes }));
+    } catch (e) { console.log(JSON.stringify({ ok: false, errors: [e.message] })); process.exitCode = 1; }
+  });
+
+program.command('overview <path>')
+  .description('Show how the domain models in a folder connect: hand-overs, shared definitions and overlapping terms')
+  .option('--format <format>', 'json or md', 'json')
+  .action((target, options) => {
+    try {
+      if (!['json', 'md'].includes(options.format)) throw new Error('format must be json or md');
+      const overview = workspaceOverview(loadWorkspace(target));
+      if (options.format === 'md') process.stdout.write(overviewMarkdown(overview));
+      else console.log(JSON.stringify({ ok: true, ...overview }));
     } catch (e) { console.log(JSON.stringify({ ok: false, errors: [e.message] })); process.exitCode = 1; }
   });
 

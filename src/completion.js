@@ -1,6 +1,6 @@
 // Shared, deterministic checks of recorded information; not an OWL reasoner.
 // `message` tells the modeler what to record; `ask` (when set) is the same item as a question
-// for business users, shown in the viewer's business view.
+// for business users, shown in the viewer above the task.
 export function assessCompletion(model) {
   const issues = [];
   const text = value => typeof value === 'string' && value.trim().length > 0;

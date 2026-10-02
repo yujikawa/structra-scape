@@ -45,7 +45,7 @@ function organizeDetail(item){
  if(!usage.querySelector('button'))usage.querySelector('.hint').textContent='このYAMLには作業との関連づけが未登録です。業務上の関係がないことを意味しません。';
  const data=sections.at(-1);data.open=true;
  const nav=document.createElement('div');nav.className='reader-tabs';nav.setAttribute('role','group');nav.setAttribute('aria-label','定義の表示内容');
- const panes=['意味','業務での利用','データとの対応'].map((label,i)=>{const pane=document.createElement('section');pane.hidden=i!==0;const button=document.createElement('button');button.textContent=label;if(i===2){button.classList.add('data-only');pane.classList.add('data-only')}button.setAttribute('aria-pressed',String(i===0));button.onclick=()=>{panes.forEach((p,j)=>p.hidden=j!==i);[...nav.children].forEach((b,j)=>b.setAttribute('aria-pressed',String(i===j)))};nav.append(button);return pane});
+ const panes=['意味','業務での利用','データとの対応'].map((label,i)=>{const pane=document.createElement('section');pane.hidden=i!==0;const button=document.createElement('button');button.textContent=label;button.setAttribute('aria-pressed',String(i===0));button.onclick=()=>{panes.forEach((p,j)=>p.hidden=j!==i);[...nav.children].forEach((b,j)=>b.setAttribute('aria-pressed',String(i===j)))};nav.append(button);return pane});
  for(const section of sections.filter(x=>x.tagName!=='H2'&&!x.classList.contains('reader-id')))panes[section===usage?1:section===data?2:0].append(section);
  root.append(nav,...panes);
  if(item.cases?.length)panes[0].insertAdjacentHTML('beforeend',`<h3>このケースは含む？</h3>${item.cases.map(c=>`<article class="case-card ${esc(c.result)}"><strong>${esc(({included:'含む',excluded:'含まない',unresolved:'要確認'})[c.result])}</strong><p>${esc(c.description)}</p>${c.reason?`<p class="hint">${esc(c.reason)}</p>`:''}</article>`).join('')}`);
@@ -58,16 +58,19 @@ function processDetail(){
  $('process-detail').querySelectorAll('[data-term]').forEach(b=>b.onclick=()=>openConcept(b.dataset.term));
 }
 // Consistent, labelled SVG icons across navigation and graph controls.
-const iconPaths={book:'M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16',flow:'M3 3h6v6H3z M15 15h6v6h-6z M6 9v9h9',data:'M3 6c0-5 18-5 18 0s-18 5-18 0 M3 6v12c0 5 18 5 18 0V6 M3 12c0 5 18 5 18 0',download:'M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5',fit:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',plus:'M12 5v14 M5 12h14',minus:'M5 12h14',check:'M4 12l5 5L20 6',chat:'M3 3h18v14H9l-6 4z',help:'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18v1',task:'M4 5h16v14H4z',decision:'M12 2l10 10-10 10L2 12z',circle:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',diff:'M7 3v13 M4 13l3 3 3-3 M17 21V8 M14 11l3-3 3 3'};
+const iconPaths={book:'M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16',map:'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15',flow:'M3 3h6v6H3z M15 15h6v6h-6z M6 9v9h9',data:'M3 6c0-5 18-5 18 0s-18 5-18 0 M3 6v12c0 5 18 5 18 0V6 M3 12c0 5 18 5 18 0',download:'M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5',fit:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',plus:'M12 5v14 M5 12h14',minus:'M5 12h14',check:'M4 12l5 5L20 6',chat:'M3 3h18v14H9l-6 4z',help:'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18v1',task:'M4 5h16v14H4z',decision:'M12 2l10 10-10 10L2 12z',circle:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',diff:'M7 3v13 M4 13l3 3 3-3 M17 21V8 M14 11l3-3 3 3'};
 function uiIcon(name){return `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${iconPaths[name]||iconPaths.book}"/></svg>`}
 function labelIcon(element,name){if(element&&!element.querySelector('.ui-icon'))element.insertAdjacentHTML('afterbegin',uiIcon(name));}
 labelIcon($('diagram-toggle'),'flow');labelIcon($('review-toggle'),'book');
 labelIcon($('mode-ontology'),'book');labelIcon($('mode-process'),'flow');
 labelIcon(exportMenu.querySelector('summary'),'download');
-const helpMenu=document.createElement('details');helpMenu.className='header-menu';helpMenu.innerHTML=`<summary>${uiIcon('help')}使い方</summary><div class="menu-panel"><strong>業務とことばを確認する</strong><p>左の一覧や図から対象を選びます。詳細のリンクで、作業と用語の定義を行き来できます。</p><p>「データ向け」に切り替えると、IDとデータとの対応を表示します。</p><p>内容の変更はAIに依頼してください。YAMLを保存すると、この画面に反映されます。</p><p>図はドラッグで移動、＋／−で拡大縮小できます。「全体」で表示を戻します。</p></div>`;document.querySelector('header').append(helpMenu);
+const helpMenu=document.createElement('details');helpMenu.className='header-menu';helpMenu.innerHTML=`<summary>${uiIcon('help')}使い方</summary><div class="menu-panel"><strong>業務とことばを確認する</strong><p>左の一覧や図から対象を選びます。詳細のリンクで、作業と用語の定義を行き来できます。</p><p>内容の変更はAIに依頼してください。YAMLを保存すると、この画面に反映されます。</p><p>図はドラッグで移動、＋／−で拡大縮小できます。「全体」で表示を戻します。</p></div>`;document.querySelector('header').append(helpMenu);
 helpMenu.addEventListener('toggle',()=>{if(helpMenu.open)exportMenu.open=false});exportMenu.addEventListener('toggle',()=>{if(exportMenu.open)helpMenu.open=false});
 for(const [container,graph,fitId] of [[document.querySelector('.canvas'),cy,'fit'],[document.querySelector('.process-canvas'),pc,'flow-fit']]){
  const controls=document.createElement('div');controls.className='graph-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','図の表示操作');
  for(const [name,label,factor] of [['minus','縮小',1/1.2],['plus','拡大',1.2]]){const b=document.createElement('button');b.innerHTML=uiIcon(name);b.title=label;b.setAttribute('aria-label',label);b.onclick=()=>graph.zoom({level:Math.max(.1,Math.min(3,graph.zoom()*factor)),renderedPosition:{x:graph.width()/2,y:graph.height()/2}});controls.append(b)}
  const fit=$(fitId);fit.title='図全体を表示';fit.setAttribute('aria-label','図全体を表示');labelIcon(fit,'fit');controls.append(fit);container.append(controls);
 }
+// Terms open on the definitions list; the relationship diagram is one click away.
+function openTerms(){setProcessMode(false);setReview(true)}
+$('mode-ontology').onclick=()=>openTerms();
