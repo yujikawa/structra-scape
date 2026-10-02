@@ -56,7 +56,10 @@ Rules of thumb:
 - `evidence`: where the definition came from (a meeting, a document, a person's role).
   Write "assumption by AI from <source>" when you inferred it.
 - `question`: anything you had to guess. A concept with a question gets
-  `review_state: discussion`.
+  `review_state: discussion`. The viewer's default business view shows it as-is to business
+  users, so write a plain question they can answer directly, without IDs, table or column
+  names (「停止中の契約は有効契約に含めますか？」). Questions only the data team can answer
+  go in `data_mapping.gap` (section 5), which only the data view shows.
 - `review_state`: leave `draft` (or omit) for new definitions. Set `agreed` only when the
   user states that the business owners agreed. Never infer agreement from confidence.
 
@@ -84,10 +87,13 @@ Data mappings document where a business definition lives in data; they are not p
   evidence you can cite.
 - `source` must come from what the user gave you or what is visible in the repository
   (SQL, dbt models, schema files). Never invent table or column names; if you only know
-  the concept exists in data somewhere, leave the mapping out and add a question.
+  the concept exists in data somewhere, leave the mapping out and tell the user in your
+  report; do not turn it into a `question`, which business users would see.
 - `condition`: how the implementation selects members (text, not executable).
-  `gap`: how that differs from the business definition. An SQL filter is an observation
-  about the implementation, never evidence of business agreement.
+  `gap`: how that differs from the business definition, and what the data team still has
+  to check. An SQL filter is an observation about the implementation, never evidence of
+  business agreement. When the gap needs a business decision, also put that decision as a
+  plain `question` on the concept or attribute.
 
 ## 6. IDs and names
 

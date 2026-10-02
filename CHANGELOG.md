@@ -11,6 +11,11 @@
   names (決めたいこと, 教えてほしいこと, …). The data view keeps the recording tasks.
 - Definition cards open the term's full detail when its name is selected.
 
+### Skills
+- `references/modeling.md`: write `question` as a plain question business users can answer
+  (they see it as-is in the business view); data-team questions go in `data_mapping.gap`.
+- `references/review.md`: the hand-off report mentions the データ向け switch.
+
 ## 0.1.0 — 2026-10-01
 
 First release.
