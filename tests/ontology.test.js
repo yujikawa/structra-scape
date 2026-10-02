@@ -34,6 +34,18 @@ test('completion does not treat empty or merely agreed definitions as complete',
   assert.ok(report.issues.some(i => i.category === 'データ対応'));
 });
 
+test('open items carry a question for business users, except data-side items', () => {
+  const issues = assessCompletion(sample()).issues;
+  const contract = issues.filter(i => i.id === 'Contract');
+  assert.ok(contract.some(i => i.message === '含む具体例を記録してください。' && i.ask === '具体的には、どんなものが含まれますか？'));
+  assert.ok(issues.some(i => i.id === 'Customer' && i.ask === '「契約開始日が来月の法人」は含みますか、含みませんか？'));
+  assert.ok(issues.filter(i => i.category === 'データ対応').every(i => !i.ask));
+  // Every recording task (not already a question) has a business-facing question.
+  assert.ok(issues.filter(i => i.category !== 'データ対応' && i.category !== '未決定').every(i => i.ask?.endsWith('？')));
+  for (const i of issues.filter(i => i.ask)) assert.notEqual(translateUI(i.ask, 'en'), i.ask, i.ask);
+  assert.equal(translateUI('「顧客」は、「契約顧客」「法人」のどれを指しますか？', 'en'), 'Which does “顧客” mean: “契約顧客”, “法人”?');
+});
+
 test('completion accepts recorded cases and optional mapping without mutating model', () => {
   const m = { concepts: [{ id: 'A', name: 'A', description: 'definition', evidence: 'meeting', review_state: 'agreed', cases: [{ description: 'yes', result: 'included' }, { description: 'no', result: 'excluded' }] }], properties: [], restrictions: [] };
   const before = structuredClone(m);

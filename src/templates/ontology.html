@@ -48,7 +48,10 @@ header>details,header>select:not(#model-choice){flex-shrink:0}
 .mode-bar button.active{color:var(--accent-ink);border-bottom-color:var(--accent)}
 .unconfirmed-count{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:12px;text-align:center}
 .unconfirmed-count[data-empty]{background:var(--ok-soft);color:var(--ok)}
-#ui-language{flex-shrink:0}
+#ui-language,#audience{flex-shrink:0}
+/* Business view (the default) hides IDs and the data layer; the data view shows them. */
+body:not(.audience-data) .data-only,body:not(.audience-data) .reader-id,
+body:not(.audience-data) :is(.list button,.review-card .entry-head,.attribute,.completion-group h3,.change-entry h3)>.term-id{display:none!important}
 .header-menu{position:relative}
 .header-menu summary{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--rule-strong);border-radius:6px;font-size:13px;list-style:none;cursor:pointer;white-space:nowrap}
 .header-menu summary::-webkit-details-marker{display:none}
@@ -122,6 +125,8 @@ body.reviewing #cy,body.reviewing .canvas>.graph-controls{visibility:hidden}
 .review-grid{background:var(--surface);border:1px solid var(--rule);border-radius:10px}
 .review-card{display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px;padding:22px 26px;border-top:1px solid var(--rule)}
 .review-card:first-child{border-top:0}
+.review-card h3 button{padding:0;border:0;background:none;color:var(--accent-ink);font:inherit;text-align:left}
+.review-card h3 button:hover{text-decoration:underline}
 .entry-head h3{margin:8px 0 2px;font-size:18px;line-height:1.4}
 .entry-head .hint{margin-top:6px}
 .entry-body{display:grid;gap:12px;font-size:14px}
@@ -227,7 +232,7 @@ details.reader-section>summary~*{margin-left:2px}
 .completion-content{max-width:960px;margin:0 auto}
 .completion-content h2{font-size:24px;letter-spacing:-.01em}
 .completion-content>p{margin-top:4px;color:var(--ink-2)}
-.completion-counts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin:20px 0 10px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.completion-counts{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);margin:20px 0 10px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
 .completion-counts span{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-left:1px solid var(--rule);font-size:12px;color:var(--ink-2)}
 .completion-counts span:first-child{border-left:0}
 .completion-counts b{font-size:22px;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums}
@@ -237,7 +242,7 @@ details.reader-section>summary~*{margin-left:2px}
 .completion-group h3 button{padding:0;border:0;background:none;color:var(--accent-ink);font-size:16px;font-weight:700;text-align:left}
 .completion-group h3 button:hover{text-decoration:underline}
 .completion-group h3 small{margin-left:auto;font-weight:400}
-.completion-issue{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px;padding:11px 18px;border-top:1px solid var(--sunken)}
+.completion-issue{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px;padding:11px 18px;border-top:1px solid var(--sunken)}
 .completion-group h3+.completion-issue{border-top:0}
 .completion-issue small{justify-self:start;padding:1px 9px;border-radius:999px;background:var(--sunken);color:var(--ink-2);font-size:12px;font-weight:600}
 .completion-issue small[data-category="undecided"]{background:var(--warn-soft);color:var(--warn)}
@@ -286,7 +291,7 @@ details.reader-section>summary~*{margin-left:2px}
   body.reviewing .workspace{display:flex}
   #review-board{position:relative;inset:auto;min-height:60vh;padding:72px 16px 32px}
   .review-card{grid-template-columns:1fr;gap:10px}
-  .completion-counts{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+  .completion-counts{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
   .completion-issue,.change-field{grid-template-columns:1fr;gap:4px}
   #unconfirmed-workspace,#changes-workspace{overflow:visible;padding:24px 16px 40px}
 }
@@ -385,7 +390,9 @@ function focusSelection(){
 }
 function updateReview(){
   const agreed=model.concepts.filter(c=>c.review_state==='agreed').length;
-  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card"><div class="entry-head"><span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span><h3>${esc(c.name)}</h3><code class="term-id">${esc(c.id)}</code>${c.imported_from?`<p class="imported-note"><span>共通定義から読み込み</span><code>${esc(c.imported_from)}</code></p>`:''}${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}${c.aliases?.length?`<p class="aliases"><span>別名</span>${c.aliases.map(a=>`<span class="alias">${esc(a)}</span>`).join('')}</p>`:''}</div><div class="entry-body"><p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}${(c.attributes||[]).map(a=>`<li><span class="kind-tag">属性</span> ${esc(a.name)}${a.type?` <small>${esc(attributeTypes[a.type])}</small>`:''}</li>`).join('')}</ul></div></article>`).join('')}</div>`;
+  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p><p class="hint">名前を押すと、具体例や使われている作業を確認できます。</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card"><div class="entry-head"><span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span><h3><button data-review-term="${esc(c.id)}">${esc(c.name)} ↗</button></h3><code class="term-id">${esc(c.id)}</code>${c.imported_from?`<p class="imported-note"><span>共通定義から読み込み</span><code>${esc(c.imported_from)}</code></p>`:''}${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}${c.aliases?.length?`<p class="aliases"><span>別名</span>${c.aliases.map(a=>`<span class="alias">${esc(a)}</span>`).join('')}</p>`:''}</div><div class="entry-body"><p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}${(c.attributes||[]).map(a=>`<li><span class="kind-tag">属性</span> ${esc(a.name)}${a.type?` <small>${esc(attributeTypes[a.type])}</small>`:''}</li>`).join('')}</ul></div></article>`).join('')}</div>`;
+  // A card opens the term's full definition next to the diagram.
+  $('review-board').querySelectorAll('[data-review-term]').forEach(b=>b.onclick=()=>{setReview(false);selected={kind:'concept',id:b.dataset.reviewTerm};refresh();focusSelection()});
 }
 function setReview(enabled){document.body.classList.toggle('reviewing',enabled);$('review-board').hidden=!enabled;$('diagram-toggle').setAttribute('aria-pressed',String(!enabled));$('review-toggle').setAttribute('aria-pressed',String(enabled));if(enabled)updateReview();cy.resize()}
 $('diagram-toggle').onclick=()=>setReview(false);$('review-toggle').onclick=()=>setReview(true);

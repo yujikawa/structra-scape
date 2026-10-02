@@ -28,9 +28,9 @@ window.addEventListener('pagehide', saveViewState);
 setTimeout(() => {
   let state;
   try { state = JSON.parse(sessionStorage.getItem(viewStateKey)); } catch {}
-  if (!state || typeof state !== 'object') { if(model.processes?.length)setProcessMode(true); return; }
+  if (!state || typeof state !== 'object') { if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
   const index = entries.findIndex(e=>e.slug===state.slug);
-  if (state.slug && index < 0) { if(model.processes?.length)setProcessMode(true); return; }
+  if (state.slug && index < 0) { if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
   if (index >= 0) {
     entryIndex=String(index); $('model-choice').value=entryIndex;
     model=structuredClone(entries[index].model);
@@ -60,7 +60,7 @@ setTimeout(() => {
   for(const entry of Array.isArray(state.hierarchy)?state.hierarchy:[]) {
     if(Array.isArray(entry)&&model.processes?.some(p=>p.id===entry[0])&&entry[1])hierarchyViews.set(entry[0],entry[1]);
   }
-  if(Number.isInteger(state.detailTab))document.querySelectorAll('.reader-tabs button')[state.detailTab]?.click();
+  if(Number.isInteger(state.detailTab)){ const tab=document.querySelectorAll('.reader-tabs button')[state.detailTab]; if(tab&&(showsDataLayer()||!tab.classList.contains('data-only')))tab.click(); }
   for(const [selector,top] of Object.entries(state.scroll || {})) {
     if(['.process-list','.process-detail','.inspector','.catalog','#unconfirmed-workspace','#changes-workspace','#review-board'].includes(selector)&&Number.isFinite(top)) {
       const element=document.querySelector(selector);if(element)element.scrollTop=top;

@@ -1,7 +1,8 @@
 // UI copy only. Model values are deliberately excluded by the view adapter.
 export const englishUI = {
   'ことばと関係': 'Terms & relationships', '業務プロセス': 'Business processes', '未確認事項': 'Open questions',
-  'モデルを選択': 'Select model', '出力': 'Export', '使い方': 'Help', '関係図': 'Diagram', '定義一覧': 'Definitions',
+  'モデルを選択': 'Select model', '表示対象': 'Audience', '業務向け': 'Business view', 'データ向け': 'Data view',
+  '「データ向け」に切り替えると、IDとデータとの対応を表示します。': 'Switch to “Data view” to show IDs and data mappings.', '出力': 'Export', '使い方': 'Help', '関係図': 'Diagram', '定義一覧': 'Definitions',
   'ことば': 'Terms', 'つながり': 'Relationships', 'ことば・つながりを検索': 'Search terms and relationships',
   '例：顧客、契約': 'e.g. customer, contract', '全体': 'Fit', '全体を表示': 'Fit to view', '図全体を表示': 'Fit diagram to view',
   '拡大': 'Zoom in', '縮小': 'Zoom out', '図の表示操作': 'Diagram controls', '表示を切り替え': 'Switch view',
@@ -69,6 +70,22 @@ export const englishUI = {
   '始点': 'Domain', '相手': 'Range', '担当': 'Owner', '種類': 'Type', '詳細フロー': 'Detail flow', '条件': 'Condition', '読み込む共通定義': 'Imports',
   '共通定義から読み込み': 'Imported shared definition', '共通定義': 'Shared', '共通定義（読み込み）': 'Shared definition (imported)',
   'YAMLから表示中 · 内容の変更はAIに依頼してください': 'Viewing YAML · Ask AI to update the content',
+  '名前を押すと、具体例や使われている作業を確認できます。': 'Select a name to see examples and the steps that use it.',
+  '決めたいこと': 'To decide', '教えてほしいこと': 'Please tell us', '合意の確認': 'Agreement', '食い違い': 'Conflicts', '業務の流れ': 'Process flow',
+  '業務の方に確認したい質問です。分かることを、データ担当者に伝えてください。名前を押すと定義を確認できます。': 'Questions for the business. Share what you know with the data team. Select a name to see its definition.',
+  'この業務では、どんな「もの」や「こと」を扱いますか？': 'What things and events does this business deal with?',
+  'これは、どういう意味ですか？': 'What does this mean?', '具体的には、どんなものが含まれますか？': 'What concrete examples are included?',
+  '似ているけれど含まれないものはありますか？': 'Is there anything similar that is not included?',
+  'この定義は、どの資料や打ち合わせで決まったものですか？': 'Which document or meeting does this definition come from?',
+  'この定義で合っていますか？': 'Is this definition right?', 'どういう値ですか？': 'What does this value mean?',
+  '日付・金額・区分など、どんな種類の値ですか？': 'What kind of value is it: a date, an amount, a category…?', 'どんな区分がありますか？': 'What categories are there?',
+  '「何の一種か」をたどると元に戻ってしまいます。どれが上位の分類ですか？': 'Following “a kind of” leads back to where it started. Which is the broader category?',
+  'この業務は、どんな作業で進みますか？': 'What steps does this process go through?', 'この作業は、誰が担当しますか？': 'Who does this step?',
+  '判断の結果、どんな行き先がありますか？': 'Where can this decision lead?', 'どんな条件で、どちらへ進みますか？': 'Under which condition does each path apply?',
+  'ここから同時に進める作業は何ですか？': 'Which steps run at the same time from here?', 'ここで、どの作業が終わるのを待ちますか？': 'Which steps must finish before this point?',
+  'この作業は、どの作業の後に行いますか？': 'Which step comes before this one?', 'この作業の後は、どうなりますか？': 'What happens after this step?',
+  'この業務は、何をきっかけに始まりますか？': 'What starts this process?', 'この業務は、どうなったら完了ですか？': 'When is this process complete?',
+  '同時に進めた作業は、どこで合流しますか？': 'Where do the steps that ran at the same time come together?',
 };
 
 export function translateUI(value, language = 'ja') {
@@ -102,6 +119,9 @@ export function translateUI(value, language = 'ja') {
     [/^「([\s\S]*)」の条件：「([\s\S]*)」の相手はすべて「([\s\S]*)」。相手がいない場合も、この条件は満たす。$/, (_, subject, property, target) => `Rule for “${subject}”: all “${property}” targets are “${target}”. This also holds when there are no targets.`],
     [/^「([\s\S]*)」の条件：「([\s\S]*)」でつながる相手は、(最低|最大|ちょうど)(\d+)。$/, (_, subject, property, bound, count) => `Rule for “${subject}”: ${({'最低':'at least','最大':'at most','ちょうど':'exactly'})[bound]} ${count} “${property}” targets.`],
     [/^判定が未決定：([\s\S]*)$/, (_, text) => `Undecided case: ${text}`],
+    [/^「([\s\S]*)」は含みますか、含みませんか？$/, (_, text) => `Is “${text}” included or not?`],
+    [/^「([\s\S]*?)」は、「([\s\S]*)」のどれを指しますか？$/, (_, alias, names) => `Which does “${alias}” mean: “${names.replaceAll('」「', '”, “')}”?`],
+    [/^「([\s\S]*)」の相手は、いくつありえますか？$/, (_, name) => `How many “${name}” can there be?`],
     [/^「([\s\S]*)」の個数条件を同時に満たせません。$/, (_, name) => `The cardinality constraints for “${name}” cannot all be satisfied.`],
     [/^同じことばから、同じ意味を思い浮かべられますか？　(\d+)個のことば · (\d+)個が合意済み$/, (_, a, b) => `Do these terms mean the same thing to everyone? ${a} terms · ${b} agreed`],
   ];

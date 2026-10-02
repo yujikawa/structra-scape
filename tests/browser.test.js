@@ -39,8 +39,29 @@ test('every view of the built reader runs without page errors', async t => {
   const models = await page.$$eval('#model-choice option', options => options.map(o => o.value));
   assert.ok(models.length >= 3);
 
-  for (const language of ['ja', 'en']) {
+  // Business users are the default audience: no IDs, no data mapping tab, terms open on the definitions list.
+  assert.equal(await page.inputValue('#audience'), 'business');
+  await page.selectOption('#model-choice', { label: '顧客と契約の定義' });
+  await page.click('#mode-ontology');
+  assert.equal(await page.isVisible('#review-board'), true);
+  await page.locator('#concepts button').first().click();
+  assert.equal(await page.isVisible('.reader-id'), false);
+  assert.equal(await page.locator('.reader-tabs button:visible').count(), 2);
+  await page.click('#mode-ontology');
+  await page.locator('[data-review-term]').nth(1).click();
+  assert.equal(await page.isVisible('#review-board'), false);
+  assert.equal(await page.locator('#concepts button.active').count(), 1);
+  assert.equal(await page.innerText('#detail h2'), (await page.innerText('#concepts button.active')).trim());
+  await page.click('#mode-unconfirmed');
+  assert.equal(await page.locator('.completion-issue small[data-category="data"]').count(), 0);
+  assert.ok(await page.locator('.completion-issue p', { hasText: 'どんなものが含まれますか？' }).count() > 0);
+  await page.selectOption('#audience', 'data');
+  assert.ok(await page.locator('.completion-issue small[data-category="data"]').count() > 0);
+  assert.ok(await page.locator('.completion-issue p', { hasText: '含む具体例を記録してください。' }).count() > 0);
+
+  for (const [language, audience] of [['ja', 'data'], ['en', 'business']]) {
     await page.selectOption('#ui-language', language);
+    await page.selectOption('#audience', audience);
     for (const model of models) {
       await page.selectOption('#model-choice', model);
       await page.click('#mode-ontology');
@@ -49,7 +70,7 @@ test('every view of the built reader runs without page errors', async t => {
         const count = await page.locator(selector).count();
         for (let i = 0; i < count; i++) { await page.locator(selector).nth(i).click(); await each(); }
       };
-      await clickAll('#concepts button', () => clickAll('.reader-tabs button'));
+      await clickAll('#concepts button', () => clickAll('.reader-tabs button:visible'));
       await clickAll('#properties button');
       await page.click('#review-toggle');
       await page.click('#diagram-toggle');

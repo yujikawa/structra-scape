@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Viewer
+- A 業務向け / データ向け switch in the header. The business view is the default: it hides
+  IDs and the data mapping tab, opens terms on the definitions list, and leaves data-mapping
+  items out of the open questions. The choice is remembered in the browser.
+- In the business view, open items are phrased as questions for business users (each issue
+  from `assessCompletion` now carries an `ask` next to its `message`), with gentler category
+  names (決めたいこと, 教えてほしいこと, …). The data view keeps the recording tasks.
+- Definition cards open the term's full detail when its name is selected.
+
 ## 0.1.0 — 2026-10-01
 
 First release.

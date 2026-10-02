@@ -21,7 +21,7 @@ function localizeScreen() {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   let node;
   while ((node = walker.nextNode())) {
-    if (node.parentElement?.closest('script,style,textarea,pre,option,#ui-language')) continue;
+    if (node.parentElement?.closest('script,style,textarea,pre,#model-choice,#ui-language')) continue;
     const previous = translatedNodes.get(node);
     const source = previous && node.nodeValue === previous.rendered ? previous.source : node.nodeValue;
     // A model value that happens to equal a UI label must never be translated.

@@ -45,7 +45,7 @@ function organizeDetail(item){
  if(!usage.querySelector('button'))usage.querySelector('.hint').textContent='このYAMLには作業との関連づけが未登録です。業務上の関係がないことを意味しません。';
  const data=sections.at(-1);data.open=true;
  const nav=document.createElement('div');nav.className='reader-tabs';nav.setAttribute('role','group');nav.setAttribute('aria-label','定義の表示内容');
- const panes=['意味','業務での利用','データとの対応'].map((label,i)=>{const pane=document.createElement('section');pane.hidden=i!==0;const button=document.createElement('button');button.textContent=label;button.setAttribute('aria-pressed',String(i===0));button.onclick=()=>{panes.forEach((p,j)=>p.hidden=j!==i);[...nav.children].forEach((b,j)=>b.setAttribute('aria-pressed',String(i===j)))};nav.append(button);return pane});
+ const panes=['意味','業務での利用','データとの対応'].map((label,i)=>{const pane=document.createElement('section');pane.hidden=i!==0;const button=document.createElement('button');button.textContent=label;if(i===2){button.classList.add('data-only');pane.classList.add('data-only')}button.setAttribute('aria-pressed',String(i===0));button.onclick=()=>{panes.forEach((p,j)=>p.hidden=j!==i);[...nav.children].forEach((b,j)=>b.setAttribute('aria-pressed',String(i===j)))};nav.append(button);return pane});
  for(const section of sections.filter(x=>x.tagName!=='H2'&&!x.classList.contains('reader-id')))panes[section===usage?1:section===data?2:0].append(section);
  root.append(nav,...panes);
  if(item.cases?.length)panes[0].insertAdjacentHTML('beforeend',`<h3>このケースは含む？</h3>${item.cases.map(c=>`<article class="case-card ${esc(c.result)}"><strong>${esc(({included:'含む',excluded:'含まない',unresolved:'要確認'})[c.result])}</strong><p>${esc(c.description)}</p>${c.reason?`<p class="hint">${esc(c.reason)}</p>`:''}</article>`).join('')}`);
@@ -64,7 +64,7 @@ function labelIcon(element,name){if(element&&!element.querySelector('.ui-icon'))
 labelIcon($('diagram-toggle'),'flow');labelIcon($('review-toggle'),'book');
 labelIcon($('mode-ontology'),'book');labelIcon($('mode-process'),'flow');
 labelIcon(exportMenu.querySelector('summary'),'download');
-const helpMenu=document.createElement('details');helpMenu.className='header-menu';helpMenu.innerHTML=`<summary>${uiIcon('help')}使い方</summary><div class="menu-panel"><strong>業務とことばを確認する</strong><p>左の一覧や図から対象を選びます。詳細のリンクで、作業と用語の定義を行き来できます。</p><p>内容の変更はAIに依頼してください。YAMLを保存すると、この画面に反映されます。</p><p>図はドラッグで移動、＋／−で拡大縮小できます。「全体」で表示を戻します。</p></div>`;document.querySelector('header').append(helpMenu);
+const helpMenu=document.createElement('details');helpMenu.className='header-menu';helpMenu.innerHTML=`<summary>${uiIcon('help')}使い方</summary><div class="menu-panel"><strong>業務とことばを確認する</strong><p>左の一覧や図から対象を選びます。詳細のリンクで、作業と用語の定義を行き来できます。</p><p>「データ向け」に切り替えると、IDとデータとの対応を表示します。</p><p>内容の変更はAIに依頼してください。YAMLを保存すると、この画面に反映されます。</p><p>図はドラッグで移動、＋／−で拡大縮小できます。「全体」で表示を戻します。</p></div>`;document.querySelector('header').append(helpMenu);
 helpMenu.addEventListener('toggle',()=>{if(helpMenu.open)exportMenu.open=false});exportMenu.addEventListener('toggle',()=>{if(exportMenu.open)helpMenu.open=false});
 for(const [container,graph,fitId] of [[document.querySelector('.canvas'),cy,'fit'],[document.querySelector('.process-canvas'),pc,'flow-fit']]){
  const controls=document.createElement('div');controls.className='graph-controls';controls.setAttribute('role','group');controls.setAttribute('aria-label','図の表示操作');

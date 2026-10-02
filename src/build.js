@@ -53,7 +53,7 @@ export function renderBundle(file, { compare } = {}) {
     .replace('<!-- PROCESS_VIEW -->', () => template('process-view.js'))
     .replace('<!-- PROCESS_HIERARCHY -->', () => template('process-hierarchy.js'))
     .replace('<!-- VIEW_STATE -->', () => template('view-state.js'))
-    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('completion-view.js'), template('changes-view.js')].join('\n'))
+    .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('audience-view.js'), template('completion-view.js'), template('changes-view.js')].join('\n'))
     .replace('<!-- LANGUAGE_VIEW -->', () => shared('i18n.js') + '\n' + template('language-view.js'));
   return { html, files: [...new Set(sources)] };
 }
