@@ -87,6 +87,24 @@ test('answers files are validated and found next to the model or through --model
   assert.throws(() => listAnswers(downloaded), { code: 'INVALID' });
 });
 
+test('answers from several people are compared: differing answers are marked as conflicts', t => {
+  const dir = workspace(t), file = path.join(dir, 'customer-contract.yaml');
+  const questions = openQuestions(file), [a, b] = questions.questions;
+  fs.mkdirSync(path.join(dir, 'answers'));
+  const write = (name, by, picks) => fs.writeFileSync(path.join(dir, 'answers', name), JSON.stringify(answersFor(questions, picks, { answered_by: by })));
+  write('1.json', '営業部 山田', [[a, '株式会社や合同会社'], [b, 'はい']]);
+  write('2.json', '経理部 佐藤', [[a, '株式会社のみ'], [b, ' はい ']]);
+  const listed = listAnswers(path.join(dir, 'answers'));
+  assert.equal(listed.conflicts, 1);
+  const [first, second] = listed.files;
+  assert.deepEqual(first.answers.map(x => x.conflict), [true, false]);
+  assert.deepEqual(first.answers[0].others, [{ file: path.relative(process.cwd(), path.join(dir, 'answers', '2.json')), answered_by: '経理部 佐藤', answer: '株式会社のみ' }]);
+  assert.equal(second.answers[1].others[0].answered_by, '営業部 山田');
+  // A single answer has nobody to disagree with.
+  fs.rmSync(path.join(dir, 'answers', '2.json'));
+  assert.deepEqual(listAnswers(path.join(dir, 'answers')).files[0].answers.map(x => [x.conflict, x.others]), [[undefined, undefined], [undefined, undefined]]);
+});
+
 test('the build embeds the file name and revision that exported answers refer to', () => {
   const { html } = renderBundle('samples/customer-contract.yaml');
   const questions = openQuestions('samples/customer-contract.yaml');
@@ -120,6 +138,13 @@ test('dev saves answers posted by its own page under answers/', async t => {
   assert.match(files[0], /^customer-contract-\d{8}T\d{6}\.json$/);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'answers', files[0]), 'utf8')), payload);
   assert.equal(listAnswers(path.join(dir, 'answers')).files[0].answers[0].open, true);
+  // The page reads saved answers back, so people sharing one server see each other's.
+  const get = query => new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port, path: '/answers' + query, headers: { host } }, res => {
+    let data = ''; res.on('data', chunk => data += chunk); res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(data) }));
+  }).on('error', reject));
+  assert.deepEqual((await get('?model=customer-contract.yaml')).body.answers.map(a => [a.key, a.answer, a.answered_by]), [[questions.questions[0].key, 'はい', '営業部 山田']]);
+  assert.deepEqual((await get('?model=billing.yaml')).body.answers, []);
+  assert.equal((await get('?model=../x.yaml')).status, 400);
   await new Promise(resolve => setTimeout(resolve, 1200));
   assert.ok(messages.length > 0);
   assert.ok(messages.every(m => !m.includes('reload')), messages.join());

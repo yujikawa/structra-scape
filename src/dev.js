@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { renderBundle } from './build.js';
-import { saveAnswers } from './answers.js';
+import { saveAnswers, savedAnswers } from './answers.js';
 
 export function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } = {}) {
   const absolute = path.resolve(process.cwd(), file);
@@ -47,6 +47,12 @@ export function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } 
       console.log(`  ✓ Answers saved: ${path.relative(process.cwd(), file)}`);
       res.json({ ok: true, file: path.relative(process.cwd(), file) });
     } catch (error) { res.status(error.code === 'INVALID' ? 400 : 500).json({ ok: false, errors: [error.message] }); }
+  });
+  // Answers already saved for a model, so people answering on one shared server see each other's.
+  app.get('/answers', (req, res) => {
+    const model = String(req.query.model || '');
+    if (!/^[^/\\]+\.ya?ml$/i.test(model)) return res.status(400).json({ ok: false, errors: ['model must be a YAML file name'] });
+    res.json({ ok: true, answers: savedAnswers(answersDir, model) });
   });
   app.get('/events', (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });

@@ -40,6 +40,13 @@
 - Tests build a synthetic workspace at company scale (7 domains, ~400 terms, 30 flows) and
   check that it loads, narrows and filters in the browser and builds quickly in Node.
 
+### Answers from several people
+- Under each question the viewer lists the answers given so far: under `dev` it reads the
+  ones saved in `answers/` (new `GET /answers?model=`), and any build can open exported
+  answer files. Questions answered differently are marked 回答が分かれています.
+- `strscape answers` adds `others` and `conflict` to answers that several files give for the
+  same question, and a `conflicts` count; the skill asks the user instead of picking one.
+
 ### CLI
 - `import-glossary <csv>` turns a glossary exported from a spreadsheet (CSV/TSV, Japanese or
   English headers) into concept upserts for `apply`. It needs an ID column, never invents

@@ -84,3 +84,58 @@ async function exportAnswers(open) {
   writeAnswerStore(answerStore);
   renderUnconfirmed();
 }
+// Answers already given: saved on the dev server (answers/), or opened from exported files. They
+// are shown under each question so nobody answers twice and differing answers stand out.
+const sharedAnswers = { loadedFor: null, dev: [], files: [] };
+const answerModelFile = () => answerEntry().file || `${answerEntry().slug}.yaml`;
+function loadDevAnswers() {
+  const model = answerModelFile();
+  if (!window.__STRUCTRA_DEV__ || sharedAnswers.loadedFor === model) return;
+  sharedAnswers.loadedFor = model;
+  fetch('/answers?model=' + encodeURIComponent(model)).then(response => response.json()).then(result => {
+    if (!result.ok || sharedAnswers.loadedFor !== model) return;
+    sharedAnswers.dev = result.answers.map(a => ({ ...a, model }));
+    if (unconfirmedMode) renderUnconfirmed();
+  }).catch(() => { /* The questions still work without the saved answers. */ });
+}
+const sharedRenderUnconfirmed = renderUnconfirmed;
+renderUnconfirmed = function() {
+  sharedRenderUnconfirmed();
+  loadDevAnswers();
+  const bar = completionRoot.querySelector('.answer-bar');
+  if (!bar) return;
+  const open = document.createElement('label');
+  open.className = 'answer-open';
+  open.innerHTML = '<input type="file" accept=".json,application/json" multiple hidden><span>回答ファイルを開く</span>';
+  bar.querySelector('.answer-export').before(open);
+  open.querySelector('input').onchange = async event => {
+    let added = 0, skipped = 0;
+    for (const file of event.target.files) {
+      try {
+        const data = JSON.parse(await file.text());
+        if (data?.kind !== 'strscape-answers' || !Array.isArray(data.answers)) { skipped++; continue; }
+        if (data.model !== answerModelFile()) { skipped++; continue; }
+        for (const a of data.answers) if (typeof a?.key === 'string' && typeof a.answer === 'string') { sharedAnswers.files.push({ key: a.key, answer: a.answer, answered_by: String(data.answered_by || ''), exported_at: String(data.exported_at || ''), file: file.name, model: data.model }); added++; }
+      } catch { skipped++; }
+    }
+    status(skipped ? `${added}件の回答を読み込みました。このモデルの回答ではないファイルが${skipped}件ありました。` : `${added}件の回答を読み込みました。`, !added);
+    renderUnconfirmed();
+  };
+  const model = answerModelFile(), normalize = text => text.trim().replace(/\s+/g, ' ');
+  const known = [...sharedAnswers.dev, ...sharedAnswers.files].filter(a => a.model === model);
+  for (const element of completionRoot.querySelectorAll('.completion-issue[data-issue-key]')) {
+    const seen = new Set(), list = known.filter(a => a.key === element.dataset.issueKey && !seen.has(a.answered_by + '\u0000' + normalize(a.answer)) && seen.add(a.answered_by + '\u0000' + normalize(a.answer)));
+    if (!list.length) continue;
+    const box = document.createElement('div');
+    box.className = 'answer-others';
+    const conflict = new Set(list.map(a => normalize(a.answer))).size > 1;
+    box.innerHTML = `<p><small>これまでの回答</small>${conflict ? '<small class="answer-conflict">回答が分かれています</small>' : ''}</p><ul>${list.map(a => `<li><b>${esc(a.answered_by || '回答者未記入')}</b><span>${esc(a.answer)}</span></li>`).join('')}</ul>`;
+    (element.querySelector('.answer-field') || element.lastElementChild).before(box);
+  }
+};
+const sharedExportAnswers = exportAnswers;
+exportAnswers = async function(open) {
+  await sharedExportAnswers(open);
+  sharedAnswers.loadedFor = null;
+  loadDevAnswers();
+};

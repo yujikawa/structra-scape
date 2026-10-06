@@ -210,3 +210,26 @@ test('a workspace at company scale stays readable: the term diagram narrows, ope
   assert.deepEqual(errors, []);
   console.log(`large workspace: ${Date.now() - started} ms`);
 });
+
+test('answers from colleagues can be opened next to the questions, and differing ones stand out', async t => {
+  const browser = await launch();
+  if (!browser) { t.skip('Chromium not found: run `npx playwright install chromium-headless-shell`'); return; }
+  t.after(() => browser.close());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-answers-view-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'index.html');
+  fs.writeFileSync(file, renderModel('samples/customer-contract.yaml'));
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('file://' + file);
+  await page.click('#mode-unconfirmed');
+  const key = await page.evaluate(() => assessCompletion(model).issues.find(i => i.ask && i.id === 'Organization').key);
+  const answers = (by, answer, model = 'customer-contract.yaml') => ({ name: `${by}.json`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ kind: 'strscape-answers', model, answered_by: by, answers: [{ key, question: 'q', answer }] })) });
+  await page.setInputFiles('.answer-open input', [answers('山田', '株式会社'), answers('佐藤', '合同会社'), answers('他', 'x', 'billing.yaml')]);
+  const box = page.locator(`.completion-issue[data-issue-key="${key}"] .answer-others`);
+  assert.deepEqual(await box.locator('li b').allInnerTexts(), ['山田', '佐藤']);
+  assert.equal(await box.locator('.answer-conflict').count(), 1);
+  assert.match(await page.innerText('#status'), /2件の回答を読み込みました。このモデルの回答ではないファイルが1件ありました。/);
+  assert.deepEqual(errors, []);
+});

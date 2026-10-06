@@ -63,14 +63,43 @@ export function listAnswers(target, { model } = {}) {
   const files = fs.statSync(absolute).isDirectory()
     ? fs.readdirSync(absolute).filter(name => name.endsWith('.json')).sort().map(name => path.join(absolute, name))
     : [absolute];
-  return { ok: true, files: files.map(file => {
+  const listed = files.map(file => {
     const data = readAnswers(file), modelFile = findModel(file, data, model);
     const relative = value => path.relative(process.cwd(), value) || '.';
     const entry = { file: relative(file), model: data.model, answered_by: data.answered_by || '', exported_at: data.exported_at };
     if (!modelFile || !fs.existsSync(modelFile)) return { ...entry, error: `Model ${data.model} not found; pass --model`, answers: data.answers };
     const current = openQuestions(modelFile), open = new Set(current.questions.map(q => q.key));
     return { ...entry, model_file: relative(modelFile), revision_changed: data.revision !== current.revision, answers: data.answers.map(a => ({ ...a, open: open.has(a.key) })) };
-  }) };
+  });
+  // Several people may answer the same question. Each answer lists the others, and is marked as a
+  // conflict when they say different things: such answers are settled with the user, not recorded.
+  const byKey = new Map();
+  for (const f of listed) for (const a of f.answers) {
+    const id = `${f.model_file || f.model}\u0000${a.key}`;
+    if (!byKey.has(id)) byKey.set(id, []);
+    byKey.get(id).push({ file: f.file, answered_by: f.answered_by, answer: a });
+  }
+  const same = (a, b) => a.trim().replace(/\s+/g, ' ') === b.trim().replace(/\s+/g, ' ');
+  let conflicts = 0;
+  for (const group of byKey.values()) {
+    if (group.length < 2) continue;
+    const conflict = group.some(g => !same(g.answer.answer, group[0].answer.answer));
+    if (conflict) conflicts++;
+    for (const g of group) Object.assign(g.answer, { conflict, others: group.filter(o => o !== g).map(o => ({ file: o.file, answered_by: o.answered_by, answer: o.answer.answer })) });
+  }
+  return { ok: true, conflicts, files: listed };
+}
+
+// Answers saved under <dir>/answers/ for one model, flattened (the dev server shows them in the viewer).
+export function savedAnswers(dir, model) {
+  const folder = path.join(dir, 'answers');
+  if (!fs.existsSync(folder)) return [];
+  return fs.readdirSync(folder).filter(name => name.endsWith('.json')).sort().flatMap(name => {
+    try {
+      const data = readAnswers(path.join(folder, name));
+      return data.model === model ? data.answers.map(a => ({ key: a.key, answer: a.answer, answered_by: data.answered_by || '', exported_at: data.exported_at || '', file: name })) : [];
+    } catch { return []; }
+  });
 }
 
 // Removes recorded answers from a file, and the file itself once it is empty.
