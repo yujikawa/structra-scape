@@ -11,6 +11,7 @@ import { dev } from './dev.js';
 import { exportOntology } from './ontology.js';
 import { registerAuthoringCommands, jsonAction } from './mutate.js';
 import { registerAnswerCommands } from './answers.js';
+import { registerSourceCommands } from './sources.js';
 import { installSkills } from './skills.js';
 import { publicationMarkdown, publicationSvg } from './publication.js';
 import { changesMarkdown, changesByFileMarkdown } from './diff.js';
@@ -130,4 +131,5 @@ program.command('guide').description('Print the YAML authoring guide for AI agen
 // AI-facing commands: JSON in, JSON out.
 registerAuthoringCommands(program);
 registerAnswerCommands(program, jsonAction);
+registerSourceCommands(program, jsonAction);
 program.parse();

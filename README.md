@@ -47,6 +47,33 @@ strscape build models/ --output dist   # 共有用の1ファイルHTMLを出力
 - 既存プロジェクトには `strscape skills`（`--directory <フォルダ>`、`--agent codex|claude|both`）でスキルを追加できます。独自に編集されたスキルは上書きしません。意図して更新する場合だけ `--force` を指定してください。
 - スキルは `SKILL.md`（Codex版とClaude Code版で起動方法・プレビューの扱いが異なります）と、共通の参照資料 `references/`（モデル化の判断基準、ファイル分割と共通定義、動作確認済みの更新例、引き渡し前のチェック）で構成されます。
 
+## 既存の資料から始める
+
+### 用語集（Excel・CSV）
+
+既存の用語集は、CSV（またはTSV）で保存してAIに渡してください。スキルの手順では、AIが各用語に英語のIDの列を足し、次のコマンドでモデルに取り込みます。
+
+```bash
+strscape import-glossary 用語集-ID付き.csv > patch.json   # 用語・定義・同義語・上位語・出典などの列を読み取ります
+strscape apply models/business.yaml --patch patch.json --dry-run
+```
+
+- 列名は日本語・英語のどちらでも読み取ります（`用語` / `name`、`定義` / `description`、`同義語` / `aliases`、`上位語` / `parent`、`出典` / `evidence` など）。
+- IDの列がない、またはIDが重複している場合は取り込みません。IDはCLIが自動で作らず、AIか人が決めます。
+- 用語集の「承認済」などの列は、合意済み（`agreed`）として取り込みません。今も合意が有効か確認したうえで記録します。取り込まなかった列は `warnings` に表示します。
+
+### データの所在をスキーマと照合する
+
+`data_mapping` に書いたテーブル・カラムが、実際のスキーマにあるかを確認します。
+
+```bash
+strscape check-mapping models/ --schema target/catalog.json --format md   # dbt の catalog.json / manifest.json
+strscape check-mapping models/ --schema columns.csv                       # information_schema.columns をCSVで出力したもの
+```
+
+- 見つからないテーブル・カラムがあると終了コード1になります（CIでも使えます）。
+- 確認するのは名前があるかどうかだけです。意味が業務定義と合っているか（`verified`）は、データ担当者が確認します。
+
 ## 画面
 
 ヘッダーで、モデル（ディレクトリを指定した場合）と表示を切り替えます。「日本語 / English」の切り替えはメニューと案内文だけが対象で、YAMLに書かれた用語名や説明は翻訳しません。
@@ -246,6 +273,8 @@ strscape diff models/business.yaml --format md
 | `overview <dir>` | ドメイン間の受け渡し・定義の利用・重複の候補。`--format json\|md` |
 | `questions <file>` | 回答欄のある未確認事項（データ対応以外）を、回答の照合に使うキー付きでJSON出力 |
 | `answers <file\|dir>` | 画面から書き出した回答を読み、質問がまだ残っているか（`open`）を付けてJSON出力。`--resolve <keys...>` で反映済みの回答を削除（空になったファイルも削除）、`--model <file>` で対象モデルを指定 |
+| `import-glossary <csv>` | 用語集のCSV/TSVを、`apply` で取り込めるJSONに変換（ID列が必要） |
+| `check-mapping <file\|dir> --schema <files...>` | データ対応のテーブル・カラムが、dbtの manifest/catalog や information_schema のCSVにあるか照合。`--format json\|md` |
 | `diff <file\|dir>` | 意味上の変更点。`--base <rev\|file>`、`--format json\|md`。フォルダはファイルごとにまとめ、削除したモデルも含めます。`--fail-on-agreed` は合意済みの定義が変わったとき終了コード1 |
 | `ci` | プルリクエストでモデルを確認するGitHub Actionsのワークフローを作成（`--models <フォルダ>`、`--force`） |
 | `export <file> --format svg\|md\|ttl` | 図（SVG）、定義（Markdown）、OWL Turtle を出力。既存ファイルへの上書きは拒否 |
@@ -277,7 +306,7 @@ strscape ci                     # .github/workflows/strscape.yml を作成（モ
 
 - 画面上でモデルを編集することはできません（閲覧専用です）。未確認事項への回答は書けますが、YAMLへの反映はAIが行います。
 - OWLの読み込み、推論、論理的な充足可能性の検査はしません。構造検証は参照・入力形式・対応演算子のみを確認します。`domain` / `range` は入力チェックではなく型の定義です。
-- データ対応は記録のみです。データベースへの接続やSQLの実行による検証はしません。
+- データ対応は記録のみです。データベースへの接続やSQLの実行はしません（スキーマのファイルとの名前の照合だけは `check-mapping` でできます）。
 - 同時の共同編集はできません。
 
 ## 開発

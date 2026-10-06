@@ -41,6 +41,12 @@
   check that it loads, narrows and filters in the browser and builds quickly in Node.
 
 ### CLI
+- `import-glossary <csv>` turns a glossary exported from a spreadsheet (CSV/TSV, Japanese or
+  English headers) into concept upserts for `apply`. It needs an ID column, never invents
+  IDs, never marks anything agreed, and lists the columns it left out.
+- `check-mapping <path> --schema <files...>` checks the tables and columns named in data
+  mappings against a dbt manifest.json / catalog.json or a CSV of
+  information_schema.columns; exit code 1 when something is missing.
 - `validate` and `diff` take a folder and cover every model in it. `validate --json` now prints
   `{valid, files: [{file, errors}]}`; `diff <folder>` groups changes by file and lists models
   deleted since the baseline. `diff --fail-on-agreed` exits with 1 when an agreed definition
@@ -63,6 +69,8 @@
 - Builds embed each model's file name and revision, which exported answers carry.
 
 ### Skills
+- `references/existing-assets.md`: starting from a glossary spreadsheet, table definitions
+  or dbt, and checking data mappings against the warehouse schema.
 - `references/modeling.md`: write `question` as a plain question business users can answer
   (they see it as-is, with an answer box); data-team questions go in `data_mapping.gap`.
 - `references/review.md`: the hand-off report mentions the answer boxes.

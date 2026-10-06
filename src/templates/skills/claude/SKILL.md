@@ -1,6 +1,6 @@
 ---
 name: strscape-modeling
-description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
+description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions (including checking data mappings against a dbt or warehouse schema), start from an existing glossary spreadsheet, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
 argument-hint: "[整理したい業務・用語・変更内容]"
 allowed-tools: Bash(strscape:*)
 ---
@@ -20,6 +20,8 @@ Read them when the step below points to them:
 - `references/cli-recipes.md` — tested patch JSON for each kind of change, and error codes
 - `references/review.md` — checks before handing off, and the report format
 - `references/answers.md` — taking in answers business users wrote in the viewer
+- `references/existing-assets.md` — starting from a glossary spreadsheet, table definitions
+  or dbt, and checking data mappings against the warehouse schema
 
 ## 1. Get oriented
 

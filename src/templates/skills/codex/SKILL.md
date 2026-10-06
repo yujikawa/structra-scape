@@ -1,6 +1,6 @@
 ---
 name: strscape-modeling
-description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
+description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions (including checking data mappings against a dbt or warehouse schema), start from an existing glossary spreadsheet, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
 ---
 
 # structra-scape modeling
@@ -19,6 +19,8 @@ them with the shell (`cat`) when a step below points to them:
 - `cli-recipes.md` — tested patch JSON for each kind of change, and error codes
 - `review.md` — checks before handing off, and the report format
 - `answers.md` — taking in answers business users wrote in the viewer
+- `existing-assets.md` — starting from a glossary spreadsheet, table definitions or dbt,
+  and checking data mappings against the warehouse schema
 
 ## 1. Get oriented
 
@@ -37,6 +39,9 @@ Use `modeling.md` to choose between concept, attribute, property, alias, subtype
 and case. Ask the user only when the answer changes the model (same or different meaning,
 who decides, which domain). Otherwise proceed and record what you assumed as a `question`
 so it shows up in the viewer's 未確認事項.
+
+When the user hands you an existing glossary, table definitions or dbt docs, start from
+them with `existing-assets.md`.
 
 Answers from business users (an `answers-*.json` file, or `models/answers/`) are
 handled with `answers.md`: read them with `strscape answers`, record what they
