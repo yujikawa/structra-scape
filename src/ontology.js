@@ -223,3 +223,37 @@ export function exportOntology(model) {
   }
   return lines.join('\n') + '\n';
 }
+
+// SKOS Turtle: the model as a thesaurus (a glossary for data catalogs), next to the OWL export.
+// Terms keep the IRIs of the OWL export; relationships become skos:related between their ends.
+export function exportSkos(model) {
+  const errors = validateOntology(model);
+  if (errors.length) throw new Error(errors.join('\n'));
+  const literal = value => JSON.stringify(String(value));
+  const bases = new Map((model.imported_models || []).map(m => [m.path, m.base]));
+  const owners = new Map(model.concepts.filter(c => c.imported_from).map(c => [c.id, bases.get(c.imported_from)]));
+  const ref = id => owners.get(id) ? `<${owners.get(id)}${id}>` : `:${id}`;
+  const lines = ['@prefix : <' + model.base + '> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix dcterms: <http://purl.org/dc/terms/> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '',
+    `<${model.base}> a skos:ConceptScheme ; skos:prefLabel ${literal(model.name)} .`, ''];
+  const related = new Map();
+  for (const p of model.properties) if (p.domain !== p.range) {
+    const pair = [p.domain, p.range].sort().join('\u0000');
+    if (!related.has(pair)) related.set(pair, [p.domain, p.range]);
+  }
+  for (const c of model.concepts.filter(c => !c.imported_from)) {
+    const facts = [`a skos:Concept`, `skos:inScheme <${model.base}>`, `skos:notation ${literal(c.id)}`, `skos:prefLabel ${literal(c.name)}`];
+    for (const alias of c.aliases || []) facts.push(`skos:altLabel ${literal(alias)}`);
+    if (c.description) facts.push(`skos:definition ${literal(c.description)}`);
+    if (c.example) facts.push(`skos:example ${literal(c.example)}`);
+    if (c.exclusion) facts.push(`skos:scopeNote ${literal('含まない例: ' + c.exclusion)}`);
+    if (c.question) facts.push(`skos:editorialNote ${literal(c.question)}`);
+    if (c.evidence) facts.push(`dcterms:source ${literal(c.evidence)}`);
+    if (c.agreed_at) facts.push(`dcterms:dateAccepted "${c.agreed_at}"^^xsd:date`);
+    facts.push(c.parent ? `skos:broader ${ref(c.parent)}` : `skos:topConceptOf <${model.base}>`);
+    for (const [a, b] of related.values()) if (a === c.id || b === c.id) facts.push(`skos:related ${ref(a === c.id ? b : a)}`);
+    if (c.deprecated) facts.push('owl:deprecated true');
+    if (c.replaced_by) facts.push(`dcterms:isReplacedBy ${ref(c.replaced_by)}`);
+    lines.push(`:${c.id} ${facts.join(' ;\n  ')} .`, '');
+  }
+  return lines.join('\n');
+}

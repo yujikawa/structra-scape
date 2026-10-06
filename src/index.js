@@ -8,7 +8,7 @@ import { workspaceOverview, overviewMarkdown } from './workspace.js';
 import { createModel, installWorkflow } from './init.js';
 import { loadModel, validateFile, modelFiles } from './validate.js';
 import { dev } from './dev.js';
-import { exportOntology } from './ontology.js';
+import { exportOntology, exportSkos } from './ontology.js';
 import { registerAuthoringCommands, jsonAction } from './mutate.js';
 import { registerAnswerCommands } from './answers.js';
 import { registerSourceCommands } from './sources.js';
@@ -64,15 +64,15 @@ program.command('validate <path>')
     }
   });
 
-const exporters = { svg: publicationSvg, md: publicationMarkdown, ttl: model => exportOntology(model) };
+const exporters = { svg: publicationSvg, md: publicationMarkdown, ttl: model => exportOntology(model), skos: model => exportSkos(model) };
 program.command('export <file>')
-  .description('Export a diagram (svg), definitions (md) or OWL Turtle (ttl)')
-  .requiredOption('--format <format>', 'svg, md or ttl')
+  .description('Export a diagram (svg), definitions (md), OWL Turtle (ttl) or a SKOS thesaurus in Turtle (skos)')
+  .requiredOption('--format <format>', 'svg, md, ttl or skos')
   .requiredOption('-o, --output <file>', 'destination (must not exist)')
   .option('--process <id>', 'process flow to draw (svg; default: the term diagram)')
   .option('--concept <id>', 'single term to write (md; default: all terms)')
   .action(human((file, options) => {
-    if (!Object.hasOwn(exporters, options.format)) throw new Error('format must be svg, md or ttl');
+    if (!Object.hasOwn(exporters, options.format)) throw new Error('format must be svg, md, ttl or skos');
     if (options.process && options.format !== 'svg' || options.concept && options.format !== 'md') throw new Error('--process requires svg; --concept requires md');
     if (fs.existsSync(options.output)) throw new Error(`${options.output} already exists; choose another --output`);
     const errors = validateFile(file);

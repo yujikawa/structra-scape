@@ -102,7 +102,10 @@ YAMLを更新すると、表示モード・選択・ズームを保ったまま�
 strscape export models/business.yaml --format svg --process Intake --output intake.svg
 strscape export models/business.yaml --format md --concept Application --output application.md
 strscape export models/business.yaml --format ttl --output business.ttl
+strscape export models/business.yaml --format skos --output glossary.ttl   # SKOS（用語集としてデータカタログへ）
 ```
+
+SKOS 出力は、ことばを `skos:Concept`（名前は `prefLabel`、別名は `altLabel`、説明は `definition`、上位概念は `broader`、つながりのある用語は `related`）として書き出します。廃止したことばには `owl:deprecated` と置き換え先を付けます。
 
 ### 全体マップで分かること
 
@@ -279,7 +282,7 @@ strscape diff models/business.yaml --format md
 | `check-mapping <file\|dir> --schema <files...>` | データ対応のテーブル・カラムが、dbtの manifest/catalog や information_schema のCSVにあるか照合。`--format json\|md` |
 | `diff <file\|dir>` | 意味上の変更点。`--base <rev\|file>`、`--format json\|md`。フォルダはファイルごとにまとめ、削除したモデルも含めます。`--fail-on-agreed` は合意済みの定義が変わったとき終了コード1 |
 | `ci` | プルリクエストでモデルを確認するGitHub Actionsのワークフローを作成（`--models <フォルダ>`、`--force`） |
-| `export <file> --format svg\|md\|ttl` | 図（SVG）、定義（Markdown）、OWL Turtle を出力。既存ファイルへの上書きは拒否 |
+| `export <file> --format svg\|md\|ttl\|skos` | 図（SVG）、定義（Markdown）、OWL Turtle、SKOS（Turtle）を出力。既存ファイルへの上書きは拒否 |
 
 ## プルリクエストで確認する（GitHub Actions）
 

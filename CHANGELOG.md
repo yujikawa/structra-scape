@@ -48,6 +48,8 @@
   same question, and a `conflicts` count; the skill asks the user instead of picking one.
 
 ### CLI
+- `export --format skos` writes the terms as a SKOS thesaurus in Turtle (prefLabel, altLabel,
+  definition, example, broader, related, notation, deprecation), for data catalogs.
 - `import-glossary <csv>` turns a glossary exported from a spreadsheet (CSV/TSV, Japanese or
   English headers) into concept upserts for `apply`. It needs an ID column, never invents
   IDs, never marks anything agreed, and lists the columns it left out.

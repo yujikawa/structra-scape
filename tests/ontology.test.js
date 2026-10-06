@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { loadModel, validateModel } from '../src/validate.js';
-import { exportOntology, conceptAttributes, validateOntology } from '../src/ontology.js';
+import { exportOntology, exportSkos, conceptAttributes, validateOntology } from '../src/ontology.js';
 import { diffModels } from '../src/diff.js';
 import { renderModel } from '../src/build.js';
 import { publicationMarkdown, publicationSvg } from '../src/publication.js';
@@ -79,6 +79,20 @@ test('agreement records and deprecated terms are validated, reported and exporte
   const bad = structuredClone(m);
   Object.assign(bad.concepts[2], { agreed_at: '2026-9-1', replaced_by: 'VIP' });
   assert.deepEqual(validateOntology(bad), ['VIP.agreed_at: YYYY-MM-DD の日付にしてください', 'VIP: agreed_by・agreed_at は review_state: agreed のときだけ指定してください', 'VIP.replaced_by: deprecated: true のときだけ指定してください', 'VIP.replaced_by: 置き換え先の概念が見つかりません']);
+});
+
+test('SKOS export writes a thesaurus with labels, hierarchy, related terms and retirement', () => {
+  const skos = exportSkos(sample());
+  assert.match(skos, /^@prefix : <https:\/\/example.com\/customer#> \.$/m);
+  assert.match(skos, /<https:\/\/example.com\/customer#> a skos:ConceptScheme ; skos:prefLabel "顧客と契約の定義" \./);
+  const block = id => skos.split('\n\n').find(b => b.startsWith(`:${id} a skos:Concept`)) || '';
+  assert.match(block('Customer'), /skos:altLabel "取引先" ;[\s\S]*skos:broader :Organization \.$/);
+  assert.match(block('Organization'), /dcterms:dateAccepted "2026-09-15"\^\^xsd:date ;[\s\S]*skos:topConceptOf[\s\S]*skos:related :Contract/);
+  assert.match(block('Account'), /owl:deprecated true ;\n  dcterms:isReplacedBy :Customer \.$/);
+  // Imported terms are referenced by the IRI of the file that owns them, never redeclared.
+  const billing = exportSkos(loadModel('samples/billing.yaml'));
+  assert.match(billing, /skos:related <https:\/\/example.com\/customer#Customer>/);
+  assert.doesNotMatch(billing, /:Customer a skos:Concept/);
 });
 
 test('completion accepts recorded cases and optional mapping without mutating model', () => {
