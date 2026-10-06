@@ -81,6 +81,19 @@ test('agreement records and deprecated terms are validated, reported and exporte
   assert.deepEqual(validateOntology(bad), ['VIP.agreed_at: YYYY-MM-DD の日付にしてください', 'VIP: agreed_by・agreed_at は review_state: agreed のときだけ指定してください', 'VIP.replaced_by: deprecated: true のときだけ指定してください', 'VIP.replaced_by: 置き換え先の概念が見つかりません']);
 });
 
+test('stylesheet colors are tokens, redefined for dark mode and kept light for print', async () => {
+  const { readFileSync } = await import('node:fs');
+  const page = readFileSync('src/templates/ontology.html', 'utf8');
+  const css = page.slice(page.indexOf('<style>'), page.indexOf('</style>'));
+  const outside = css.replace(/:root\{[^}]*\}/g, '').replace(/@media print\{[\s\S]*$/, '');
+  assert.deepEqual(outside.match(/#[0-9a-fA-F]{3,8}\b/g), null);
+  const tokens = block => new Set([...block.matchAll(/(--[\w-]+):/g)].map(m => m[1]));
+  const [light, dark] = [...css.matchAll(/:root\{([^}]*)\}/g)].map(m => tokens(m[1]));
+  const colorTokens = [...light].filter(t => !['--sans', '--mono', '--canvas', '--canvas-dot'].includes(t));
+  assert.deepEqual(colorTokens.filter(t => !dark.has(t)), []);
+  assert.match(css, /@media screen and \(prefers-color-scheme:dark\)/);
+});
+
 test('SKOS export writes a thesaurus with labels, hierarchy, related terms and retirement', () => {
   const skos = exportSkos(sample());
   assert.match(skos, /^@prefix : <https:\/\/example.com\/customer#> \.$/m);

@@ -32,6 +32,13 @@
   that still use it; the OWL export adds `owl:deprecated` and `dcterms:isReplacedBy`.
 - YAML is read with the YAML 1.2 core schema, so dates such as `2026-09-15` stay strings.
 
+### Viewer
+- Dark mode follows the system setting; diagram sheets stay light. Every stylesheet color is
+  now a token (a test enforces it).
+- Printing gives the open view as a document: no navigation or controls, light colors, cards
+  and questions kept whole across pages.
+- Hint text (`--ink-3`) meets WCAG AA contrast (4.5:1) on every background.
+
 ### Viewer (large models)
 - The term diagram has a 表示範囲 control: every term, the selection and its neighbours, or
   two steps away. Selecting a neighbour re-centres the diagram on it. Models with more than
