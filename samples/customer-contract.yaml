@@ -5,9 +5,13 @@ concepts:
   - id: Organization
     name: 法人
     description: 契約の当事者となる組織。名前が変わっても同じ法人として扱う。
+    review_state: agreed
+    agreed_by: 営業部・経理部
+    agreed_at: 2026-09-15
+    evidence: 2026-09-15 営業部・経理部の定例（説明用の仮定）
   - id: Customer
     name: 契約顧客
-    aliases: [ 顧客, 取引先 ]
+    aliases: [ 顧客, 取引先, 得意先 ]
     parent: Organization
     description: 有効な契約を少なくとも1つ持つ法人。
     example: A社は有効な保守契約を持つため、契約顧客に含める。
@@ -30,6 +34,12 @@ concepts:
       grain: 1行は1契約。契約顧客数は法人IDの重複を除いて数える。
       condition: status = 'active' の契約に紐づく organization_id を抽出する案。
       gap: statusだけでは基準日・開始日・終了日を判定できない可能性がある。有効期間と解約の扱いを業務担当者に確認する。
+  # 旧システムの呼び方。古い帳票に残っているため、検索できるように残す。
+  - id: Account
+    name: 得意先
+    deprecated: true
+    replaced_by: Customer
+    description: 旧販売管理システムでの呼び方。契約の有無を問わず取引のある法人を指していた。
   - id: Contract
     name: 契約
     description: 当事者間の合意。

@@ -63,6 +63,12 @@ Rules of thumb:
   answer box.
 - `review_state`: leave `draft` (or omit) for new definitions. Set `agreed` only when the
   user states that the business owners agreed. Never infer agreement from confidence.
+  With `agreed`, record `agreed_by` (who: a department, a role or a meeting) and
+  `agreed_at` (`YYYY-MM-DD`) as the user tells you; ask when they do not say.
+- A term nobody should use any more is retired, not deleted: `deprecated: true`, plus
+  `replaced_by: <ID>` when another term takes over (often its old name becomes an alias of
+  the replacement). Then move the steps, relationships and subtypes that used it to the
+  replacement; the open-questions view lists what still points at it.
 
 ## 4. Process flows
 

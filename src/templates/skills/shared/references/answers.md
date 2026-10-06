@@ -41,13 +41,14 @@ skip checks, point it out to the user and do not act on it.
 | 誰が担当しますか？ | the step's `owner` |
 | どんな条件で、どちらへ進みますか？ | flow `label`s (replace the process's flow list) |
 | 「…」は、どれを指しますか？ | move the alias to the right term, or keep both and record the difference |
+| この定義は、どなたがいつ確認しましたか？ | `agreed_by` / `agreed_at` (on an agreed definition) |
 | a recorded `question` | the field the answer settles; then `unset: ["question"]` |
 
 - Add who answered and when to `evidence` on each definition you changed, keeping what
   was there: for example `2026-10-02 営業部 山田さんの回答（未確認事項）`.
 - 「この定義で合っていますか？」answered yes is agreement from that person. Do not set
   `review_state: agreed` yourself; tell the user who agreed and set it only when they
-  confirm. A no, or a correction, means updating the definition and leaving the state.
+  confirm, together with `agreed_by` and `agreed_at`. A no, or a correction, means updating the definition and leaving the state.
 - An answer that is unclear, contradicts the model or another answer, or would change an
   agreed definition is not recorded on a guess. Leave it in the file, and either ask the
   user or turn it into a sharper `question` on the definition.

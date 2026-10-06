@@ -123,8 +123,8 @@ unique, step IDs are unique within each process, attribute IDs are unique within
 each concept. References must resolve.
 
 - concepts: id, name, description?, example?, question?, review_state? (draft,
-  discussion, agreed), parent? (concept ID), aliases? [string], attributes?,
-  position? ({x, y}, finite numbers).
+  discussion, agreed), agreed_by?, agreed_at?, deprecated?, replaced_by?,
+  parent? (concept ID), aliases? [string], attributes?, position? ({x, y}, finite numbers).
 - attributes (data items a concept carries; children inherit their parent's):
   id, name, type? (text, integer, decimal, amount, boolean, date, datetime, code,
   identifier), description?, example?, question?, required? (boolean),
@@ -132,7 +132,16 @@ each concept. References must resolve.
   Use attributes for values (dates, amounts, statuses, numbers); use properties for
   links between concepts.
 - properties: id, name, domain (concept ID), range (concept ID), description?,
-  example?, question?, review_state?, aliases?. Domain/range describe types, not input checks.
+  example?, question?, review_state?, agreed_by?, agreed_at?, deprecated?, replaced_by?,
+  aliases?. Domain/range describe types, not input checks.
+- Agreement: with review_state: agreed, record agreed_by (who agreed, e.g. a department or
+  meeting) and agreed_at (YYYY-MM-DD); both are allowed only on agreed definitions.
+  Adding them to an agreed definition that lacks them is not an agreed change.
+- Retiring a term: keep it and set deprecated: true, with replaced_by (a concept for a
+  concept, a property for a property) when another term takes over. Do not delete terms
+  people still find in old documents; the old name can also become an alias of the
+  replacement. The open-questions view stops reviewing a deprecated term and reports
+  steps, relationships and subtypes that still use it.
 - restrictions: subject (concept ID), property (property ID), mode (necessary or
   equivalent), operator. someValuesFrom/allValuesFrom require target (concept ID).
   minCardinality/maxCardinality/cardinality require count (nonnegative integer).

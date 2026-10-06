@@ -8,7 +8,7 @@ import { resolveImports } from './imports.js';
 export function loadModel(file, { resolve = true } = {}) {
   const absolute = path.resolve(process.cwd(), file);
   if (!fs.existsSync(absolute)) throw new Error(`File not found: ${file}`);
-  const model = yaml.load(fs.readFileSync(absolute, 'utf8')) || {};
+  const model = yaml.load(fs.readFileSync(absolute, 'utf8'), { schema: yaml.CORE_SCHEMA }) || {};
   return resolve ? resolveImports(model, absolute) : model;
 }
 

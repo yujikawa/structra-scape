@@ -17,7 +17,7 @@ function fail(code, message) { throw Object.assign(new Error(message), { code })
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value); }
 function load(file) {
   const text = fs.readFileSync(file, 'utf8');
-  const model = yaml.load(text);
+  const model = yaml.load(text, { schema: yaml.CORE_SCHEMA });
   if (model?.kind !== 'ontology') fail('MODEL_TYPE', 'Expected kind: ontology');
   return { text, model, revision: hash(text) };
 }

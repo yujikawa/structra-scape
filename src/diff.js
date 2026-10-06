@@ -6,7 +6,10 @@ export const changeFieldLabels = {
   review_state: '合意状態', evidence: '根拠', cases: 'ケース', data_mapping: 'データ対応', parent: '上位概念',
   aliases: '別名', domain: '始点', range: '相手', owner: '担当', type: '種類', items: '登場することば',
   subprocess: '詳細フロー', required: '必須', values: '区分値', label: '条件', base: 'IRI', imports: '読み込む共通定義',
+  agreed_by: '合意した人', agreed_at: '合意した日', deprecated: '廃止', replaced_by: '置き換え先',
 };
+// Recording who agreed and when, where nothing was recorded, does not change an agreed definition.
+const recordsAgreement = f => ['agreed_by', 'agreed_at'].includes(f.field) && f.before === undefined;
 const canonical = value => Array.isArray(value) ? value.map(canonical)
   : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
@@ -25,7 +28,7 @@ function compareById(entity, before, after, skip, context = {}, agreed = () => f
     if (!old) changes.push({ entity, change: 'added', id: item.id, name: item.name, ...context, agreed: false });
     else {
       const fields = fieldChanges(old, item, skip);
-      if (fields.length) changes.push({ entity, change: 'changed', id: item.id, name: item.name, ...context, fields, agreed: agreed(old) });
+      if (fields.length) changes.push({ entity, change: 'changed', id: item.id, name: item.name, ...context, fields, agreed: agreed(old) && !fields.every(recordsAgreement) });
     }
   }
   for (const old of previous.values()) changes.push({ entity, change: 'removed', id: old.id, name: old.name, ...context, agreed: agreed(old) });

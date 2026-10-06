@@ -19,7 +19,7 @@ function workspace(t, files = {}) {
 
 test('overview finds hand-overs and definitions used across domains', () => {
   const overview = workspaceOverview(loadWorkspace('samples'));
-  assert.deepEqual(overview.domains.map(d => [d.file, d.concepts, d.processes]), [['billing.yaml', 1, 1], ['customer-contract.yaml', 4, 1], ['process-hierarchy.yaml', 0, 3]]);
+  assert.deepEqual(overview.domains.map(d => [d.file, d.concepts, d.processes]), [['billing.yaml', 1, 1], ['customer-contract.yaml', 5, 1], ['process-hierarchy.yaml', 0, 3]]);
   // The contract process creates 契約 and the billing process reads it.
   const handover = overview.links.find(l => l.from === 'customer-contract.yaml' && l.to === 'billing.yaml');
   assert.deepEqual(handover.handoffs.map(h => [h.conceptId, h.from.process, h.to.process, h.to.role]), [['Contract', 'ContractProcess', 'Billing', 'reads']]);

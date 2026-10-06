@@ -7,8 +7,8 @@ export function publicationMarkdown(model, { concept, date = new Date().toISOStr
   if(concept&&!concepts.length)throw new Error(`Concept not found: ${concept}`);
   const blocks = [`# ${md(model.name)}`,`出力日時: ${date}\n\n元モデル: ${md(model.base)}\n\n出力時点のスナップショットです。`];
   for(const c of concepts){
-    blocks.push(`## ${md(c.name)}\n\nID: ${md(c.id)}${c.aliases?.length?`\n\n別名: ${c.aliases.map(md).join('、')}`:''}${c.imported_from?`\n\n共通定義: ${md(c.imported_from)}`:''}`);
-    for(const [key,label] of [['description','定義'],['example','具体例'],['exclusion','含まない例'],['question','確認事項'],['evidence','根拠'],['review_state','確認状況']])if(c[key])blocks.push(`### ${label}\n\n${md(c[key])}`);
+    blocks.push(`## ${md(c.name)}\n\nID: ${md(c.id)}${c.aliases?.length?`\n\n別名: ${c.aliases.map(md).join('、')}`:''}${c.imported_from?`\n\n共通定義: ${md(c.imported_from)}`:''}${c.deprecated?`\n\n**廃止**${c.replaced_by?` — 代わりに「${md(model.concepts.find(x=>x.id===c.replaced_by)?.name||c.replaced_by)}」`:''}`:''}`);
+    for(const [key,label] of [['description','定義'],['example','具体例'],['exclusion','含まない例'],['question','確認事項'],['evidence','根拠'],['review_state','確認状況'],['agreed_by','合意した人'],['agreed_at','合意した日']])if(c[key])blocks.push(`### ${label}\n\n${md(c[key])}`);
     if(c.cases?.length)blocks.push(`### ケース\n\n${c.cases.map(x=>`- ${md(x.result)}: ${md(x.description)}${x.reason?' — '+md(x.reason):''}`).join('\n')}`);
     if(c.attributes?.length)blocks.push(`### 属性（データ項目）\n\n| 属性 | ID | 種類 | 必須 | 説明 | データの所在 |\n|---|---|---|---|---|---|\n${c.attributes.map(a=>`| ${cell(a.name)} | ${cell(a.id)} | ${cell(a.type)}${a.values?.length?' ('+a.values.map(v=>cell(v.value)).join(', ')+')':''} | ${a.required?'はい':''} | ${cell(a.description)} | ${a.data_mapping?cell(a.data_mapping.source)+' ['+cell(a.data_mapping.status)+']':''} |`).join('\n')}`);
     if(c.data_mapping)blocks.push(`### データとの対応\n\n${Object.entries(c.data_mapping).map(([k,v])=>`- ${md(k)}: ${md(v)}`).join('\n')}\n\n記録された対応情報であり、実データの検証結果ではありません。`);

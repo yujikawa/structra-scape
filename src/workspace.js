@@ -21,7 +21,7 @@ export function workspaceOverview(entries) {
     if (!item) return null;
     const key = `${ownerOf(entry, item)}#${item.id}`;
     if (!concepts.has(key)) {
-      concepts.set(key, { key, id: item.id, name: item.name, owner: ownerOf(entry, item), aliases: item.aliases || [], usages: [] });
+      concepts.set(key, { key, id: item.id, name: item.name, owner: ownerOf(entry, item), aliases: item.aliases || [], ...(item.deprecated ? { deprecated: true } : {}), usages: [] });
       domains.get(ownerOf(entry, item)).concepts++;
     }
     return concepts.get(key);
@@ -82,7 +82,8 @@ export function workspaceOverview(entries) {
   }
   // The same word defined separately in two domains may be one thing, or two that need telling apart.
   const labels = new Map();
-  for (const c of concepts.values()) for (const label of [c.name, ...c.aliases]) {
+  // A deprecated term's name often lives on as an alias of its replacement.
+  for (const c of [...concepts.values()].filter(c => !c.deprecated)) for (const label of [c.name, ...c.aliases]) {
     const key = String(label).trim().toLowerCase();
     if (!labels.has(key)) labels.set(key, { label: String(label).trim(), concepts: new Set() });
     labels.get(key).concepts.add(c);

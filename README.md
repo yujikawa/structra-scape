@@ -86,7 +86,8 @@ YAMLの書き方は変わりません。各モデルの記録から、次のも�
 - **用語・つながり**：説明、含む例、含まない例、根拠、合意状態の記録。`question` と判定が未決定のケースは、合意済みでも残件に含めます
 - **属性**：説明、値の種類、区分値（`type: code` の場合）、データ対応
 - **データ対応**（登録した場合）：確認状態、1件が表すもの、判定条件、業務定義との差
-- **不整合**：上位概念の循環、直接指定した個数条件の矛盾、別名がほかの用語の名前・別名と重なっていること
+- **合意の記録**：合意済みなのに、誰がいつ合意したかが書かれていないこと
+- **不整合**：上位概念の循環、直接指定した個数条件の矛盾、別名がほかの用語の名前・別名と重なっていること、廃止したことばを使い続けていること
 - **業務フロー**：作業の担当、分岐の行き先が2つ以上あり条件が書かれているか、並行開始と合流の対応。開始・終了を置いたフローでは、開始からたどり着けない作業と行き止まりも確認します
 
 ### 業務担当者の回答を反映する
@@ -123,6 +124,15 @@ concepts:
     question: 契約が終了した会社は別の呼び名で管理する？
     review_state: discussion           # draft / discussion / agreed
     evidence: 2026-09 営業部との打ち合わせ
+  - id: Organization
+    name: 法人
+    review_state: agreed
+    agreed_by: 営業部・経理部            # 合意した人と日付（agreed のときだけ）
+    agreed_at: 2026-09-15
+  - id: Account
+    name: 得意先
+    deprecated: true                   # 廃止したことば。古い資料のために残す
+    replaced_by: Customer              # 代わりに使うことば
     data_mapping:
       source: dwh.contracts
       status: proposed                 # proposed / verified
@@ -163,6 +173,8 @@ processes:
 
 完全な例は [samples/](samples/) にあります。項目の正式な定義は `strscape guide` が出力するAI向けの説明を参照してください。
 
+- **合意の記録**：`review_state: agreed` には、誰が（`agreed_by`）いつ（`agreed_at`、`YYYY-MM-DD`）合意したかを書きます。記録がないと未確認事項に表示します。合意済みの定義にあとから記録を足すことは、定義の変更として扱いません。
+- **廃止したことば**：使わなくなったことばは削除せず `deprecated: true` にし、代わりのことばを `replaced_by` に書きます。画面では「廃止」と表示し、検索では見つかります。廃止したことばを使い続けている作業・つながり・上位概念は未確認事項に表示します。
 - **ID** は英字で始まる英数字・`_`・`-` です。名前を変えてもIDは変えません。用語とつながりのIDは共通の名前空間です。
 - **つながり（properties）と属性（attributes）**：用語同士を結ぶものはつながり、日付や金額など値そのものは属性にします。
 - **分類条件（restrictions）**：`someValuesFrom`（少なくとも1つある）、`allValuesFrom`（相手はすべて。存在は要求しない）、`minCardinality` / `maxCardinality` / `cardinality`（重複を除いた相手の数）。`mode: equivalent` は「この条件で呼び分ける」、`necessary` は「必ず満たす」です。

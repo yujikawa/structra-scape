@@ -37,10 +37,21 @@ export function validateOntology(model) {
     if (item.description !== undefined && typeof item.description !== 'string') errors.push(`${item.id}: 説明は文字列にしてください`);
     for (const field of ['example', 'question']) if (item[field] !== undefined && typeof item[field] !== 'string') errors.push(`${item.id}: ${field} は文字列にしてください`);
     if (item.review_state !== undefined && !['draft', 'discussion', 'agreed'].includes(item.review_state)) errors.push(`${item.id}: 話し合いの状態が無効です`);
+    // Who agreed and when: recorded alongside review_state: agreed.
+    if (item.agreed_by !== undefined && (typeof item.agreed_by !== 'string' || !item.agreed_by.trim())) errors.push(`${item.id}.agreed_by: 空でない文字列にしてください`);
+    if (item.agreed_at !== undefined && !isDate(item.agreed_at)) errors.push(`${item.id}.agreed_at: YYYY-MM-DD の日付にしてください`);
+    if ((item.agreed_by !== undefined || item.agreed_at !== undefined) && item.review_state !== 'agreed') errors.push(`${item.id}: agreed_by・agreed_at は review_state: agreed のときだけ指定してください`);
+    if (item.deprecated !== undefined && typeof item.deprecated !== 'boolean') errors.push(`${item.id}.deprecated: true または false にしてください`);
     if (item.position !== undefined && (!item.position || !Number.isFinite(item.position.x) || !Number.isFinite(item.position.y))) errors.push(`${item.id}: 配置には有限のx・y座標が必要です`);
   }
   const concepts = new Set(model.concepts.filter(Boolean).map(c => c.id));
   const properties = new Set(model.properties.filter(Boolean).map(p => p.id));
+  // A deprecated term may name its replacement: another term of the same kind.
+  for (const [list, ids] of [[model.concepts, concepts], [model.properties, properties]]) for (const item of list.filter(Boolean)) {
+    if (item.replaced_by === undefined) continue;
+    if (item.deprecated !== true) errors.push(`${item.id}.replaced_by: deprecated: true のときだけ指定してください`);
+    if (typeof item.replaced_by !== 'string' || !ids.has(item.replaced_by) || item.replaced_by === item.id) errors.push(`${item.id}.replaced_by: 置き換え先の${list === model.concepts ? '概念' : '関係'}が見つかりません`);
+  }
   for (const c of model.concepts.filter(Boolean)) {
     if (c.parent && !concepts.has(c.parent)) errors.push(`${c.id}: 上位概念が見つかりません`);
     if (c.parent === c.id) errors.push(`${c.id}: 自分自身を上位概念には指定できません`);
@@ -63,6 +74,7 @@ export function validateOntology(model) {
   return errors;
 }
 
+const isDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + 'T00:00:00Z')) && new Date(value + 'T00:00:00Z').toISOString().startsWith(value);
 function validateMapping(owner, mapping) {
   const errors = [];
   if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) return [`${owner}.data_mapping: オブジェクトにしてください`];
@@ -176,7 +188,7 @@ export function exportOntology(model) {
   const errors = validateOntology(model);
   if (errors.length) throw new Error(errors.join('\n'));
   const literal = value => JSON.stringify(String(value));
-  const lines = ['@prefix : <' + model.base + '> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '', `<${model.base}> a owl:Ontology ; rdfs:label ${literal(model.name)} .`, ''];
+  const lines = ['@prefix : <' + model.base + '> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '@prefix dcterms: <http://purl.org/dc/terms/> .', '', `<${model.base}> a owl:Ontology ; rdfs:label ${literal(model.name)} .`, ''];
   // Imported definitions are declared by the file that owns them; reference it with owl:imports.
   for (const imported of model.imported_models || []) if (imported.base) lines.push(`<${model.base}> owl:imports <${imported.base}> .`);
   if (model.imported_models?.length) lines.push('');
@@ -192,6 +204,10 @@ export function exportOntology(model) {
     if (c.parent) lines.push(`:${c.id} rdfs:subClassOf ${ref(c.parent)} .`);
     // Attribute IDs are unique per concept only, so their IRIs are scoped by the concept.
     for (const a of c.attributes || []) lines.push(`<${model.base}${c.id}.${a.id}> a owl:DatatypeProperty ; rdfs:label ${literal(a.name)} ; rdfs:domain :${c.id} ; rdfs:range xsd:${xsd[a.type] || 'string'}${a.description ? ' ; rdfs:comment ' + literal(a.description) : ''} .`);
+  }
+  for (const item of [...model.concepts, ...model.properties].filter(own)) {
+    if (item.deprecated) lines.push(`:${item.id} owl:deprecated true .`);
+    if (item.replaced_by) lines.push(`:${item.id} dcterms:isReplacedBy ${ref(item.replaced_by)} .`);
   }
   for (const p of model.properties.filter(own)) lines.push(`:${p.id} a owl:ObjectProperty ; rdfs:label ${literal(p.name)}${aliases(p)} ; rdfs:domain ${ref(p.domain)} ; rdfs:range ${ref(p.range)}${p.description ? ' ; rdfs:comment ' + literal(p.description) : ''} .`);
   // Equivalent conditions for one concept form ONE conjunction, not several equivalences.

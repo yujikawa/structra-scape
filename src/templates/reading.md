@@ -20,7 +20,9 @@ them unconfirmed for lacking one.
 | `question` | Something still undecided about the item. The definition may change once it is answered. |
 | `cases[].result: unresolved` | Nobody has decided whether this example is included. Do not guess. |
 | `cases[].result: included / excluded` | Decided examples (inside / outside the definition). |
+| `agreed_by` / `agreed_at` | Who agreed the definition and on which day. |
 | `evidence` | Where the definition came from. Missing evidence means the source is unknown. |
+| `deprecated: true` | A retired term. It may still appear in old documents; use `replaced_by` (the term that took over) for anything current. |
 | `data_mapping.status: proposed` | A guess at where the data lives. Not checked; do not query it as if it were confirmed. |
 | `data_mapping.status: verified` | Checked against the data. |
 | `data_mapping.gap` | A known difference between the business definition and the data. |

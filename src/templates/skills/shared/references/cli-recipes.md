@@ -146,6 +146,20 @@ one — all in one transaction (validation fails on any reference you missed).
 The `model` entity accepts only `name`, `base` and `imports` (and `unset` of them). To
 move existing terms into `common.yaml`, use `strscape promote` (see `workspace.md`).
 
+## 8. Record who agreed; retire a term
+
+Set `agreed` only when the user says the business owners agreed, with who and when. A
+retired term stays in the model (old documents still use it): `deprecated: true` and the
+term that took over. To retire a term that steps or relationships use, move those
+references to the replacement in the same transaction.
+
+```json
+{"operations":[
+  {"op":"upsert","entity":"concept","id":"Customer","value":{"review_state":"agreed","agreed_by":"営業部・経理部","agreed_at":"2026-10-01","evidence":"2026-10-01 営業部・経理部の定例"}},
+  {"op":"upsert","entity":"concept","id":"Account","value":{"name":"得意先","deprecated":true,"replaced_by":"Customer","description":"旧販売管理システムでの呼び方。"}}
+]}
+```
+
 ## When a command fails
 
 Every command prints JSON; `ok: false` comes with `code` and `errors`.

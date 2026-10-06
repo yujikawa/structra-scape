@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { loadModel, validateModel } from '../src/validate.js';
-import { exportOntology, conceptAttributes } from '../src/ontology.js';
+import { exportOntology, conceptAttributes, validateOntology } from '../src/ontology.js';
+import { diffModels } from '../src/diff.js';
 import { renderModel } from '../src/build.js';
 import { publicationMarkdown, publicationSvg } from '../src/publication.js';
 import { assessCompletion } from '../src/completion.js';
@@ -46,8 +47,42 @@ test('open items carry a question for business users, except data-side items', (
   assert.equal(translateUI('「顧客」は、「契約顧客」「法人」のどれを指しますか？', 'en'), 'Which does “顧客” mean: “契約顧客”, “法人”?');
 });
 
+test('agreement records and deprecated terms are validated, reported and exported', () => {
+  const m = {
+    kind: 'ontology', name: 'g', base: 'https://e.com/g#',
+    concepts: [
+      { id: 'Client', name: '取引先', deprecated: true, replaced_by: 'Customer' },
+      { id: 'Customer', name: '顧客', aliases: ['取引先'], review_state: 'agreed' },
+      { id: 'VIP', name: '重要顧客', parent: 'Client' },
+    ],
+    properties: [], restrictions: [],
+    processes: [{ id: 'P', name: '受付', steps: [{ id: 'S', name: '登録する', type: 'task', owner: '営業', items: [{ concept: 'Client', role: 'creates' }] }], flows: [] }],
+  };
+  assert.deepEqual(validateOntology(m), []);
+  const issues = assessCompletion(m).issues;
+  // The deprecated term itself is no longer reviewed, and its old name may live on as an alias.
+  assert.equal(issues.some(i => i.id === 'Client'), false);
+  assert.equal(issues.some(i => i.category === '不整合' && i.message.startsWith('別名')), false);
+  assert.ok(issues.some(i => i.id === 'Customer' && i.message.includes('agreed_by')));
+  assert.ok(issues.some(i => i.id === 'VIP' && i.message === '廃止したことば「取引先」を使っています。「顧客」に置き換えてください。'));
+  assert.ok(issues.some(i => i.kind === 'step' && i.id === 'S' && i.ask === 'ここで扱うのは「顧客」ですか？（「取引先」は廃止されました）'));
+  assert.equal(translateUI('ここで扱うのは「顧客」ですか？（「取引先」は廃止されました）', 'en'), 'Is this about “顧客”? (“取引先” is deprecated)');
+  const ttl = exportOntology(m);
+  assert.match(ttl, /:Client owl:deprecated true \./);
+  assert.match(ttl, /:Client dcterms:isReplacedBy :Customer \./);
+  // Recording who agreed on an agreed definition is not a change of meaning.
+  const recorded = structuredClone(m);
+  Object.assign(recorded.concepts[1], { agreed_by: '営業部', agreed_at: '2026-09-15' });
+  assert.equal(diffModels(m, recorded)[0].agreed, false);
+  recorded.concepts[1].agreed_by = '経理部';
+  assert.equal(diffModels(structuredClone({ ...m, concepts: m.concepts.map((c, i) => i === 1 ? { ...c, agreed_by: '営業部', agreed_at: '2026-09-15' } : c) }), recorded)[0].agreed, true);
+  const bad = structuredClone(m);
+  Object.assign(bad.concepts[2], { agreed_at: '2026-9-1', replaced_by: 'VIP' });
+  assert.deepEqual(validateOntology(bad), ['VIP.agreed_at: YYYY-MM-DD の日付にしてください', 'VIP: agreed_by・agreed_at は review_state: agreed のときだけ指定してください', 'VIP.replaced_by: deprecated: true のときだけ指定してください', 'VIP.replaced_by: 置き換え先の概念が見つかりません']);
+});
+
 test('completion accepts recorded cases and optional mapping without mutating model', () => {
-  const m = { concepts: [{ id: 'A', name: 'A', description: 'definition', evidence: 'meeting', review_state: 'agreed', cases: [{ description: 'yes', result: 'included' }, { description: 'no', result: 'excluded' }] }], properties: [], restrictions: [] };
+  const m = { concepts: [{ id: 'A', name: 'A', description: 'definition', evidence: 'meeting', review_state: 'agreed', agreed_by: 'Sales', agreed_at: '2026-09-15', cases: [{ description: 'yes', result: 'included' }, { description: 'no', result: 'excluded' }] }], properties: [], restrictions: [] };
   const before = structuredClone(m);
   assert.deepEqual(assessCompletion(m), { issues: [], ready: 1, total: 1 });
   assert.deepEqual(m, before);
@@ -129,12 +164,13 @@ test('offline reader embeds compilable code and escapes user script endings', ()
 test('review notes and layout survive YAML serialization and reject invalid metadata', async () => {
   const { default: yaml } = await import('js-yaml');
   const model = sample();
-  Object.assign(model.concepts[0], { example: 'A社', question: '名称変更時は？', review_state: 'agreed', position: { x: 100, y: 200 } });
+  const at = model.concepts.findIndex(c => c.id === 'Contract');
+  Object.assign(model.concepts[at], { example: 'A社', question: '名称変更時は？', review_state: 'agreed', position: { x: 100, y: 200 } });
   const restored = yaml.load(yaml.dump(model));
   assert.deepEqual(restored, model);
   assert.deepEqual(validateModel(restored), []);
-  restored.concepts[0].review_state = 'unknown';
-  restored.concepts[0].position.x = Infinity;
+  restored.concepts[at].review_state = 'unknown';
+  restored.concepts[at].position.x = Infinity;
   assert.equal(validateModel(restored).length, 2);
 });
 

@@ -56,7 +56,8 @@ test('questions list the items that take answers; answers track whether each is 
   assert.deepEqual(listed.answers.map(a => a.open), [true, true]);
 
   // Once the model records the answer, its question is no longer asked.
-  updateDocument(file, { operations: [{ op: 'upsert', entity: 'concept', id: 'Organization', value: { example: '株式会社や合同会社' } }] });
+  // Organization is agreed in the sample, so recording the answer is a confirmed change.
+  updateDocument(file, { operations: [{ op: 'upsert', entity: 'concept', id: 'Organization', value: { example: '株式会社や合同会社' } }] }, { allowAgreedChange: true });
   listed = listAnswers(answersFile).files[0];
   assert.equal(listed.revision_changed, true);
   assert.deepEqual(listed.answers.map(a => a.open), [false, true]);

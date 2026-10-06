@@ -15,12 +15,12 @@ export function gitBaseline(file, ref = 'HEAD') {
   try { git(cwd, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]); } catch { return null; }
   let text;
   try { text = git(cwd, ['show', `${ref}:./${path.basename(absolute)}`]); } catch { return { ref, model: null }; }
-  return { ref, model: yaml.load(text) || {} };
+  return { ref, model: yaml.load(text, { schema: yaml.CORE_SCHEMA }) || {} };
 }
 
 // --base accepts either a YAML file or a git revision.
 export function loadBaseline(file, base = 'HEAD') {
-  if (fs.existsSync(base) && fs.statSync(base).isFile()) return { ref: base, model: yaml.load(fs.readFileSync(base, 'utf8')) || {} };
+  if (fs.existsSync(base) && fs.statSync(base).isFile()) return { ref: base, model: yaml.load(fs.readFileSync(base, 'utf8'), { schema: yaml.CORE_SCHEMA }) || {} };
   const baseline = gitBaseline(file, base);
   if (!baseline) throw new Error(`Cannot read ${base}: not a file, or not a git revision of ${file}`);
   return baseline;
@@ -36,7 +36,7 @@ function gitModelNames(dir, ref) {
 export function diffTarget(target, base = 'HEAD') {
   const absolute = path.resolve(target);
   if (!fs.existsSync(absolute)) throw new Error(`File not found: ${target}`);
-  const current = file => yaml.load(fs.readFileSync(file, 'utf8')) || {};
+  const current = file => yaml.load(fs.readFileSync(file, 'utf8'), { schema: yaml.CORE_SCHEMA }) || {};
   if (!fs.statSync(absolute).isDirectory()) {
     const baseline = loadBaseline(target, base);
     return [{ file: path.basename(absolute), ref: baseline.ref, changes: diffModels(baseline.model, current(absolute)) }];

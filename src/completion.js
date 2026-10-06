@@ -10,7 +10,9 @@ export function assessCompletion(model) {
   };
   // Imported definitions are reviewed in the model that owns them.
   const local = item => !item.imported_from;
-  const entries = [...model.concepts.filter(local).map(item => ({ item, kind: 'concept' })), ...model.properties.filter(local).map(item => ({ item, kind: 'property' }))];
+  // A deprecated term is no longer reviewed; what still uses it is reported instead.
+  const current = item => !item.deprecated;
+  const entries = [...model.concepts.filter(local).filter(current).map(item => ({ item, kind: 'concept' })), ...model.properties.filter(local).filter(current).map(item => ({ item, kind: 'property' }))];
   if (!model.concepts.length) add('不足', '対象とする業務の概念を登録してください。', undefined, 'この業務では、どんな「もの」や「こと」を扱いますか？');
   const mappingIssues = (mapping, target, prefix = '') => {
     if (text(mapping.gap)) add('データ対応', prefix + mapping.gap, target);
@@ -26,6 +28,7 @@ export function assessCompletion(model) {
     if (!text(item.exclusion) && !(item.cases || []).some(c => c.result === 'excluded')) add('不足', '含まない具体例を記録してください。', target, '似ているけれど含まれないものはありますか？');
     if (!text(item.evidence)) add('不足', '定義の根拠・合意の記録を残してください。', target, 'この定義は、どの資料や打ち合わせで決まったものですか？');
     if (item.review_state !== 'agreed') add('未合意', '業務担当者と定義を確認し、合意状態を記録してください。', target, 'この定義で合っていますか？');
+    else if (!text(item.agreed_by) || !item.agreed_at) add('不足', '誰がいつ合意したか（agreed_by・agreed_at）を記録してください。', target, 'この定義は、どなたがいつ確認しましたか？');
     if (item.data_mapping) mappingIssues(item.data_mapping, target);
     for (const a of item.attributes || []) {
       const prefix = `属性「${a.name}」：`;
@@ -38,7 +41,7 @@ export function assessCompletion(model) {
   }
   // The same word must not point at two different definitions.
   const labels = new Map();
-  for (const item of [...model.concepts, ...model.properties]) for (const label of [item.name, ...(item.aliases || [])]) {
+  for (const item of [...model.concepts, ...model.properties].filter(current)) for (const label of [item.name, ...(item.aliases || [])]) {
     const key = String(label).trim().toLowerCase();
     if (!labels.has(key)) labels.set(key, new Set());
     labels.get(key).add(item);
@@ -62,6 +65,21 @@ export function assessCompletion(model) {
       const upper = Math.min(Infinity, ...rules.filter(r => ['maxCardinality', 'cardinality'].includes(r.operator)).map(r => r.count));
       if (lower > upper) add('不整合', `「${p.name}」の個数条件を同時に満たせません。`, { kind: 'concept', id: c.id, name: c.name }, `「${p.name}」の相手は、いくつありえますか？`);
     }
+  }
+  // Definitions and work that still point at a deprecated term.
+  const byId = new Map([...model.concepts, ...model.properties].map(item => [item.id, item]));
+  const retired = id => byId.get(id)?.deprecated ? byId.get(id) : null;
+  const stillUsed = (old, target) => {
+    const next = old.replaced_by && byId.get(old.replaced_by);
+    add('不整合', `廃止したことば「${old.name}」を使っています。${next ? `「${next.name}」に置き換えてください。` : '置き換え先を確認してください。'}`, target,
+      next ? `ここで扱うのは「${next.name}」ですか？（「${old.name}」は廃止されました）` : `「${old.name}」は廃止されました。ここでは代わりに何を扱いますか？`);
+  };
+  for (const { item, kind } of entries) {
+    const target = { kind, id: item.id, name: item.name };
+    for (const id of kind === 'concept' ? [item.parent] : [item.domain, item.range]) if (retired(id)) stillUsed(retired(id), target);
+  }
+  for (const p of model.processes || []) for (const s of p.steps || []) for (const use of s.items || []) {
+    if (retired(use.concept)) stillUsed(retired(use.concept), { kind: 'step', process: p.id, processName: p.name, id: s.id, name: s.name });
   }
   for (const p of model.processes || []) assessProcess(p, add, text);
   const ready = entries.filter(({ item, kind }) => !issues.some(issue => issue.kind === kind && issue.id === item.id)).length;

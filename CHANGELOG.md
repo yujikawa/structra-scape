@@ -23,6 +23,15 @@
 - Nodes can be dragged in every diagram (process flows and the overview too, as in the term
   diagram). Dragged positions last while the page is open and are never saved to the YAML.
 
+### Models
+- `agreed_by` / `agreed_at` record who agreed a definition and when (only with
+  `review_state: agreed`). An agreed definition without them is an open question; adding them
+  where they were missing is not an agreed change.
+- `deprecated: true` and `replaced_by` retire a term without deleting it. The viewer marks it
+  as retired; open questions stop reviewing it and list the steps, relationships and subtypes
+  that still use it; the OWL export adds `owl:deprecated` and `dcterms:isReplacedBy`.
+- YAML is read with the YAML 1.2 core schema, so dates such as `2026-09-15` stay strings.
+
 ### CLI
 - `validate` and `diff` take a folder and cover every model in it. `validate --json` now prints
   `{valid, files: [{file, errors}]}`; `diff <folder>` groups changes by file and lists models
