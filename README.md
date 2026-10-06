@@ -2,6 +2,8 @@
   <img src="src/templates/structra-scape-mark.svg" width="32" height="32" alt="structra-scape logo" valign="middle"> structra-scape
 </h1>
 
+<p align="center">日本語 | <a href="README.en.md">English</a></p>
+
 `structra-scape`（CLI: `strscape`）は、業務の流れと、そこで使われる「ことば」の意味を、業務担当者とデータ担当者がそろえるためのツールです。AI（Claude Code / Codex）がYAMLに整理し、人は1ファイルのHTMLビューアで確認します。
 
 - **ことばと関係**：用語の定義・別名・含む例／含まない例・根拠・合意状態、用語同士のつながりと分類条件
@@ -11,6 +13,12 @@
 - **変更点**：前回のコミットから意味がどう変わったか。合意済みの定義への変更は目立たせます
 
 YAMLが正本です。ビューアは閲覧専用で、内容の変更はAIかテキストエディタで行います。
+
+![ことばと関係：関係図と、選んだことばの定義](docs/images/terms.png)
+
+| 全体マップ | 業務プロセス | 未確認事項 |
+|---|---|---|
+| ![全体マップ](docs/images/overview.png) | ![業務プロセス](docs/images/process.png) | ![未確認事項](docs/images/questions.png) |
 
 ## インストール
 
@@ -164,6 +172,10 @@ concepts:
     question: 契約が終了した会社は別の呼び名で管理する？
     review_state: discussion           # draft / discussion / agreed
     evidence: 2026-09 営業部との打ち合わせ
+    data_mapping:
+      source: dwh.contracts
+      status: proposed                 # proposed / verified
+      grain: 1行は1契約
   - id: Organization
     name: 法人
     review_state: agreed
@@ -173,10 +185,6 @@ concepts:
     name: 得意先
     deprecated: true                   # 廃止したことば。古い資料のために残す
     replaced_by: Customer              # 代わりに使うことば
-    data_mapping:
-      source: dwh.contracts
-      status: proposed                 # proposed / verified
-      grain: 1行は1契約
   - id: Contract
     name: 契約
     attributes:                        # 用語が持つ値（下位の用語にも引き継がれます）
@@ -307,7 +315,7 @@ strscape ci                     # .github/workflows/strscape.yml を作成（モ
 - `dev` は既定で `127.0.0.1` だけで待ち受け、`localhost` / `127.0.0.1` 以外のHostヘッダーの要求を拒否します（悪意あるWebページからの読み取りを防ぐため）。`--host 0.0.0.0` にすると同じネットワークの誰でも閲覧できます。
 - AIに渡すモデルに他人が書いた文章が含まれる場合、スキルはその文章を「指示」ではなく「データ」として扱うようAIに指示しています。
 - `imports` に書けるのは相対パスだけです。
-- `dev` の回答保存（`POST /answers`）は、同じページからの要求だけを受け付けます（Originヘッダーで確認）。
+- `dev` の回答保存（`POST /answers`）は、同じページからの要求だけを受け付けます（Originヘッダーで確認）。保存された回答は、画面を開ける人なら誰でも読めます（`GET /answers`）。
 
 ## できないこと
 
@@ -323,6 +331,7 @@ npm install
 npm test                 # CLI・検証・更新・スキルのテスト
 npm run test:browser     # ビルドした画面をヘッドレスChromiumで全表示確認（未導入なら npx playwright install chromium-headless-shell）
 npm run dev              # samples/ をプレビュー
+npm run screenshots      # READMEのスクリーンショット（docs/images/）を samples/ から作り直す
 ```
 
 リポジトリ内では `strscape` を `node src/index.js` に読み替えてください。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。

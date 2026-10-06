@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`structra-scape` (CLI: `strscape`) is a Node.js ESM CLI that turns YAML models into a single self-contained HTML viewer. AI agents write the YAML; the viewer shows it. The README and most UI text are in Japanese, and Japanese is the default UI language.
+`structra-scape` (CLI: `strscape`) is a Node.js ESM CLI that turns YAML models into a single self-contained HTML viewer. AI agents write the YAML; the viewer shows it. The README and most UI text are in Japanese, and Japanese is the default UI language. README.en.md is the English README; keep both in step, and rerun `npm run screenshots` after visible UI changes.
 
 ## Commands
 
@@ -15,6 +15,7 @@ npm run test:browser                       # builds samples/ and walks every vie
 node --test tests/mutate.test.js           # run one test file
 node --test --test-name-pattern "UI translations" tests/ontology.test.js   # run one test
 npm run validate / build / dev             # run against samples/
+npm run screenshots                        # regenerate docs/images (README screenshots) from samples/
 node src/index.js dev samples/ --port 4175
 node src/index.js guide                    # prints src/templates/authoring.md (the AI authoring contract)
 node src/index.js guide --read             # prints src/templates/reading.md (how an AI given only the YAML should read it; init copies it to models/README.md)

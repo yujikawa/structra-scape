@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Docs
+- README.en.md, an English README.
+- Screenshots of the viewer in both READMEs, captured from the samples by
+  `npm run screenshots` (scripts/screenshots.js).
+
 ### Viewer
 - Open items are phrased as questions business users can answer (each issue from
   `assessCompletion` now carries an `ask` next to its `message`), with the recording task in
