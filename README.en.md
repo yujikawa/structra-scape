@@ -85,7 +85,7 @@ strscape check-mapping models/ --schema columns.csv                       # a CS
 
 ## The viewer
 
-The header switches models (when a folder is built) and views. Business users and the data team use the same view: IDs and data mappings are always visible.
+The header switches models (when a folder is built) and views. Tool buttons (export, help, language, color scheme, diagram controls, the *Show* range…) are icons; hover for their names. View tabs and *Export answers* keep their text. Business users and the data team use the same view: IDs and data mappings are always visible.
 
 | View | Shows |
 |---|---|

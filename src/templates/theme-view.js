@@ -4,7 +4,7 @@ const themeMenu = document.createElement('details');
 themeMenu.className = 'header-menu theme-menu';
 // Icons only; the names are in the tooltip and for screen readers.
 const themeChoices = [['auto', 'monitor', '自動（OSの設定に合わせる）'], ['light', 'sun', 'ライト'], ['dark', 'moon', 'ダーク']];
-themeMenu.innerHTML = `<summary aria-label="配色" title="配色"></summary><div class="menu-panel theme-panel" role="group" aria-label="配色">${themeChoices.map(([value, icon, label]) => `<button data-theme-choice="${value}" aria-label="${label}" title="${label}">${uiIcon(icon)}</button>`).join('')}</div>`;
+themeMenu.innerHTML = `<summary class="icon-only" aria-label="配色" title="配色"></summary><div class="menu-panel theme-panel" role="group" aria-label="配色">${themeChoices.map(([value, icon, label]) => `<button data-theme-choice="${value}" aria-label="${label}" title="${label}">${uiIcon(icon)}</button>`).join('')}</div>`;
 document.querySelector('header').insertBefore(themeMenu, exportMenu);
 function showTheme() {
   const current = document.documentElement.dataset.theme || 'auto';
@@ -21,6 +21,3 @@ for (const button of themeMenu.querySelectorAll('[data-theme-choice]')) button.o
   themeMenu.open = false;
 };
 showTheme();
-// One header menu open at a time.
-themeMenu.addEventListener('toggle', () => { if (themeMenu.open) { exportMenu.open = false; helpMenu.open = false; } });
-for (const menu of [exportMenu, helpMenu]) menu.addEventListener('toggle', () => { if (menu.open) themeMenu.open = false; });

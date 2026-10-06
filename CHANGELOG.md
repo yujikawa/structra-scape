@@ -8,6 +8,10 @@
   `npm run screenshots` (scripts/screenshots.js).
 
 ### Viewer
+- Tool buttons are icons with tooltips and accessible names: export, help, language (a globe
+  menu), color scheme, the diagram's fit / zoom / view switch / 表示範囲, the overview's fit,
+  clearing the filter and opening answer files (now a keyboard-reachable button). View tabs
+  and Export answers keep their text. One header menu is open at a time.
 - Open items are phrased as questions business users can answer (each issue from
   `assessCompletion` now carries an `ask` next to its `message`), with the recording task in
   small print underneath and gentler category names (決めたいこと, 教えてほしいこと, …).

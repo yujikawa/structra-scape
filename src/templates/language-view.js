@@ -1,12 +1,18 @@
 // Keep translations in the presentation layer, including dynamically rendered panels.
 let uiLanguage = 'ja';
 try { if (localStorage.getItem('structra-language') === 'en') uiLanguage = 'en'; } catch {}
-const languageSelect = document.createElement('select');
-languageSelect.id = 'ui-language';
-languageSelect.setAttribute('aria-label', '表示言語 / Display language');
-languageSelect.innerHTML = '<option value="ja">日本語</option><option value="en">English</option>';
-languageSelect.value = uiLanguage;
-document.querySelector('header').insertBefore(languageSelect, exportMenu);
+// A globe menu; the language names and its label are bilingual and never translated.
+const languageMenu = document.createElement('details');
+languageMenu.className = 'header-menu language-menu';
+languageMenu.id = 'ui-language';
+languageMenu.innerHTML = '<summary></summary><div class="menu-panel language-panel" role="group" aria-label="表示言語 / Display language"><button data-language="ja" lang="ja">日本語</button><button data-language="en" lang="en">English</button></div>';
+iconOnly(languageMenu.querySelector('summary'), 'globe', '表示言語 / Display language');
+document.querySelector('header').insertBefore(languageMenu, exportMenu);
+const showLanguage = () => languageMenu.querySelectorAll('[data-language]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.language === uiLanguage)));
+showLanguage();
+// One header menu open at a time.
+const headerMenus = () => [...document.querySelectorAll('header details')];
+for (const menu of headerMenus()) menu.addEventListener('toggle', () => { if (menu.open) for (const other of headerMenus()) if (other !== menu) other.open = false; });
 
 const translatedNodes = new WeakMap();
 const translatedAttributes = new WeakMap();
@@ -30,7 +36,7 @@ function localizeScreen() {
     if (node.nodeValue !== rendered) node.nodeValue = rendered;
   }
   for (const element of document.querySelectorAll('[aria-label],[title],[placeholder]')) {
-    if (element === languageSelect) continue;
+    if (element.closest('#ui-language')) continue;
     const prior = translatedAttributes.get(element) || {};
     for (const attribute of ['aria-label', 'title', 'placeholder']) {
       if (!element.hasAttribute(attribute)) continue;
@@ -61,11 +67,13 @@ function localizeScreen() {
   languageObserver.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'title', 'placeholder'] });
 }
 const languageObserver = new MutationObserver(localizeScreen);
-languageSelect.onchange = () => {
-  uiLanguage = languageSelect.value;
+languageMenu.querySelectorAll('[data-language]').forEach(button => button.onclick = () => {
+  uiLanguage = button.dataset.language;
   try { localStorage.setItem('structra-language', uiLanguage); } catch {}
+  showLanguage();
+  languageMenu.open = false;
   localizeScreen();
   cy.resize();
   pc.resize();
-};
+});
 localizeScreen();

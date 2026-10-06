@@ -97,6 +97,7 @@ overviewGraph.on('tap', 'node', event => {
   else openFromOverview(overviewData.concepts.find(c => c.key === key)?.owner || file, () => openConcept(id));
 });
 $('overview-fit').onclick = () => overviewGraph.fit(overviewGraph.elements(), 28);
+iconOnly($('overview-fit'), 'fit', '図全体を表示');
 $('overview-cross').onchange = drawOverview;
 // Canvas labels are not DOM text: redraw them when the language changes.
 new MutationObserver(() => { if (overviewMode) drawOverview(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });

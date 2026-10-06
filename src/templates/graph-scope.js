@@ -1,8 +1,14 @@
 // Large models: the term diagram can show only the selected term and the terms around it.
 // Selecting a neighbour walks the diagram. Models with many terms open this way.
-const scopeControl=document.createElement('label');scopeControl.className='graph-scope';
-scopeControl.innerHTML='<span>表示範囲</span><select id="graph-scope"><option value="0">すべてのことば</option><option value="1">選んだことばと隣</option><option value="2">2つ先まで</option></select><small id="graph-scope-count"></small>';
+const scopeControl=document.createElement('div');scopeControl.className='graph-scope';scopeControl.id='graph-scope';
+scopeControl.setAttribute('role','group');scopeControl.setAttribute('aria-label','表示範囲');
+scopeControl.innerHTML='<small id="graph-scope-count"></small>';
+for(const [depth,icon,label] of [[0,'scopeAll','すべてのことば'],[1,'scopeNear','選んだことばと隣'],[2,'scopeFar','2つ先まで']]){
+  const button=document.createElement('button');button.dataset.scope=String(depth);iconOnly(button,icon,label);
+  button.onclick=()=>setScope(depth);scopeControl.append(button);
+}
 document.querySelector('.canvas').append(scopeControl);
+const showScope=()=>scopeControl.querySelectorAll('[data-scope]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.scope)===scopeDepth)));
 cy.style().selector('.out-of-scope').style({display:'none'}).update();
 const scopeLargeModel=40;
 let scopeDepth=0, scopeEntry=null, scopeKey='', scopeSaved=null;
@@ -48,7 +54,7 @@ function applyScope(){
 }
 function setScope(depth){
   if(!scopeDepth&&depth)scopeSaved=new Map(cy.nodes().map(n=>[n.id(),{...n.position()}]));
-  scopeDepth=depth;scopeKey='';$('graph-scope').value=String(depth);
+  scopeDepth=depth;scopeKey='';showScope();
   if(!depth){
     cy.elements().removeClass('out-of-scope');$('graph-scope-count').textContent='';
     if(scopeSaved)cy.nodes().forEach(n=>{if(scopeSaved.has(n.id()))n.position(scopeSaved.get(n.id()))});
@@ -56,7 +62,6 @@ function setScope(depth){
   }
   applyScope();
 }
-$('graph-scope').onchange=()=>setScope(Number($('graph-scope').value));
 const scopeRefresh=refresh;
 refresh=function(...args){
   scopeRefresh(...args);

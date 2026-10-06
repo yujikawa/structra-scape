@@ -123,7 +123,7 @@ test('every view of the built reader runs without page errors', async t => {
   assert.deepEqual(Object.keys(await page.evaluate(() => JSON.parse(localStorage.getItem(answerStoreKey())).answers)), [exported.answers[0].key]);
 
   for (const language of ['ja', 'en']) {
-    await page.selectOption('#ui-language', language);
+    await page.click('#ui-language summary'); await page.click(`[data-language="${language}"]`);
     for (const model of models) {
       await page.selectOption('#model-choice', model);
       await page.click('#mode-ontology');
@@ -179,7 +179,7 @@ test('a workspace at company scale stays readable: the term diagram narrows, ope
   await page.click('#mode-ontology');
   await page.click('#diagram-toggle');
   // A model with many terms opens on the selection and its neighbours.
-  assert.equal(await page.inputValue('#graph-scope'), '1');
+  assert.equal(await page.getAttribute('#graph-scope [aria-pressed="true"]', 'data-scope'), '1');
   const shown = () => page.evaluate(() => cy.nodes().not('.out-of-scope').length);
   const narrow = await shown();
   assert.ok(narrow > 1 && narrow < 20, `${narrow} terms shown`);
@@ -189,9 +189,9 @@ test('a workspace at company scale stays readable: the term diagram narrows, ope
   await page.evaluate(id => { cy.$id(id).emit('tap'); }, neighbour);
   assert.equal(await page.evaluate(() => selected.id), neighbour);
   assert.equal(await page.evaluate(id => cy.$id(id).hasClass('out-of-scope'), neighbour), false);
-  await page.selectOption('#graph-scope', '2');
+  await page.click('[data-scope="2"]');
   assert.ok(await shown() >= narrow);
-  await page.selectOption('#graph-scope', '0');
+  await page.click('[data-scope="0"]');
   assert.equal(await shown(), 80);
   // Open items: the count tiles filter by kind, the search box by name.
   await page.click('#mode-unconfirmed');

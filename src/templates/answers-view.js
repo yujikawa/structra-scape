@@ -27,7 +27,7 @@ renderUnconfirmed = function() {
   const content = completionRoot.querySelector('.completion-content');
   const bar = document.createElement('section');
   bar.className = 'answer-bar';
-  bar.innerHTML = `<label><span>回答者</span><input id="answer-name" placeholder="例：営業部 山田"></label><p class="answer-summary"></p><button id="answer-export" class="answer-export">回答を書き出す</button><p class="hint answer-note">モデルに反映された質問は一覧から消え、その回答もこの画面から消えます。</p>`;
+  bar.innerHTML = `<label><span>回答者</span><input id="answer-name" placeholder="例：営業部 山田"></label><p class="answer-summary"></p><button id="answer-export" class="answer-export">${uiIcon('download')}回答を書き出す</button><p class="hint answer-note">モデルに反映された質問は一覧から消え、その回答もこの画面から消えます。</p>`;
   content.querySelector(':scope > .hint').after(bar);
   const name = bar.querySelector('#answer-name');
   name.value = answerStore.answered_by || '';
@@ -104,9 +104,12 @@ renderUnconfirmed = function() {
   loadDevAnswers();
   const bar = completionRoot.querySelector('.answer-bar');
   if (!bar) return;
-  const open = document.createElement('label');
+  // A button (reachable by keyboard) that opens the hidden file input.
+  const open = document.createElement('span');
   open.className = 'answer-open';
-  open.innerHTML = '<input type="file" accept=".json,application/json" multiple hidden><span>回答ファイルを開く</span>';
+  open.innerHTML = '<input type="file" accept=".json,application/json" multiple hidden><button type="button"></button>';
+  iconOnly(open.querySelector('button'), 'folder', '回答ファイルを開く');
+  open.querySelector('button').onclick = () => open.querySelector('input').click();
   bar.querySelector('.answer-export').before(open);
   open.querySelector('input').onchange = async event => {
     let added = 0, skipped = 0;
