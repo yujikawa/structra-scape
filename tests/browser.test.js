@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 import { renderModel } from '../src/build.js';
+import { writeLargeWorkspace } from './fixtures/large-workspace.js';
 
 async function launch() {
   try { return await chromium.launch(); } catch {}
@@ -66,7 +67,7 @@ test('every view of the built reader runs without page errors', async t => {
   await page.uncheck('#overview-cross');
   assert.deepEqual(await page.evaluate(id => overviewGraph.$id(id).position(), invoice), moved);
   assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'true');
-  await page.evaluate(() => overviewGraph.$id('domain:billing.yaml').emit('tap'));
+  await page.evaluate(() => { overviewGraph.$id('domain:billing.yaml').emit('tap'); });
   assert.equal(await page.$eval('#model-choice', select => select.selectedOptions[0].textContent), '請求の定義');
   assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'false');
   await page.click('#mode-process');
@@ -76,7 +77,7 @@ test('every view of the built reader runs without page errors', async t => {
   await page.click('#mode-process');
   assert.deepEqual(await page.evaluate(id => pc.$id(id).position(), step), stepMoved);
   await page.click('#mode-overview');
-  await page.evaluate(() => overviewGraph.$id('concept:customer-contract.yaml#Contract').emit('tap'));
+  await page.evaluate(() => { overviewGraph.$id('concept:customer-contract.yaml#Contract').emit('tap'); });
   assert.equal(await page.innerText('#detail h2'), '契約');
 
   // One view for everyone: IDs and the data mapping tab are shown; terms open on the definitions list.
@@ -157,4 +158,55 @@ test('every view of the built reader runs without page errors', async t => {
   await page.reload();
   assert.equal(await page.getAttribute('#mode-unconfirmed', 'aria-pressed'), 'true');
   assert.deepEqual(errors, []);
+});
+
+test('a workspace at company scale stays readable: the term diagram narrows, open items filter', async t => {
+  const browser = await launch();
+  if (!browser) { t.skip('Chromium not found: run `npx playwright install chromium-headless-shell`'); return; }
+  t.after(() => browser.close());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-large-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  writeLargeWorkspace(path.join(dir, 'models'));
+  const file = path.join(dir, 'index.html');
+  fs.writeFileSync(file, renderModel(path.join(dir, 'models')));
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const started = Date.now();
+  await page.goto('file://' + file);
+  assert.ok(Date.now() - started < 5000, 'the page loads within 5 seconds');
+  await page.selectOption('#model-choice', { label: 'ドメイン0の定義' });
+  await page.click('#mode-ontology');
+  await page.click('#diagram-toggle');
+  // A model with many terms opens on the selection and its neighbours.
+  assert.equal(await page.inputValue('#graph-scope'), '1');
+  const shown = () => page.evaluate(() => cy.nodes().not('.out-of-scope').length);
+  const narrow = await shown();
+  assert.ok(narrow > 1 && narrow < 20, `${narrow} terms shown`);
+  assert.match(await page.innerText('#graph-scope-count'), new RegExp(`^${narrow} / 80個のことばを表示$`));
+  // Selecting a neighbour walks the diagram.
+  const neighbour = await page.evaluate(() => cy.$id(selected.id).neighborhood().nodes().not('.out-of-scope')[0].id());
+  await page.evaluate(id => { cy.$id(id).emit('tap'); }, neighbour);
+  assert.equal(await page.evaluate(() => selected.id), neighbour);
+  assert.equal(await page.evaluate(id => cy.$id(id).hasClass('out-of-scope'), neighbour), false);
+  await page.selectOption('#graph-scope', '2');
+  assert.ok(await shown() >= narrow);
+  await page.selectOption('#graph-scope', '0');
+  assert.equal(await shown(), 80);
+  // Open items: the count tiles filter by kind, the search box by name.
+  await page.click('#mode-unconfirmed');
+  const all = await page.locator('#unconfirmed-workspace .completion-issue').count();
+  assert.ok(all > 300);
+  await page.click('[data-category-filter="未合意"]');
+  const unagreed = await page.locator('#unconfirmed-workspace .completion-issue').count();
+  assert.ok(unagreed > 0 && unagreed < all);
+  assert.equal(await page.locator('#unconfirmed-workspace .completion-issue small[data-category="unagreed"]').count(), unagreed);
+  await page.fill('#completion-search', '用語12');
+  assert.ok(await page.locator('#unconfirmed-workspace .completion-group').count() >= 1);
+  assert.ok((await page.$$eval('#unconfirmed-workspace .completion-group h3 button', b => b.map(x => x.textContent))).every(text => text.includes('用語12')));
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'completion-search');
+  await page.click('#completion-clear');
+  assert.equal(await page.locator('#unconfirmed-workspace .completion-issue').count(), all);
+  assert.deepEqual(errors, []);
+  console.log(`large workspace: ${Date.now() - started} ms`);
 });

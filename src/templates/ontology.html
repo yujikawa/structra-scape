@@ -112,7 +112,13 @@ header>details,header>select:not(#model-choice){flex-shrink:0}
 .graph-controls button[aria-label]{padding:0 9px}
 body.reviewing .workspace{grid-template-columns:248px minmax(0,1fr)}
 body.reviewing .inspector{display:none}
-body.reviewing #cy,body.reviewing .canvas>.graph-controls{visibility:hidden}
+body.reviewing #cy,body.reviewing .canvas>.graph-controls,body.reviewing .graph-scope{visibility:hidden}
+/* How much of the term diagram is shown: everything, or the selection and its neighbours. */
+.graph-scope{position:absolute;z-index:4;top:14px;right:16px;display:flex;align-items:center;gap:8px;padding:3px 3px 3px 12px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow);font-size:12px;color:var(--ink-2)}
+.graph-scope span{font-weight:600}
+.graph-scope select{height:30px;border-color:var(--rule)}
+.graph-scope small:empty{display:none}
+.graph-scope small{padding-right:8px}
 
 /* Definitions: a glossary, one ruled entry per term. */
 #review-board{position:absolute;inset:0;z-index:3;overflow:auto;padding:76px 32px 48px;background:var(--paper)}
@@ -240,10 +246,17 @@ details.reader-section>summary~*{margin-left:2px}
 .completion-content h2{font-size:24px;letter-spacing:-.01em}
 .completion-content>p{margin-top:4px;color:var(--ink-2)}
 .completion-counts{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);margin:20px 0 10px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
-.completion-counts span{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-left:1px solid var(--rule);font-size:12px;color:var(--ink-2)}
-.completion-counts span:first-child{border-left:0}
+.completion-counts>*{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 16px;border:0;border-left:1px solid var(--rule);background:none;font-size:12px;color:var(--ink-2);text-align:left}
+.completion-counts>:first-child{border-left:0}
+.completion-counts button:not([disabled]):hover{background:var(--sunken)}
+.completion-counts button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 -3px 0 var(--accent)}
+.completion-counts button[disabled]{cursor:default}
 .completion-counts b{font-size:22px;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums}
-.completion-counts span[data-zero] b{color:var(--ink-3);font-weight:400}
+.completion-counts [data-zero] b{color:var(--ink-3);font-weight:400}
+.completion-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:0 0 10px}
+.completion-filter input{max-width:320px}
+.completion-filter .hint{display:flex;align-items:center;gap:10px}
+.completion-filter .hint button{padding:0;border:0;background:none;color:var(--accent);text-decoration:underline;font-size:12px}
 .completion-group{margin-top:12px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
 .completion-group h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:14px 18px;border-bottom:1px solid var(--rule);font-size:16px}
 .completion-group h3 button{padding:0;border:0;background:none;color:var(--accent-ink);font-size:16px;font-weight:700;text-align:left}

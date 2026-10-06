@@ -32,6 +32,14 @@
   that still use it; the OWL export adds `owl:deprecated` and `dcterms:isReplacedBy`.
 - YAML is read with the YAML 1.2 core schema, so dates such as `2026-09-15` stay strings.
 
+### Viewer (large models)
+- The term diagram has a 表示範囲 control: every term, the selection and its neighbours, or
+  two steps away. Selecting a neighbour re-centres the diagram on it. Models with more than
+  40 terms open on the neighbourhood.
+- 未確認事項: the count tiles filter by kind, and a search box filters by name or question.
+- Tests build a synthetic workspace at company scale (7 domains, ~400 terms, 30 flows) and
+  check that it loads, narrows and filters in the browser and builds quickly in Node.
+
 ### CLI
 - `validate` and `diff` take a folder and cover every model in it. `validate --json` now prints
   `{valid, files: [{file, errors}]}`; `diff <folder>` groups changes by file and lists models

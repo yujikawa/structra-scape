@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { loadWorkspace, renderModel } from '../src/build.js';
+import { loadWorkspace, renderModel, renderBundle } from '../src/build.js';
+import { assessCompletion } from '../src/completion.js';
+import { writeLargeWorkspace } from './fixtures/large-workspace.js';
 import { workspaceOverview, overviewMarkdown } from '../src/workspace.js';
 import { translateUI } from '../src/i18n.js';
 
@@ -69,4 +71,19 @@ test('overview CLI prints JSON or Markdown, and the viewer carries the overview 
   const html = renderModel('samples');
   assert.match(html, /function workspaceOverview/);
   assert.match(html, /mode-overview/);
+});
+
+test('a company-scale workspace validates, assesses and builds quickly', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-scale-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  writeLargeWorkspace(dir);
+  const started = Date.now();
+  const workspace = loadWorkspace(dir);
+  assert.equal(workspace.length, 7);
+  const issues = workspace.reduce((n, entry) => n + assessCompletion(entry.model).issues.length, 0);
+  assert.ok(issues > 1000);
+  const overview = workspaceOverview(workspace);
+  assert.equal(overview.domains.length, 7);
+  assert.ok(renderBundle(dir).html.length > 500000);
+  assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
 });
