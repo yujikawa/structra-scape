@@ -11,6 +11,7 @@ import { diffModels } from '../src/diff.js';
 import { renderBundle } from '../src/build.js';
 import { dev } from '../src/dev.js';
 import http from 'node:http';
+import yaml from 'js-yaml';
 
 function workspace(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-files-'));
@@ -97,6 +98,38 @@ test('build compares each model with a git revision', t => {
   const cli = spawnSync(process.execPath, [path.resolve('src/index.js'), 'diff', 'customer-contract.yaml', '--format', 'md'], { cwd: dir, encoding: 'utf8' });
   assert.match(cli.stdout, /変更・ことば：契約 \(Contract\)\n  - 具体例: （なし） → 保守契約/);
   assert.equal(renderBundle(path.join(dir, 'billing.yaml')).html.includes('"changes":{'), false);
+});
+
+test('validate and diff cover every model in a folder, for CI', t => {
+  const dir = workspace(t), git = (...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+  const cli = (...args) => spawnSync(process.execPath, [path.resolve('src/index.js'), ...args], { cwd: dir, encoding: 'utf8' });
+  fs.writeFileSync(path.join(dir, 'gone.yaml'), 'kind: ontology\nname: 廃止した領域\nbase: https://e.com/g#\nconcepts: []\nproperties: []\nrestrictions: []\n');
+  updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Customer', value: { review_state: 'agreed' } }] });
+  git('init', '-q'); git('add', '.'); git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-q', '-m', 'models');
+  assert.deepEqual(JSON.parse(cli('validate', '.', '--json').stdout).files.map(f => [f.file, f.errors.length]), [['billing.yaml', 0], ['customer-contract.yaml', 0], ['gone.yaml', 0]]);
+  fs.rmSync(path.join(dir, 'gone.yaml'));
+  updateDocument(path.join(dir, 'billing.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Invoice', value: { description: '請求の書類。' } }] });
+  updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Customer', value: { description: '変えた説明' } }] }, { allowAgreedChange: true });
+  const json = JSON.parse(cli('diff', '.').stdout);
+  assert.deepEqual(json.files.map(f => [f.file, f.changes.map(c => c.change + ':' + (c.id || c.entity))]), [['billing.yaml', ['changed:Invoice']], ['customer-contract.yaml', ['changed:Customer']], ['gone.yaml', ['removed:model']]]);
+  assert.equal(json.agreed, 1);
+  const md = cli('diff', '.', '--format', 'md', '--fail-on-agreed');
+  assert.equal(md.status, 1);
+  assert.match(md.stdout, /^# 変更点（比較元: HEAD）\n\n> 合意済みの定義に関わる変更が 1 件あります。/);
+  assert.match(md.stdout, /## billing.yaml\n\n- 変更・ことば：請求書 \(Invoice\)\n/);
+  assert.match(md.stdout, /## gone.yaml\n\n- 削除・モデル：廃止した領域\n/);
+  assert.equal(cli('diff', 'billing.yaml', '--fail-on-agreed').status, 0);
+  // A broken model fails validation of the folder and names the file.
+  fs.writeFileSync(path.join(dir, 'broken.yaml'), 'kind: ontology\nname: 壊れた\n');
+  const broken = cli('validate', '.');
+  assert.equal(broken.status, 1);
+  assert.match(broken.stderr, /✗ broken.yaml\n    - base は/);
+  // The workflow template is valid YAML and points at the models folder.
+  assert.equal(cli('ci', '--models', './domain/models/').status, 0);
+  const workflow = yaml.load(fs.readFileSync(path.join(dir, '.github', 'workflows', 'strscape.yml'), 'utf8'));
+  assert.deepEqual(workflow.on.pull_request.paths, ['domain/models/**']);
+  assert.ok(workflow.jobs.models.steps.some(s => s.run === 'strscape validate domain/models/'));
+  assert.equal(cli('ci').status, 1);
 });
 
 test('promote moves definitions into a shared file that other models already import', t => {

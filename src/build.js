@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
-import { loadModel, validateModel } from './validate.js';
+import { loadModel, validateModel, modelFiles } from './validate.js';
 import { importedFiles } from './imports.js';
 import { gitBaseline } from './baseline.js';
 import { diffModels } from './diff.js';
@@ -23,13 +23,7 @@ export function renderModel(file, options) {
 // changes are embedded, not the old model, so a shared page does not carry the previous version.
 // One YAML file, or every YAML file directly inside a folder, validated with imports resolved.
 export function loadWorkspace(file) {
-  const absolute = path.resolve(process.cwd(), file);
-  if (!fs.existsSync(absolute)) throw new Error(`File not found: ${file}`);
-  const modelFiles = fs.statSync(absolute).isDirectory()
-    ? fs.readdirSync(absolute).filter(name => /\.ya?ml$/i.test(name)).map(name => path.join(absolute, name))
-    : [absolute];
-  if (modelFiles.length === 0) throw new Error(`No YAML files found in ${file}`);
-  return modelFiles.map(modelFile => {
+  return modelFiles(file).map(modelFile => {
     let model, errors;
     try { model = loadModel(modelFile); errors = validateModel(model); } catch (error) { errors = [error.message]; }
     if (errors.length) throw new Error(`Invalid model ${path.basename(modelFile)}:\n${errors.map(e => `- ${e}`).join('\n')}`);

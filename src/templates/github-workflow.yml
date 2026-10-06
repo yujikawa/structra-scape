@@ -1,0 +1,57 @@
+# Written by `strscape ci`. Checks the models on every pull request that touches them:
+# validates every model, comments the changes in meaning on the pull request, and attaches
+# the viewer (with the 変更点 tab) as a downloadable artifact.
+name: strscape
+
+on:
+  pull_request:
+    paths:
+      - '__MODELS__/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the base branch is needed to compare with
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm install -g structra-scape
+      - name: Validate
+        run: strscape validate __MODELS__/
+      - name: Changes in meaning
+        run: |
+          {
+            echo '<!-- strscape-diff -->'
+            strscape diff __MODELS__/ --base "origin/$BASE" --format md
+          } > strscape-diff.md
+          cat strscape-diff.md >> "$GITHUB_STEP_SUMMARY"
+        env:
+          BASE: ${{ github.base_ref }}
+      - name: Comment on the pull request
+        # Pull requests from forks get a read-only token; the job summary still has the changes.
+        continue-on-error: true
+        run: |
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- strscape-diff -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@strscape-diff.md > /dev/null
+          else gh pr comment "$PR" --repo "$REPO" --body-file strscape-diff.md; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+      - name: Viewer
+        run: strscape build __MODELS__/ --output strscape-viewer --compare "origin/$BASE"
+        env:
+          BASE: ${{ github.base_ref }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strscape-viewer
+          path: strscape-viewer/index.html
+      # To stop a pull request that changes an agreed definition until someone looks at it,
+      # add `--fail-on-agreed` to the diff command above.

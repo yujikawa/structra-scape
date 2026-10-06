@@ -24,6 +24,13 @@
   diagram). Dragged positions last while the page is open and are never saved to the YAML.
 
 ### CLI
+- `validate` and `diff` take a folder and cover every model in it. `validate --json` now prints
+  `{valid, files: [{file, errors}]}`; `diff <folder>` groups changes by file and lists models
+  deleted since the baseline. `diff --fail-on-agreed` exits with 1 when an agreed definition
+  changed.
+- `ci` writes a GitHub Actions workflow: on each pull request touching the models it validates
+  them, comments the changes in meaning (one comment, updated in place), and attaches the
+  viewer with the 変更点 tab as an artifact.
 - `guide --read` prints a guide for AIs that are handed a model rather than editing it: how
   settled each statement is (agreed vs. draft, open questions, unresolved cases, proposed
   data mappings), how to read classification rules, and what to do when an imported file is

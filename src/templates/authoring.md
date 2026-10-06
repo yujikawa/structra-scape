@@ -76,15 +76,16 @@ business.yaml` lists the current questions with their keys.
 terms used across files, the same word defined in two domains).
 
 Review what changed with `strscape diff business.yaml` (compares with git HEAD; use
---base <revision-or-file> and --format md for a readable summary). The dev viewer
+--base <revision-or-file> and --format md for a readable summary). Both validate and
+diff also take a folder and then cover every model in it. The dev viewer
 shows the same comparison in its 変更点 tab.
 
 Commands (run the installed `strscape` CLI from the working folder):
 
     strscape init models/business.yaml
     strscape guide
-    strscape validate business.yaml --json
-    strscape diff business.yaml --format md
+    strscape validate models/ --json
+    strscape diff models/ --format md
     strscape dev business.yaml --port 4175
     strscape build business.yaml --output dist/business
 

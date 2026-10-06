@@ -87,15 +87,27 @@ export function describeChange(change) {
   const owner = change.entity === 'attribute' ? `${change.conceptName} › ` : ['step', 'flow'].includes(change.entity) ? `${change.processName} › ` : '';
   return `${changeLabels[change.change]}・${entityLabels[change.entity]}：${owner}${change.name}${change.id ? ` (${change.id})` : ''}`;
 }
-export function changesMarkdown(changes, { base = '' } = {}) {
-  if (!changes.length) return `変更はありません${base ? `（比較元: ${base}）` : ''}。\n`;
+// One bullet per change, with its changed fields indented below.
+function changeLines(changes) {
   const show = value => value === undefined ? '（なし）' : typeof value === 'string' ? value : Array.isArray(value) && value.every(v => typeof v === 'string') ? value.join('、') : JSON.stringify(value);
+  return changes.flatMap(change => [`- ${change.agreed ? '**［合意済み］** ' : ''}${describeChange(change)}`, ...(change.fields || []).map(f => `  - ${changeFieldLabels[f.field] || f.field}: ${show(f.before)} → ${show(f.after)}`)]);
+}
+// `sections` is [{file, changes}]: a folder is written as one section per file that changed.
+function changesDocument(sections, base) {
+  const all = sections.flatMap(s => s.changes);
+  if (!all.length) return `変更はありません${base ? `（比較元: ${base}）` : ''}。\n`;
   const lines = [`# 変更点${base ? `（比較元: ${base}）` : ''}`, ''];
-  const agreed = changes.filter(c => c.agreed);
+  const agreed = all.filter(c => c.agreed);
   if (agreed.length) lines.push(`> 合意済みの定義に関わる変更が ${agreed.length} 件あります。業務担当者と確認してください。`, '');
-  for (const change of changes) {
-    lines.push(`- ${change.agreed ? '**［合意済み］** ' : ''}${describeChange(change)}`);
-    for (const f of change.fields || []) lines.push(`  - ${changeFieldLabels[f.field] || f.field}: ${show(f.before)} → ${show(f.after)}`);
+  for (const section of sections.filter(s => s.changes.length)) {
+    if (section.file) lines.push(`## ${section.file}`, '');
+    lines.push(...changeLines(section.changes), '');
   }
-  return lines.join('\n') + '\n';
+  return lines.join('\n').replace(/\n+$/, '') + '\n';
+}
+export function changesMarkdown(changes, { base = '' } = {}) {
+  return changesDocument([{ changes }], base);
+}
+export function changesByFileMarkdown(results, { base = '' } = {}) {
+  return changesDocument(results, base);
 }

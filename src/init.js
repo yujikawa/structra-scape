@@ -26,3 +26,16 @@ export function createModel(file, { codex = false, claude = false, skills = true
   console.log(`  Next: strscape dev "${preview}"`);
   if(skills)console.log('  Codex: $strscape-modeling / Claude Code: /strscape-modeling');
 }
+
+// A GitHub Actions workflow that validates the models, comments the changes in meaning on each
+// pull request and attaches the viewer. `models` is the folder relative to the repository root.
+export function installWorkflow({ directory = '.', models = 'models', force = false } = {}) {
+  const folder = models.replace(/\\/g, '/').replace(/^\.\/|\/+$/g, '');
+  if (!folder || folder.startsWith('/') || folder.split('/').includes('..') || /['"\s$`]/.test(folder)) throw new Error('--models must be a folder inside the repository, without spaces or quotes');
+  const target = path.resolve(directory, '.github', 'workflows', 'strscape.yml');
+  if (fs.existsSync(target) && !force) throw new Error(`${path.relative(process.cwd(), target)} already exists. Use --force to replace it.`);
+  const content = fs.readFileSync(path.join(here, 'templates', 'github-workflow.yml'), 'utf8').replaceAll('__MODELS__', folder);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, content, 'utf8');
+  return target;
+}

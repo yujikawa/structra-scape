@@ -16,6 +16,16 @@ export function validateModel(model) {
   return validateOntology(model);
 }
 
+// One YAML file, or every YAML file directly inside a folder (sorted, so output is stable).
+export function modelFiles(target) {
+  const absolute = path.resolve(process.cwd(), target);
+  if (!fs.existsSync(absolute)) throw new Error(`File not found: ${target}`);
+  if (!fs.statSync(absolute).isDirectory()) return [absolute];
+  const files = fs.readdirSync(absolute).filter(name => /\.ya?ml$/i.test(name)).sort().map(name => path.join(absolute, name));
+  if (files.length === 0) throw new Error(`No YAML files found in ${target}`);
+  return files;
+}
+
 export function validateFile(file) {
   try { return validateModel(loadModel(file)); }
   catch (error) { return [error.message]; }

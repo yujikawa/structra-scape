@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import yaml from 'js-yaml';
 import { build, loadWorkspace } from './build.js';
 import { workspaceOverview, overviewMarkdown } from './workspace.js';
-import { createModel } from './init.js';
-import { loadModel, validateFile } from './validate.js';
+import { createModel, installWorkflow } from './init.js';
+import { loadModel, validateFile, modelFiles } from './validate.js';
 import { dev } from './dev.js';
 import { exportOntology } from './ontology.js';
 import { registerAuthoringCommands, jsonAction } from './mutate.js';
 import { registerAnswerCommands } from './answers.js';
 import { installSkills } from './skills.js';
 import { publicationMarkdown, publicationSvg } from './publication.js';
-import { diffModels, changesMarkdown } from './diff.js';
-import { loadBaseline } from './baseline.js';
+import { changesMarkdown, changesByFileMarkdown } from './diff.js';
+import { diffTarget } from './baseline.js';
 
 const { version } = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 // Commands for people print plain text; failures go to stderr with exit code 1.
@@ -47,15 +47,20 @@ program.command('build <path>')
   .option('--compare <ref>', 'include changes since this git revision (e.g. HEAD, main)')
   .action(human((file, options) => build(file, options.output, { compare: options.compare })));
 
-program.command('validate <file>')
-  .description('Validate a model (including the files it imports)')
-  .option('--json', 'print {valid, errors} as JSON')
-  .action((file, options) => {
-    const errors = validateFile(file);
-    process.exitCode = errors.length ? 1 : 0;
-    if (options.json) console.log(JSON.stringify({ valid: !errors.length, errors }));
-    else if (errors.length) errors.forEach(error => console.error(`  ✗ ${error}`));
-    else console.log('  ✓ Model is valid');
+program.command('validate <path>')
+  .description('Validate a model, or every model in a folder (including the files they import)')
+  .option('--json', 'print {valid, files: [{file, errors}]} as JSON')
+  .action((target, options) => {
+    let files;
+    try { files = modelFiles(target).map(file => ({ file: path.relative(process.cwd(), file) || file, errors: validateFile(file) })); }
+    catch (error) { files = [{ file: target, errors: [error.message] }]; }
+    const valid = files.every(f => !f.errors.length);
+    process.exitCode = valid ? 0 : 1;
+    if (options.json) return console.log(JSON.stringify({ valid, files }));
+    for (const { file, errors } of files) {
+      if (errors.length) { console.error(`  ✗ ${file}`); errors.forEach(error => console.error(`    - ${error}`)); }
+      else console.log(`  ✓ ${file}`);
+    }
   });
 
 const exporters = { svg: publicationSvg, md: publicationMarkdown, ttl: model => exportOntology(model) };
@@ -75,17 +80,20 @@ program.command('export <file>')
     console.log(`  ✓ Exported ${options.output}`);
   }));
 
-program.command('diff <file>')
-  .description('Show changes in meaning since a git revision or another YAML file')
+program.command('diff <path>')
+  .description('Show changes in meaning since a git revision or another YAML file (a folder: every model in it)')
   .option('--base <ref-or-file>', 'git revision or YAML file to compare with', 'HEAD')
   .option('--format <format>', 'json or md', 'json')
-  .action((file, options) => {
+  .option('--fail-on-agreed', 'exit with code 1 when an agreed definition changed (for CI)')
+  .action((target, options) => {
     try {
       if (!['json', 'md'].includes(options.format)) throw new Error('format must be json or md');
-      const baseline = loadBaseline(file, options.base);
-      const changes = diffModels(baseline.model, yaml.load(fs.readFileSync(file, 'utf8')));
-      if (options.format === 'md') process.stdout.write(changesMarkdown(changes, { base: baseline.ref }));
-      else console.log(JSON.stringify({ ok: true, base: baseline.ref, agreed: changes.filter(c => c.agreed).length, changes }));
+      const results = diffTarget(target, options.base), folder = fs.statSync(target).isDirectory();
+      const base = results[0].ref, agreed = results.reduce((n, r) => n + r.changes.filter(c => c.agreed).length, 0);
+      if (options.format === 'md') process.stdout.write(folder ? changesByFileMarkdown(results, { base }) : changesMarkdown(results[0].changes, { base }));
+      else if (folder) console.log(JSON.stringify({ ok: true, base, agreed, files: results.map(({ file, changes }) => ({ file, agreed: changes.filter(c => c.agreed).length, changes })) }));
+      else console.log(JSON.stringify({ ok: true, base, agreed, changes: results[0].changes }));
+      if (options.failOnAgreed && agreed) process.exitCode = 1;
     } catch (e) { console.log(JSON.stringify({ ok: false, errors: [e.message] })); process.exitCode = 1; }
   });
 
@@ -107,6 +115,13 @@ program.command('skills')
   .option('--directory <directory>', 'project directory', '.')
   .option('--force', 'replace skill files that were edited')
   .action(human(options => { for (const file of installSkills(options)) console.log(`  ✓ Skill: ${file}`); }));
+
+program.command('ci')
+  .description('Write a GitHub Actions workflow that validates the models and comments their changes on pull requests')
+  .option('--models <folder>', 'models folder, relative to the repository root', 'models')
+  .option('--directory <directory>', 'repository root', '.')
+  .option('--force', 'replace an existing workflow')
+  .action(human(options => console.log(`  ✓ Workflow: ${path.relative(process.cwd(), installWorkflow(options))}`)));
 
 program.command('guide').description('Print the YAML authoring guide for AI agents; --read prints the guide for reading a model')
   .option('--read', 'how to read a model (for AIs that are given the YAML, not editing it)')

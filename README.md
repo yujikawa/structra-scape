@@ -220,7 +220,7 @@ strscape diff models/business.yaml --format md
 | `init [file]` | モデルとスキルを作成（既定は `models/business.yaml`） |
 | `skills` | Codex / Claude Code用のスキルを追加 |
 | `guide [--read]` | AI向けのYAML記述ルールを表示。`--read` はYAMLを読むAI向けの読み方ガイド（`models/README.md` と同じ内容） |
-| `validate <file> [--json]` | 検証。`--json` は `{valid, errors}` を出力し、失敗時は終了コード1 |
+| `validate <file\|dir> [--json]` | 検証。フォルダを指定すると中のすべてのモデルを検証します。`--json` は `{valid, files: [{file, errors}]}` を出力し、失敗時は終了コード1 |
 | `dev <file\|dir>` | プレビューサーバー。`--port`、`--host`（既定 `127.0.0.1`。LANで共有する場合は `0.0.0.0`）、`--compare <rev>` / `--no-compare` |
 | `build <file\|dir>` | 1ファイルのHTMLを出力。`--output`、`--compare <rev>` |
 | `inspect` / `apply` / `concept` / `property` / `attribute` / `process` / `step` | AI向けの読み取り・更新（JSON入出力） |
@@ -228,8 +228,23 @@ strscape diff models/business.yaml --format md
 | `overview <dir>` | ドメイン間の受け渡し・定義の利用・重複の候補。`--format json\|md` |
 | `questions <file>` | 回答欄のある未確認事項（データ対応以外）を、回答の照合に使うキー付きでJSON出力 |
 | `answers <file\|dir>` | 画面から書き出した回答を読み、質問がまだ残っているか（`open`）を付けてJSON出力。`--resolve <keys...>` で反映済みの回答を削除（空になったファイルも削除）、`--model <file>` で対象モデルを指定 |
-| `diff <file>` | 意味上の変更点。`--base <rev\|file>`、`--format json\|md` |
+| `diff <file\|dir>` | 意味上の変更点。`--base <rev\|file>`、`--format json\|md`。フォルダはファイルごとにまとめ、削除したモデルも含めます。`--fail-on-agreed` は合意済みの定義が変わったとき終了コード1 |
+| `ci` | プルリクエストでモデルを確認するGitHub Actionsのワークフローを作成（`--models <フォルダ>`、`--force`） |
 | `export <file> --format svg\|md\|ttl` | 図（SVG）、定義（Markdown）、OWL Turtle を出力。既存ファイルへの上書きは拒否 |
+
+## プルリクエストで確認する（GitHub Actions）
+
+```bash
+strscape ci                     # .github/workflows/strscape.yml を作成（モデルが models/ 以外なら --models <フォルダ>）
+```
+
+`models/` を変更するプルリクエストごとに、次を行います。
+
+- すべてのモデルを検証します（失敗するとチェックが赤になります）。
+- 比較先ブランチからの意味上の変更（`strscape diff models/ --format md`）を、プルリクエストのコメントとジョブのサマリーに書きます。コメントは1つだけで、更新のたびに書き換えます。合意済みの定義への変更は目立つように表示します。
+- 変更点タブ付きのビューア（`index.html`）を、ダウンロードできる成果物（artifact）として添付します。業務担当者には、これを開いてもらえば確認できます。
+
+合意済みの定義が変わるプルリクエストを止めたい場合は、ワークフローの `diff` に `--fail-on-agreed` を付けてください。フォークからのプルリクエストではコメントを書けないため、ジョブのサマリーで確認します。
 
 ## 共有するときの注意
 

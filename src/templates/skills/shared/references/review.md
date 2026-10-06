@@ -2,9 +2,9 @@
 
 ## Check
 
-1. `strscape validate <file> --json` returns `{"valid":true}` for every file you touched.
-   When you changed a shared file, validate the files that import it too.
-2. `strscape diff <file> --format md` shows exactly the changes you intended — nothing
+1. `strscape validate models/ --json` returns `{"valid":true,...}`. Validating the folder
+   also covers the files that import a shared file you changed.
+2. `strscape diff models/ --format md` shows exactly the changes you intended — nothing
    removed by accident, no agreed definition touched without the user's confirmation.
 3. Walk the open-questions checks the viewer runs, and fix what you can fix from what the
    user told you. Leave the rest as explicit questions rather than guesses:
