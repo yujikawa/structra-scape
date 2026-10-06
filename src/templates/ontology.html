@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ことばと関係 | structra-scape</title><!-- STRUCTRA_FAVICON -->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ことばと関係 | structra-scape</title><!-- STRUCTRA_FAVICON --><script>try{const t=localStorage.getItem('structra-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch{}</script>
 <style>
 /* One stylesheet for the whole reader. Navy carries business meaning and navigation,
    teal marks the data layer (IDs, data mapping), amber marks anything still open. */
@@ -22,9 +22,28 @@
   --graph-line:#4a576b;--graph-faint:#8a96a8;--graph-shape:#5b6b80;--graph-start:#3c7d55;--graph-gate:#b07a14;--graph-imported:#8593a8;--graph-retired:#a8b2c0;
   color-scheme:light;
 }
-/* Dark mode follows the system setting; printing always uses the light palette. */
+/* Dark mode follows the system setting unless the viewer picked 配色 ライト or ダーク in the header
+   (data-theme on <html>). Printing always uses the light palette. Keep the two blocks identical. */
 @media screen and (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme=light]){
+    --paper:#0f141c;--surface:#161e29;--sunken:#1e2836;
+    --ink:#e4e9f0;--ink-2:#b3bdcb;--ink-3:#8f9aab;
+    --rule:#283344;--rule-strong:#3a4658;
+    --accent:#86a9ea;--accent-soft:#1c2b45;--accent-ink:#b4cbf5;
+    --data:#5cc6ba;--data-soft:#11312e;
+    --rule-line:#b8a3ec;
+    --warn:#f0bb66;--warn-soft:#352612;--warn-line:#b07a14;
+    --ok:#7dd3a0;--ok-soft:#14301f;
+    --danger:#f19393;--danger-soft:#3a1c1e;
+    --shadow:0 1px 2px #0006,0 6px 18px #0008;
+    --on-accent:#0d1626;--tint:#1a2330;--flow-soft:#2a2342;--accent-line:#34507f;--danger-line:#5c2a2c;--glass:#161e29eb;
+    --sheet:#f3f5f8;
+    --graph-line:#b3bdcb;--graph-faint:#8f9aab;--graph-shape:#9aa6b8;--graph-start:#7dd3a0;--graph-gate:#f0bb66;--graph-imported:#8f9aab;--graph-retired:#6d7889;
+    color-scheme:dark;
+  }
+}
+@media screen{
+  :root[data-theme=dark]{
     --paper:#0f141c;--surface:#161e29;--sunken:#1e2836;
     --ink:#e4e9f0;--ink-2:#b3bdcb;--ink-3:#8f9aab;
     --rule:#283344;--rule-strong:#3a4658;
@@ -60,7 +79,7 @@ select:hover,input[type=search]:hover{border-color:var(--ink-3)}
 input[type=search]{width:100%}
 
 /* Header: identity, model, primary navigation, then utilities. */
-header{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--rule);flex-shrink:0}
+header{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--rule);flex-shrink:0}
 .brand{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
 .brand svg{width:26px;height:26px}
 #model-choice{min-width:0;max-width:240px;font-weight:600;color:var(--ink)}
@@ -73,6 +92,11 @@ header>details,header>select:not(#model-choice){flex-shrink:0}
 .unconfirmed-count{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:12px;text-align:center}
 .unconfirmed-count[data-empty]{background:var(--ok-soft);color:var(--ok)}
 #ui-language{flex-shrink:0}
+.theme-menu summary{padding:0 9px}
+.menu-panel.theme-panel{width:auto;display:flex;gap:2px;padding:4px}
+.theme-panel button{width:36px;height:34px;justify-content:center;padding:0}
+.theme-panel .ui-icon{width:18px;height:18px}
+.menu-panel button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
 .header-menu{position:relative}
 .header-menu summary{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--rule-strong);border-radius:6px;font-size:13px;list-style:none;cursor:pointer;white-space:nowrap}
 .header-menu summary::-webkit-details-marker{display:none}

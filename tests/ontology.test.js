@@ -85,10 +85,14 @@ test('stylesheet colors are tokens, redefined for dark mode and kept light for p
   const { readFileSync } = await import('node:fs');
   const page = readFileSync('src/templates/ontology.html', 'utf8');
   const css = page.slice(page.indexOf('<style>'), page.indexOf('</style>'));
-  const outside = css.replace(/:root\{[^}]*\}/g, '').replace(/@media print\{[\s\S]*$/, '');
+  const outside = css.replace(/:root(?::not\(\[data-theme=light\]\)|\[data-theme=dark\])?\{[^}]*\}/g, '').replace(/@media print\{[\s\S]*$/, '');
   assert.deepEqual(outside.match(/#[0-9a-fA-F]{3,8}\b/g), null);
   const tokens = block => new Set([...block.matchAll(/(--[\w-]+):/g)].map(m => m[1]));
-  const [light, dark] = [...css.matchAll(/:root\{([^}]*)\}/g)].map(m => tokens(m[1]));
+  const light = tokens(css.match(/:root\{([^}]*)\}/)[1]);
+  const system = css.match(/:root:not\(\[data-theme=light\]\)\{([^}]*)\}/)[1], chosen = css.match(/:root\[data-theme=dark\]\{([^}]*)\}/)[1];
+  // The system-dark block and the chosen-dark block must not drift apart.
+  assert.equal(system, chosen);
+  const dark = tokens(system);
   const colorTokens = [...light].filter(t => !['--sans', '--mono', '--canvas', '--canvas-dot'].includes(t));
   assert.deepEqual(colorTokens.filter(t => !dark.has(t)), []);
   assert.match(css, /@media screen and \(prefers-color-scheme:dark\)/);

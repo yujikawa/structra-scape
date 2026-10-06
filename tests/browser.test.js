@@ -233,3 +233,37 @@ test('answers from colleagues can be opened next to the questions, and differing
   assert.match(await page.innerText('#status'), /2件の回答を読み込みました。このモデルの回答ではないファイルが1件ありました。/);
   assert.deepEqual(errors, []);
 });
+
+test('the color scheme follows the system unless the viewer picks light or dark', async t => {
+  const browser = await launch();
+  if (!browser) { t.skip('Chromium not found: run `npx playwright install chromium-headless-shell`'); return; }
+  t.after(() => browser.close());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-theme-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'index.html');
+  fs.writeFileSync(file, renderModel('samples/customer-contract.yaml'));
+  const page = await browser.newPage({ colorScheme: 'dark' });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const paper = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--paper').trim());
+  await page.goto('file://' + file);
+  const pick = async theme => { await page.click('.theme-menu summary'); await page.click(`[data-theme-choice="${theme}"]`); };
+  const chosen = () => page.getAttribute('[data-theme-choice][aria-pressed="true"]', 'data-theme-choice');
+  assert.equal(await chosen(), 'auto');
+  assert.equal(await paper(), '#0f141c');
+  await pick('light');
+  assert.equal(await paper(), '#f3f5f8');
+  await page.reload();
+  assert.equal(await chosen(), 'light');
+  assert.equal(await paper(), '#f3f5f8');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await pick('dark');
+  assert.equal(await paper(), '#0f141c');
+  await pick('auto');
+  assert.equal(await paper(), '#f3f5f8');
+  // Printing stays light even when dark was chosen.
+  await pick('dark');
+  await page.emulateMedia({ media: 'print' });
+  assert.equal(await paper(), '#f3f5f8');
+  assert.deepEqual(errors, []);
+});

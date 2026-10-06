@@ -69,6 +69,7 @@ export const englishUI = {
   '始点': 'Domain', '相手': 'Range', '担当': 'Owner', '種類': 'Type', '詳細フロー': 'Detail flow', '条件': 'Condition', '読み込む共通定義': 'Imports',
   '種類で絞り込む': 'Filter by kind', '名前や質問で絞り込む': 'Filter by name or question', '絞り込みを解除': 'Clear filter',
   'これまでの回答': 'Answers so far', '回答が分かれています': 'Answers differ', '回答ファイルを開く': 'Open answer files', '回答者未記入': 'No name',
+  '配色': 'Color scheme', '自動（OSの設定に合わせる）': 'System (follow the OS setting)', 'ライト': 'Light', 'ダーク': 'Dark',
   '表示範囲': 'Show', 'すべてのことば': 'All terms', '選んだことばと隣': 'Selection and neighbours', '2つ先まで': 'Two steps away',
   '廃止': 'Deprecated', '廃止したことば': 'Deprecated term', '代わりに使うことば': 'Use instead', '新しい資料では使いません。': 'Not used in new material.',
   '合意した人': 'Agreed by', '合意した日': 'Agreed on', '置き換え先': 'Replaced by',

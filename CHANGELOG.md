@@ -38,7 +38,8 @@
 - YAML is read with the YAML 1.2 core schema, so dates such as `2026-09-15` stay strings.
 
 ### Viewer
-- Dark mode follows the system setting; diagram sheets stay light. Every stylesheet color is
+- Dark mode follows the system setting by default; a header button (icons for system, light,
+  dark) overrides it per browser. Diagram sheets stay light. Every stylesheet color is
   now a token (a test enforces it).
 - Printing gives the open view as a document: no navigation or controls, light colors, cards
   and questions kept whole across pages.
