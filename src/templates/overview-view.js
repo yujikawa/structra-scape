@@ -11,7 +11,7 @@ const overviewRoot = document.createElement('section');
 overviewRoot.id = 'overview-workspace';
 overviewRoot.hidden = true;
 overviewRoot.setAttribute('aria-labelledby', 'overview-title');
-overviewRoot.innerHTML = `<div class="completion-content"><h2 id="overview-title">全体マップ</h2><p id="overview-summary"></p><div class="overview-toolbar"><label><input type="checkbox" id="overview-cross" checked><span>ドメインをまたぐものだけ表示</span></label><ul class="overview-legend"><li><i class="swatch domain"></i>ドメイン</li><li><i class="swatch process"></i>業務フロー</li><li><i class="swatch concept"></i>ことば</li><li><i class="line usage"></i>作成・参照・更新</li><li><i class="line property"></i>つながり</li><li><i class="line parent"></i>〜の一種</li></ul></div><div class="overview-graph"><div id="overview-cy" aria-label="ドメインの全体図"></div><button id="overview-fit">全体</button></div><p class="hint">ドメイン・業務フロー・ことばを押すと、そのモデルの該当箇所を開きます。</p><div id="overview-details"></div></div>`;
+overviewRoot.innerHTML = `<div class="completion-content"><h2 id="overview-title">全体マップ</h2><p id="overview-summary"></p><div class="overview-toolbar"><label><input type="checkbox" id="overview-cross" checked><span>ドメインをまたぐものだけ表示</span></label><ul class="overview-legend"><li><i class="swatch domain"></i>ドメイン</li><li><i class="swatch process"></i>業務フロー</li><li><i class="swatch concept"></i>ことば</li><li><i class="line usage"></i>作成・参照・更新</li><li><i class="line property"></i>つながり</li><li><i class="line parent"></i>〜の一種</li></ul></div><div class="overview-graph"><div id="overview-cy" aria-label="ドメインの全体図"></div><button id="overview-fit">全体</button></div><p class="hint">ドメイン・業務フロー・ことばを押すと、そのモデルの該当箇所を開きます。線の名前は、マウスを乗せると表示されます。</p><div id="overview-details"></div></div>`;
 document.body.append(overviewRoot);
 let overviewMode = false, overviewData = null;
 const overviewRoleShort = { creates: '作成', reads: '参照', updates: '更新', participates: '参加' };
@@ -19,7 +19,8 @@ const overviewLanguage = () => document.documentElement.lang === 'en' ? 'en' : '
 const overviewGraph = cytoscape({ container: $('overview-cy'), elements: [], style: [
   { selector: 'node', style: { shape: 'round-rectangle', width: 156, 'background-color': '#fff', 'border-width': 1.5, 'border-color': '#8593a8', color: '#18263a', 'font-family': graphFont, 'text-valign': 'center', 'text-wrap': 'wrap', ...labelStyle({ width: 132, size: 14, weight: 600, minHeight: 50 }) } },
   { selector: 'node[kind="process"]', style: { 'background-color': '#e7edf7', 'border-color': '#24498a', color: '#1b3a70', 'corner-radius': 24 } },
-  { selector: ':parent', style: { shape: 'round-rectangle', 'background-color': '#f7f9fc', 'border-color': '#c3ccd8', 'border-width': 1.5, padding: 22, label: 'data(label)', 'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -8, 'font-size': 15, 'font-weight': 700, color: '#18263a', 'text-max-width': 400 } },
+  { selector: ':parent', style: { shape: 'round-rectangle', 'background-color': '#f7f9fc', 'border-color': '#c3ccd8', 'border-width': 1.5, padding: 22, label: ele => fitLabel(ele.data('label'), { width: 300, size: 15, weight: 700, maxLines: 2 }).text, 'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -8, 'font-size': 15, 'font-weight': 700, color: '#18263a', 'text-max-width': 320 } },
+  // Long domain names are cut to two lines so neighbouring titles never overlap; the tables below show them in full.
   { selector: 'node[kind="domain"][!local]', style: { 'border-style': 'dashed', color: '#4a576b' } },
   { selector: 'node[kind="domain"][?empty]', style: { width: 220, height: 64, 'text-valign': 'center' } },
   { selector: 'edge', style: { label: 'data(label)', 'curve-style': 'bezier', width: 1.4, 'target-arrow-shape': 'triangle', 'line-color': '#8593a8', 'target-arrow-color': '#8593a8', 'font-family': graphFont, 'font-size': 11, color: '#4a576b', 'text-background-color': '#f3f5f8', 'text-background-opacity': 1, 'text-background-padding': 3, 'text-background-shape': 'round-rectangle', opacity: .75 } },
@@ -31,6 +32,10 @@ const overviewGraph = cytoscape({ container: $('overview-cy'), elements: [], sty
     const a = edge.source().position(), b = edge.target().position();
     return -Math.min(160, Math.hypot(b.x - a.x, b.y - a.y) * .22);
   } } },
+  // Relationship and subtype names overlap where many lines cross; the legend tells the line kinds
+  // apart, and the name shows on hover. Hand-over labels (作成・参照) always show.
+  { selector: 'edge[kind!="usage"]', style: { label: '' } },
+  { selector: 'edge[kind!="usage"].hover, edge[kind!="usage"]:selected', style: { label: 'data(label)', 'z-index': 10 } },
   { selector: ':selected', style: { 'overlay-opacity': 0 } },
 ] });
 // Inside each domain box, processes take the left column and terms the columns to their right, so
@@ -72,6 +77,8 @@ function overviewElements(data, crossOnly) {
 }
 const overviewDragged = new Map();
 // Dragging a domain box moves its contents, so record every node after any drag.
+overviewGraph.on('mouseover', 'edge', event => event.target.addClass('hover'));
+overviewGraph.on('mouseout', 'edge', event => event.target.removeClass('hover'));
 overviewGraph.on('dragfree', 'node', () => overviewGraph.nodes().forEach(node => { if (!node.isParent()) overviewDragged.set(node.id(), { ...node.position() }); }));
 function drawOverview() {
   if (!overviewData) return;

@@ -22,18 +22,27 @@ function renderUnconfirmed() {
   if (completionFilter.entry !== entryIndex) Object.assign(completionFilter, { category: '', query: '', entry: entryIndex });
   const query = completionFilter.query.trim().toLowerCase();
   const shown = report.issues.filter(issue => (!completionFilter.category || issue.category === completionFilter.category) && issueMatches(issue, query));
-  completionButton.innerHTML = uiIcon('chat') + `未確認事項<span class="unconfirmed-count"${report.issues.length ? '' : ' data-empty'}>${report.issues.length}</span>`;
-  const groups = new Map();
-  shown.forEach(issue => {
-    const index = report.issues.indexOf(issue);
-    const key = issue.id ? `${issue.kind}:${issue.process || ''}:${issue.id}` : 'model';
-    if (!groups.has(key)) groups.set(key, { ...issue, index, issues: [] });
-    groups.get(key).issues.push(issue);
-  });
+  // Business users answer the questions; data-mapping work belongs to the data team and comes last.
+  const isData = issue => issue.category === 'データ対応';
+  const questions = report.issues.filter(issue => !isData(issue));
+  completionButton.innerHTML = uiIcon('chat') + `未確認事項<span class="unconfirmed-count"${questions.length ? '' : ' data-empty'}>${questions.length}</span>`;
+  const groupsOf = list => {
+    const groups = new Map();
+    list.forEach(issue => {
+      const index = report.issues.indexOf(issue);
+      const key = issue.id ? `${issue.kind}:${issue.process || ''}:${issue.id}` : 'model';
+      if (!groups.has(key)) groups.set(key, { ...issue, index, issues: [] });
+      groups.get(key).issues.push(issue);
+    });
+    return [...groups.values()];
+  };
   const affected = new Set(report.issues.filter(issue => issue.id).map(issue => `${issue.kind}:${issue.process || ''}:${issue.id}`)).size;
   const groupTitle = group => group.kind === 'step' ? `${esc(group.processName)} › ${esc(group.name)}` : esc(group.name);
   const kindLabel = { concept: 'ことば', property: 'つながり', process: '業務フロー', step: '作業' };
-  completionRoot.innerHTML = `<div class="completion-content"><h2 id="completion-title">未確認事項</h2><p>${esc(model.name)} · ${affected ? `${affected}つの用語・関係・作業に、確認が必要な項目があります。` : report.issues.length ? 'モデルに確認が必要な項目があります。' : '記録上の未確認事項はありません。'}</p><div class="completion-counts" role="group" aria-label="種類で絞り込む">${Object.keys(categoryKeys).map(category => { const count = report.issues.filter(issue => issue.category === category).length; return `<button type="button" data-category-filter="${esc(category)}" aria-pressed="${completionFilter.category === category}"${count ? '' : ' data-zero disabled'}><b>${count}</b><span>${categoryLabel(category)}</span></button>`; }).join('')}</div><div class="completion-filter"><input id="completion-search" type="search" aria-label="名前や質問で絞り込む" placeholder="名前や質問で絞り込む"><p class="hint"${completionFilter.category || query ? '' : ' hidden'}><span>${report.issues.length}件中${shown.length}件を表示</span><button type="button" id="completion-clear" class="icon-only" title="絞り込みを解除" aria-label="絞り込みを解除">${uiIcon('close')}</button></p></div><p class="hint">分かることを回答欄に書き、「回答を書き出す」でモデルの担当者に渡してください。データ対応はデータ担当者の作業なので、回答欄はありません。名前を押すと定義を確認できます。</p>${[...groups.values()].map(group => `<article class="completion-group"><h3>${group.id ? `<button data-completion-target="${group.index}">${groupTitle(group)} ↗</button><span class="kind-tag">${kindLabel[group.kind]}</span><code class="term-id">${esc(group.id)}</code>` : 'モデル全体'}<small>${group.issues.length}件</small></h3>${group.issues.map(issue => `<div class="completion-issue" data-issue-key="${issue.key}"><small data-category="${categoryKeys[issue.category] || ''}">${esc(categoryLabel(issue.category))}</small>${issueText(issue)}</div>`).join('')}</article>`).join('')}<details class="completion-policy"><summary>確認対象について</summary><p>用語・関係の説明、含む例、含まない例、根拠、合意状態、未決定のケース、属性の説明と値の種類を確認します。データ対応は登録されている場合に確認します。</p><p>業務フローでは、作業の担当、分岐・並行・合流の矢印を確認します。開始・終了を置いたフローでは、開始からたどり着けない作業と行き止まりも確認します。</p><p>上位概念の循環と直接指定した個数条件の矛盾も確認しますが、すべての論理矛盾や業務上の抜けを検出するものではありません。未確認事項がなくなった後も、対象業務の範囲と定義の妥当性は業務担当者と確認してください。</p></details></div>`;
+  const groupHtml = group => `<article class="completion-group"><h3>${group.id ? `<button data-completion-target="${group.index}">${groupTitle(group)} ↗</button><span class="kind-tag">${kindLabel[group.kind]}</span><code class="term-id">${esc(group.id)}</code>` : 'モデル全体'}<small>${group.issues.length}件</small></h3>${group.issues.map(issue => `<div class="completion-issue" data-issue-key="${issue.key}"><small data-category="${categoryKeys[issue.category] || ''}">${esc(categoryLabel(issue.category))}</small>${issueText(issue)}</div>`).join('')}</article>`;
+  const shownQuestions = shown.filter(issue => !isData(issue)), shownData = shown.filter(isData);
+  const dataSection = shownData.length ? `<section class="completion-section"><h3 class="completion-section-title"><span>データ担当者の作業</span><small>${shownData.length}件</small></h3><p class="hint">データの所在と業務の定義との差を確かめる作業です。回答欄はありません。</p>${groupsOf(shownData).map(groupHtml).join('')}</section>` : '';
+  completionRoot.innerHTML = `<div class="completion-content"><h2 id="completion-title">未確認事項</h2><p>${esc(model.name)} · ${affected ? `${affected}つの用語・関係・作業に、確認が必要な項目があります。` : report.issues.length ? 'モデルに確認が必要な項目があります。' : '記録上の未確認事項はありません。'}</p><div class="completion-counts" role="group" aria-label="種類で絞り込む">${Object.keys(categoryKeys).map(category => { const count = report.issues.filter(issue => issue.category === category).length; return `<button type="button" data-category-filter="${esc(category)}" aria-pressed="${completionFilter.category === category}"${count ? '' : ' data-zero disabled'}><b>${count}</b><span>${categoryLabel(category)}</span></button>`; }).join('')}</div><div class="completion-filter"><input id="completion-search" type="search" aria-label="名前や質問で絞り込む" placeholder="名前や質問で絞り込む"><p class="hint"${completionFilter.category || query ? '' : ' hidden'}><span>${report.issues.length}件中${shown.length}件を表示</span><button type="button" id="completion-clear" class="icon-only" title="絞り込みを解除" aria-label="絞り込みを解除">${uiIcon('close')}</button></p></div>${groupsOf(shownQuestions).map(groupHtml).join('')}${dataSection}<details class="completion-policy"><summary>確認対象について</summary><p>用語・関係の説明、含む例、含まない例、根拠、合意状態、未決定のケース、属性の説明と値の種類を確認します。データ対応は登録されている場合に確認します。</p><p>業務フローでは、作業の担当、分岐・並行・合流の矢印を確認します。開始・終了を置いたフローでは、開始からたどり着けない作業と行き止まりも確認します。</p><p>上位概念の循環と直接指定した個数条件の矛盾も確認しますが、すべての論理矛盾や業務上の抜けを検出するものではありません。未確認事項がなくなった後も、対象業務の範囲と定義の妥当性は業務担当者と確認してください。</p><p>回答がモデルに反映されると、その質問と回答はこの画面から消えます。</p></details></div>`;
   const search = completionRoot.querySelector('#completion-search');
   search.value = completionFilter.query;
   search.oninput = () => {

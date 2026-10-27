@@ -136,7 +136,9 @@ header>details,header>select:not(#model-choice){flex-shrink:0}
 .list button{display:block;width:100%;padding:7px 10px;border:0;border-left:3px solid transparent;border-radius:0 6px 6px 0;background:none;text-align:left;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
 .list button:hover{background:var(--sunken)}
 .list button.active{background:var(--accent-soft);border-left-color:var(--accent);color:var(--accent-ink);font-weight:600}
-.list button .term-id,.list button small{display:block;margin-top:1px;font-weight:400}
+/* The ID stays visible for the data team, small under the name, so the list reads as words. */
+.list button .term-id{display:block;margin-top:1px;font-size:10.5px;font-weight:400;line-height:1.4;opacity:.85}
+.list button small{display:block;margin-top:1px;font-weight:400}
 .legend{position:sticky;bottom:0;margin:auto -12px 0;padding:12px 16px 14px;background:var(--surface);border-top:1px solid var(--rule)}
 .legend ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px;font-size:12px;color:var(--ink-2)}
 .legend li{display:flex;align-items:center;gap:10px}
@@ -149,10 +151,19 @@ header>details,header>select:not(#model-choice){flex-shrink:0}
 .legend .shape.detail{border:3px double var(--accent)}
 .legend .shape.imported{border-style:dashed;border-color:var(--graph-imported);background:var(--sunken)}
 .legend .shape.retired{border-style:dotted;border-color:var(--graph-retired)}
+/* Retired terms: one folded section at the bottom of the list, and after the terms in use on the definition cards. */
+.retired-list{border-top:1px dashed var(--rule)}
+.retired-list>summary{display:flex;align-items:center;gap:8px;padding:8px 0 6px;font-size:13px;font-weight:700;color:var(--ink-3);cursor:pointer}
+#retired-section{margin-bottom:16px}
+.retired-list>summary small{font-weight:400}
+.retired-heading{display:flex;align-items:baseline;gap:10px;max-width:1040px;margin:32px auto 0;font-size:16px;color:var(--ink-2)}
+.retired-heading small{font-weight:400;color:var(--ink-3)}
+.retired-note{max-width:1040px;margin:4px auto 10px}
 /* Definitions read from another file through imports: shown, but owned and reviewed elsewhere. */
 .imported-note{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--ink-3)}
 .imported-note code{font-family:var(--mono);font-size:11.5px;color:var(--data)}
-.list button small.imported-tag span{color:var(--ink-2);font-weight:600}
+/* In lists and cards only a tag; the file it comes from is the tooltip (and is shown in the detail pane). */
+.imported-tag{display:inline-block;margin-left:6px;padding:0 6px;border:1px dashed var(--graph-imported);border-radius:999px;background:var(--sunken);color:var(--ink-2);font-size:10.5px;font-weight:600;line-height:1.6;vertical-align:1px;cursor:help}
 
 /* Canvas controls */
 .view-switch,.graph-controls{position:absolute;z-index:4;display:flex;gap:2px;padding:3px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow)}
@@ -203,7 +214,7 @@ body.reviewing #cy,body.reviewing .canvas>.graph-controls,body.reviewing .graph-
 .inspector .section-label{margin-bottom:6px;font-size:12px;color:var(--ink-3)}
 #detail h2,#process-detail h2{font-size:22px;line-height:1.35;letter-spacing:-.01em;overflow-wrap:anywhere}
 .reader-id{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;color:var(--ink-3)}
-.reader-id code{padding:2px 7px;border-radius:4px;background:var(--data-soft);color:var(--data);font-family:var(--mono);font-size:12px;overflow-wrap:anywhere}
+.reader-id code{color:var(--data);font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere}
 #detail .review-badge{margin-top:12px}
 .question-banner{display:flex;gap:8px;margin-top:16px;padding:10px 12px;border-left:3px solid var(--warn-line);border-radius:0 6px 6px 0;background:var(--warn-soft);color:var(--warn);font-size:13px;line-height:1.7}
 .question-banner .ui-icon{margin-top:3px}
@@ -235,7 +246,7 @@ details.reader-section>summary~*{margin-left:2px}
 .empty{padding:14px;border:1px dashed var(--rule-strong);border-radius:8px}
 /* Aliases and attributes: data items sit in the teal data layer. */
 .aliases{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:8px;font-size:12px;color:var(--ink-3)}
-.aliases .alias{padding:1px 8px;border:1px solid var(--rule);border-radius:999px;color:var(--ink-2)}
+.aliases .alias{max-width:100%;padding:1px 8px;border:1px solid var(--rule);border-radius:999px;color:var(--ink-2);overflow-wrap:anywhere}
 .list button small.match-reason span{margin-right:6px;color:var(--accent)}
 /* Deprecated terms stay findable (old documents use them) but read as retired. */
 .list button.deprecated{color:var(--ink-3)}
@@ -329,6 +340,14 @@ details.reader-section>summary~*{margin-left:2px}
 .kind-tag{font-size:11px;font-weight:600;color:var(--ink-3)}
 .completion-issue p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
 .completion-issue p.issue-task{grid-column:2;margin-top:-10px;font-size:12px;color:var(--ink-3)}
+/* Data-mapping work: after the questions, under its own heading. */
+.completion-section{margin-top:32px}
+.completion-section-title{display:flex;align-items:baseline;gap:10px;font-size:16px;color:var(--data)}
+.completion-section-title small{font-weight:400;color:var(--ink-3)}
+.completion-section>.hint{margin:4px 0 10px}
+.mapping-state{margin-bottom:12px}
+.reader-record{padding-top:14px;border-top:1px solid var(--rule)}
+.reader-record .agreement{margin-bottom:6px}
 /* Changes since the compared revision: before is struck through, after is the current text. */
 .change-entry.agreed{border-color:var(--warn-line)}
 .change-entry h3 .review-badge{margin-left:auto}
@@ -423,7 +442,9 @@ details.reader-section>summary~*{margin-left:2px}
   .brand{flex:0 0 auto}
   .workspace,#process-workspace{display:flex;flex-direction:column;overflow:visible}
   .canvas,.process-canvas{order:-1;height:60vh;min-height:360px;flex-shrink:0}
-  .catalog-pane,.process-list{max-height:320px;border-right:0;border-bottom:1px solid var(--rule)}
+  .catalog-pane,.process-list{max-height:420px;border-right:0;border-bottom:1px solid var(--rule)}
+  /* A sticky legend would cover most of the short list: let it scroll after the items. */
+  .catalog-pane .legend,.process-list .legend{position:static}
   .inspector,.process-detail{border-left:0;overflow:visible}
   body.reviewing .workspace{display:flex}
   #review-board{position:relative;inset:auto;min-height:60vh;padding:72px 16px 32px}
@@ -462,7 +483,7 @@ details.reader-section>summary~*{margin-left:2px}
 </style></head><body>
 <header><div class="brand"><!-- STRUCTRA_LOGO -->structra-scape</div><select id="model-choice" aria-label="モデルを選択"></select></header>
 <div id="status" role="status"></div>
-<div class="workspace"><aside class="catalog-pane"><label class="search-label" for="search">ことば・つながりを検索</label><input id="search" type="search" placeholder="例：顧客、契約"><section class="catalog"><div class="catalog-head"><h3>ことば <small id="concept-count"></small></h3></div><div id="concepts" class="list"></div></section><section class="catalog"><div class="catalog-head"><h3>つながり <small id="property-count"></small></h3></div><div id="properties" class="list"></div></section><div class="legend"><div class="pane-title">線の見方</div><ul><li><i class="line"></i>つながり</li><li><i class="line dashed"></i>〜の一種</li><li><i class="line dotted"></i>分類条件</li><li id="legend-imported" hidden><i class="shape imported"></i>共通定義（読み込み）</li><li id="legend-deprecated" hidden><i class="shape retired"></i>廃止したことば</li></ul></div></aside>
+<div class="workspace"><aside class="catalog-pane"><label class="search-label" for="search">ことば・つながりを検索</label><input id="search" type="search" placeholder="例：顧客、契約"><section class="catalog"><div class="catalog-head"><h3>ことば <small id="concept-count"></small></h3></div><div id="concepts" class="list"></div></section><section class="catalog"><div class="catalog-head"><h3>つながり <small id="property-count"></small></h3></div><div id="properties" class="list"></div></section><section class="catalog" id="retired-section" hidden><details class="retired-list" id="retired-fold"><summary><span>廃止したことば</span><small id="retired-count"></small></summary><div id="retired" class="list"></div></details></section><div class="legend"><div class="pane-title">線の見方</div><ul><li><i class="line"></i>つながり</li><li><i class="line dashed"></i>〜の一種</li><li><i class="line dotted"></i>分類条件</li><li id="legend-imported" hidden><i class="shape imported"></i>共通定義（読み込み）</li><li id="legend-deprecated" hidden><i class="shape retired"></i>廃止したことば</li></ul></div></aside>
 <section class="canvas" aria-label="ことばと関係の図"><div class="view-switch" role="group" aria-label="ことばの表示形式"><button id="diagram-toggle">関係図</button><button id="review-toggle">定義一覧</button></div><div id="cy"></div><section id="review-board" hidden aria-label="ことばの定義一覧"></section><button id="fit">全体</button></section>
 <aside class="inspector"><div class="section-label">ことばの定義</div><div id="detail"></div></aside></div>
 <script><!-- STRUCTRA_CYTOSCAPE_BUNDLE --></script><script>
@@ -532,14 +553,24 @@ function renderLists(){
   $('legend-imported').hidden=!model.concepts.some(c=>c.imported_from);
   $('legend-deprecated').hidden=!model.concepts.some(c=>c.deprecated);
   const query=$('search').value.trim().toLowerCase();
+  const retired=[];
   for(const [key,kind] of [['concepts','concept'],['properties','property']]){
     // Match the headword and ID first; aliases and attribute names explain why other items matched.
     const found=x=>{if(`${x.name} ${x.id}`.toLowerCase().includes(query))return {};const alias=(x.aliases||[]).find(a=>a.toLowerCase().includes(query));if(alias)return {label:'別名',text:alias};const attribute=(x.attributes||[]).find(a=>`${a.name} ${a.id}`.toLowerCase().includes(query));return attribute?{label:'属性',text:attribute.name}:null};
     const items=model[key].map(x=>({x,match:found(x)})).filter(entry=>entry.match);
-    $(kind+'-count').textContent=`${items.length} / ${model[key].length}`;
-    $(key).innerHTML=items.map(({x,match})=>`<button data-id="${esc(x.id)}" class="${selected.id===x.id?'active':''}${x.deprecated?' deprecated':''}">${esc(x.name)}<code class="term-id">${esc(x.id)}</code>${kind==='property'?`<small>${esc(term(x.domain))} → ${esc(term(x.range))}</small>`:''}${x.imported_from?`<small class="imported-tag"><span>共通定義</span> · ${esc(x.imported_from)}</small>`:''}${x.deprecated?`<small class="deprecated-tag"><span>廃止</span>${x.replaced_by?`<span> → </span>${esc(term(x.replaced_by))}`:''}</small>`:''}${match.label?`<small class="match-reason"><span>${match.label}</span>${esc(match.text)}</small>`:''}</button>`).join('')||'<small>該当する項目はありません</small>';
-    $(key).querySelectorAll('button').forEach(b=>b.onclick=()=>{setReview(false);selected={kind,id:b.dataset.id};refresh();focusSelection()});
+    const listItem=({x,match})=>`<button data-kind="${kind}" data-id="${esc(x.id)}" class="${selected.id===x.id?'active':''}${x.deprecated?' deprecated':''}">${esc(x.name)}${x.imported_from?`<span class="imported-tag" title="${esc(x.imported_from)}">共通定義</span>`:''}<code class="term-id">${esc(x.id)}</code>${kind==='property'?`<small>${esc(term(x.domain))} → ${esc(term(x.range))}</small>`:''}${x.deprecated?`<small class="deprecated-tag"><span>廃止</span>${x.replaced_by?`<span> → </span>${esc(term(x.replaced_by))}`:''}</small>`:''}${match.label?`<small class="match-reason"><span>${match.label}</span>${esc(match.text)}</small>`:''}</button>`;
+    const current=items.filter(entry=>!entry.x.deprecated);
+    retired.push(...items.filter(entry=>entry.x.deprecated).map(entry=>listItem(entry)));
+    $(kind+'-count').textContent=`${current.length} / ${model[key].filter(x=>!x.deprecated).length}`;
+    $(key).innerHTML=current.map(listItem).join('')||'<small>該当する項目はありません</small>';
   }
+  // Retired terms and relationships: one folded section at the bottom, above the legend. It opens
+  // while searching or when a retired item is selected, and otherwise stays as the reader left it.
+  $('retired-section').hidden=!retired.length;
+  $('retired-count').textContent=retired.length;
+  $('retired').innerHTML=retired.join('');
+  if(query||[...model.concepts,...model.properties].some(x=>x.deprecated&&x.id===selected.id))$('retired-fold').open=true;
+  document.querySelectorAll('#concepts button,#properties button,#retired button').forEach(b=>b.onclick=()=>{setReview(false);selected={kind:b.dataset.kind,id:b.dataset.id};refresh();focusSelection()});
 }
 function focusSelection(){
   cy.resize();cy.stop();cy.elements().unselect();
@@ -554,7 +585,10 @@ function focusSelection(){
 }
 function updateReview(){
   const agreed=model.concepts.filter(c=>c.review_state==='agreed'&&!c.deprecated).length;
-  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p><p class="hint">名前を押すと、具体例や使われている作業を確認できます。</p></div><div class="review-grid">${model.concepts.map(c=>`<article class="review-card${c.deprecated?' deprecated':''}"><div class="entry-head">${c.deprecated?'<span class="review-status retired">廃止</span>':`<span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span>`}<h3><button data-review-term="${esc(c.id)}">${esc(c.name)} ↗</button></h3><code class="term-id">${esc(c.id)}</code>${c.imported_from?`<p class="imported-note"><span>共通定義から読み込み</span><code>${esc(c.imported_from)}</code></p>`:''}${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}${c.replaced_by?`<p class="hint"><span>代わりに使うことば</span> · ${esc(term(c.replaced_by))}</p>`:''}${c.aliases?.length?`<p class="aliases"><span>別名</span>${c.aliases.map(a=>`<span class="alias">${esc(a)}</span>`).join('')}</p>`:''}</div><div class="entry-body"><p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}${(c.attributes||[]).map(a=>`<li><span class="kind-tag">属性</span> ${esc(a.name)}${a.type?` <small>${esc(attributeTypes[a.type])}</small>`:''}</li>`).join('')}</ul></div></article>`).join('')}</div>`;
+  // Retired terms are kept for old documents but listed apart, after the terms in use.
+  const reviewCard=c=>`<article class="review-card${c.deprecated?' deprecated':''}"><div class="entry-head">${c.deprecated?'<span class="review-status retired">廃止</span>':`<span class="review-status ${esc(c.review_state||'draft')}">${({draft:'考え中',discussion:'要相談',agreed:'合意済み'})[c.review_state||'draft']||'考え中'}</span>`}<h3><button data-review-term="${esc(c.id)}">${esc(c.name)} ↗</button></h3><code class="term-id">${esc(c.id)}</code>${c.imported_from?`<span class="imported-tag" title="${esc(c.imported_from)}">共通定義</span>`:''}${c.parent?`<p class="hint">${esc(term(c.parent))}の一種</p>`:''}${c.replaced_by?`<p class="hint"><span>代わりに使うことば</span> · ${esc(term(c.replaced_by))}</p>`:''}${c.aliases?.length?`<p class="aliases"><span>別名</span>${c.aliases.map(a=>`<span class="alias">${esc(a)}</span>`).join('')}</p>`:''}</div><div class="entry-body"><p>${esc(c.description||'このことばの意味を、一緒に決めましょう。')}</p>${c.example?`<p><strong>たとえば</strong><br>${esc(c.example)}</p>`:''}${c.question?`<p class="question"><strong>相談したいこと</strong><br>${esc(c.question)}</p>`:''}<ul>${model.properties.filter(p=>p.domain===c.id||p.range===c.id).map(p=>`<li>${esc(term(p.domain))} → ${esc(p.name)} → ${esc(term(p.range))}</li>`).join('')}${model.restrictions.filter(r=>r.subject===c.id).map(r=>`<li>${esc(businessRule(r))} <small>［${r.mode==='equivalent'?'呼び分ける条件の一つ':'必ず満たす'}］</small></li>`).join('')}${(c.attributes||[]).map(a=>`<li><span class="kind-tag">属性</span> ${esc(a.name)}${a.type?` <small>${esc(attributeTypes[a.type])}</small>`:''}</li>`).join('')}</ul></div></article>`;
+  const retired=model.concepts.filter(c=>c.deprecated);
+  $('review-board').innerHTML=`<div class="review-intro"><h2>${esc(model.name)}</h2><p>同じことばから、同じ意味を思い浮かべられますか？　${model.concepts.length}個のことば · ${agreed}個が合意済み</p><p class="hint">名前を押すと、具体例や使われている作業を確認できます。</p></div><div class="review-grid">${model.concepts.filter(c=>!c.deprecated).map(reviewCard).join('')}</div>${retired.length?`<h3 class="retired-heading"><span>廃止したことば</span><small>${retired.length}件</small></h3><p class="hint retired-note">新しい資料では使わないことばです。古い資料を読むときの手がかりとして残しています。</p><div class="review-grid">${retired.map(reviewCard).join('')}</div>`:''}`;
   // A card opens the term's full definition next to the diagram.
   $('review-board').querySelectorAll('[data-review-term]').forEach(b=>b.onclick=()=>{setReview(false);selected={kind:'concept',id:b.dataset.reviewTerm};refresh();focusSelection()});
 }
@@ -563,7 +597,9 @@ $('diagram-toggle').onclick=()=>setReview(false);$('review-toggle').onclick=()=>
 $('search').oninput=renderLists;
 function download(filename,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $('model-choice').innerHTML=entries.map((e,i)=>`<option value="${i}">${esc(e.name)}</option>`).join('');
-$('model-choice').onchange=()=>{entryIndex=$('model-choice').value;model=structuredClone(entries[Number(entryIndex)].model);selected={kind:'concept',id:model.concepts[0]?.id};cy.elements().remove();refresh(true)};
+// The select cuts long model names; the tooltip shows the whole name.
+const modelChoiceTitle=()=>{$('model-choice').title=entries[Number($('model-choice').value)]?.name||''};modelChoiceTitle();
+$('model-choice').onchange=()=>{modelChoiceTitle();entryIndex=$('model-choice').value;model=structuredClone(entries[Number(entryIndex)].model);selected={kind:'concept',id:model.concepts[0]?.id};cy.elements().remove();refresh(true)};
 cy.on('tap','node',e=>{selected={kind:'concept',id:e.target.id()};refresh();focusSelection()});
 cy.on('tap','edge',e=>{const edge=e.target;selected={kind:edge.data('kind')==='property'?'property':'concept',id:edge.data('ref')};detail();const explanation=edge.data('kind')==='parent'?`${term(edge.source().id())}は${term(edge.target().id())}の一種です。`:edge.data('kind')==='property'?`${term(edge.source().id())}から${term(edge.target().id())}への「${edge.data('label')}」という関係です。`:`${term(edge.source().id())}の分類条件：${edge.data('label')}。相手の種類は${term(edge.target().id())}です。`;const note=document.createElement('p');note.className='meaning-card';note.textContent=explanation;$('detail').prepend(note)});
 $('fit').onclick=()=>cy.fit(undefined,50);

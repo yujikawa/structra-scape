@@ -31,7 +31,7 @@ for (const [language, suffix] of shots) {
   await page.evaluate(() => { cy.fit(undefined, 60); });
   await shot('terms');
   await page.click('#mode-process');
-  await page.evaluate(() => { pickStep('Sign'); pc.fit(undefined, 30); });
+  await page.evaluate(() => { pickStep('Sign'); });
   await shot('process');
   await page.click('#mode-unconfirmed');
   await shot('questions');

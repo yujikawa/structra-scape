@@ -60,7 +60,7 @@ renderProcess = function() {
   while (id && !seen.has(id)) { seen.add(id); const p=all.find(x=>x.id===id); if(!p)break; chain.unshift(p); id=parents.get(id)?.process; }
   crumbs.innerHTML=chain.map(p=>`<button data-level="${esc(p.id)}" ${p.id===activeProcess?'aria-current="page"':''}>${esc(p.name)}</button>`).join('<span aria-hidden="true">›</span>');
   crumbs.querySelectorAll('button').forEach(b=>b.onclick=()=>navigateHierarchy(b.dataset.level));
-  for(const s of process()?.steps || []) if(s.subprocess) pc.$id(s.id).data('label',s.name+'\n詳細を開く ›').addClass('has-detail');
+  for(const s of process()?.steps || []) if(s.subprocess) pc.$id(s.id).data('label',s.name+'\n詳細 ›').addClass('has-detail');
   if(activeStep) pc.$id(activeStep).select();
 };
 const hierarchyDetailBase = processDetail;

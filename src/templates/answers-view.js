@@ -27,8 +27,8 @@ renderUnconfirmed = function() {
   const content = completionRoot.querySelector('.completion-content');
   const bar = document.createElement('section');
   bar.className = 'answer-bar';
-  bar.innerHTML = `<label><span>回答者</span><input id="answer-name" placeholder="例：営業部 山田"></label><p class="answer-summary"></p><button id="answer-export" class="answer-export">${uiIcon('download')}回答を書き出す</button><p class="hint answer-note">モデルに反映された質問は一覧から消え、その回答もこの画面から消えます。</p>`;
-  content.querySelector(':scope > .hint').after(bar);
+  bar.innerHTML = `<label><span>回答者</span><input id="answer-name" placeholder="例：営業部 山田"></label><p class="answer-summary"></p><button id="answer-export" class="answer-export">${uiIcon('download')}回答を書き出す</button><p class="hint answer-note">分かる質問に回答を書き、「回答を書き出す」でモデルの担当者に渡してください。</p>`;
+  content.querySelector('.completion-filter').after(bar);
   const name = bar.querySelector('#answer-name');
   name.value = answerStore.answered_by || '';
   name.oninput = () => { answerStore.answered_by = name.value; writeAnswerStore(answerStore); };

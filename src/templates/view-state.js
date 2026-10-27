@@ -33,7 +33,7 @@ setTimeout(() => {
   const index = entries.findIndex(e=>e.slug===state.slug);
   if (state.slug && index < 0) { if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
   if (index >= 0) {
-    entryIndex=String(index); $('model-choice').value=entryIndex;
+    entryIndex=String(index); $('model-choice').value=entryIndex; modelChoiceTitle();
     model=structuredClone(entries[index].model);
     cy.elements().remove();
   }
@@ -69,3 +69,46 @@ setTimeout(() => {
     }
   }
 },0);
+// Browser back and forward walk through the views and selections opened on this page (navigation
+// only, like the state above). Every click or model change that lands somewhere new adds a step.
+// True until the restored view has been recorded as the first step (restoring clicks the tabs).
+let navApplying = true;
+const navState = () => ({
+  entry: entryIndex, selected: { ...selected }, activeProcess, activeStep,
+  mode: overviewMode ? 'overview' : changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
+});
+function recordNav() {
+  if (navApplying) return;
+  const state = navState();
+  if (JSON.stringify(history.state?.strscape) !== JSON.stringify(state)) history.pushState({ strscape: state }, '');
+}
+function applyNav(state) {
+  navApplying = true;
+  try {
+    const modelChanged = state.entry !== entryIndex && entries[Number(state.entry)];
+    if (modelChanged) {
+      entryIndex = state.entry; $('model-choice').value = entryIndex; modelChoiceTitle();
+      model = structuredClone(entries[Number(entryIndex)].model);
+      cy.elements().remove();
+    }
+    const collection = state.selected?.kind === 'property' ? model.properties : model.concepts;
+    if (collection.some(x => x.id === state.selected?.id)) selected = { ...state.selected };
+    if (model.processes?.some(p => p.id === state.activeProcess)) { activeProcess = state.activeProcess; activeStep = state.activeStep; }
+    refresh(Boolean(modelChanged));
+    if (state.mode === 'overview' && !overviewButton.hidden) overviewButton.click();
+    else if (state.mode === 'changes' && !changesButton.hidden) changesButton.click();
+    else if (state.mode === 'unconfirmed') completionButton.click();
+    else if (state.mode === 'process') { setProcessMode(true); if (activeStep) pickStep(activeStep); }
+    else { setProcessMode(false); setReview(state.mode === 'definitions'); if (state.mode === 'ontology') focusSelection(); }
+  } finally {
+    navApplying = false;
+    history.replaceState({ strscape: navState() }, '');
+  }
+}
+// Element handlers have run by the time a click bubbles to the document (Cytoscape taps fire
+// before the click), so the state recorded here is where the click led.
+document.addEventListener('click', recordNav);
+$('model-choice').addEventListener('change', recordNav);
+window.addEventListener('popstate', event => { if (event.state?.strscape) applyNav(event.state.strscape); });
+// The view restored above is the first step.
+setTimeout(() => { navApplying = false; history.replaceState({ strscape: navState() }, ''); }, 0);

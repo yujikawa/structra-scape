@@ -90,12 +90,15 @@ The header switches models (when a folder is built) and views. Tool buttons (exp
 | View | Shows |
 |---|---|
 | Overview | The entry point when several models are built together. Each domain is a box with its processes and terms; lines show what crosses domains. Below: relationships per pair of domains, a terms-by-process table, and questions across domains |
-| Terms & relationships | The relationship diagram and the definitions list. A term's detail has Meaning, Process usage and Data mapping tabs. Search covers names, IDs, aliases and attribute names |
 | Business processes | The flow diagram and the process tree; move from a step to the terms it uses and back |
-| Open questions | Open items grouped by term and step, each with an answer box (except data-mapping work) |
+| Terms & relationships | The relationship diagram and the definitions list. A term's detail has Meaning, Process usage and Data mapping tabs. Search covers names, IDs, aliases and attribute names |
+| Open questions | Open items grouped by term and step, each with an answer box. Questions for business users come first; data-mapping work follows under *Work for the data team*, without answer boxes. The tab counts the questions |
 | Changes | Under `dev`, changes since git `HEAD` by default (`--compare <revision>` / `--no-compare`); in `build`, only with `--compare <revision>` |
 
 - **Large models**: the diagram's *Show* control narrows the view to the selected term and its neighbours (or two steps away); selecting a neighbour re-centres on it. Models with more than 40 terms open this way. In Open questions, the count tiles filter by kind and a search box filters by name or question. A workspace of 7 domains, ~400 terms and 30 flows switches views in under a second (`tests/fixtures/large-workspace.js`).
+- Browser back and forward walk through the views opened (tabs, the selected term or step, the model): after opening a definition from the open questions, back returns to the questions.
+- Deprecated terms and relationships are folded into one section at the bottom of the list, above the legend, and listed last in the definitions view.
+- Relationship and subtype names on the overview diagram show on hover, so they do not overlap; hand-overs (creates, reads…) are always labelled.
 - The page reloads when the YAML changes, keeping the view, selection and zoom. Invalid YAML keeps the last valid view and shows the error.
 - The color-scheme button in the header picks System, Light or Dark (icons; System follows the OS and is the default). The choice is remembered in the browser. Diagrams keep a light sheet in dark mode. Printing gives the open view as a clean light document.
 - *Export* saves the current diagram as SVG or PNG, all definitions as Markdown, and the model shown as OWL or SKOS (both RDF in Turtle). Everything except PNG can also be exported from the CLI, with the same content.

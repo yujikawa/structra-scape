@@ -102,6 +102,11 @@ test('every view of the built reader runs without page errors', async t => {
   const dataItems = page.locator('.completion-issue:has(small[data-category="data"])');
   assert.ok(await dataItems.count() > 0);
   assert.equal(await dataItems.locator('.answer-field').count(), 0);
+  // Data-mapping work comes after the questions, under its own heading; the tab counts only the questions.
+  assert.equal(await page.locator('.completion-section .completion-issue:has(small[data-category="data"])').count(), await dataItems.count());
+  assert.equal(await page.locator('.completion-content > .completion-group .completion-issue:has(small[data-category="data"])').count(), 0);
+  const questionCount = await page.locator('#unconfirmed-workspace .completion-issue:not(:has(small[data-category="data"]))').count();
+  assert.equal(Number(await page.innerText('#mode-unconfirmed .unconfirmed-count')), questionCount);
   // Answers are written in place and exported as a file for whoever maintains the model.
   await page.fill('#answer-name', '営業部 山田');
   await page.locator('.answer-field textarea').first().fill('株式会社や合同会社');
@@ -132,10 +137,13 @@ test('every view of the built reader runs without page errors', async t => {
       // Lists re-render on every click, so address items by position rather than by handle.
       const clickAll = async (selector, each = async () => {}) => {
         const count = await page.locator(selector).count();
-        for (let i = 0; i < count; i++) { await page.locator(selector).nth(i).click(); await each(); }
+        // Retired terms are folded away; unfold them to reach every item.
+        const unfold = () => page.$$eval('.retired-list', folds => folds.forEach(fold => { fold.open = true; }));
+        for (let i = 0; i < count; i++) { await unfold(); await page.locator(selector).nth(i).click(); await each(); }
       };
       await clickAll('#concepts button', () => clickAll('.reader-tabs button:visible'));
       await clickAll('#properties button');
+      await clickAll('#retired button');
       await page.click('#review-toggle');
       await page.click('#diagram-toggle');
       await page.fill('#search', '契約');
@@ -159,6 +167,63 @@ test('every view of the built reader runs without page errors', async t => {
   await page.click('#mode-unconfirmed');
   await page.reload();
   assert.equal(await page.getAttribute('#mode-unconfirmed', 'aria-pressed'), 'true');
+  assert.deepEqual(errors, []);
+});
+
+test('the reader shows each thing once, and browser back returns to where people were', async t => {
+  const browser = await launch();
+  if (!browser) { t.skip('Chromium not found'); return; }
+  t.after(() => browser.close());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-browser-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'index.html');
+  fs.writeFileSync(file, renderModel('samples/customer-contract.yaml'));
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('file://' + file);
+  // One model opens on its business flow; the tabs read flow first, then terms.
+  assert.equal(await page.isVisible('#process-workspace'), true);
+  assert.deepEqual(await page.$$eval('.mode-bar button:not([hidden])', bs => bs.map(b => b.id)).then(ids => ids.slice(0, 2)), ['mode-process', 'mode-ontology']);
+  // Step nodes carry only their name: the shape says what kind of step it is.
+  assert.equal(await page.evaluate(() => pc.$id('Sign').data('label')), '契約を締結する');
+  // The open question is shown once, above the tabs, and missing fields leave no placeholder.
+  await page.click('#mode-ontology');
+  await page.click('#diagram-toggle');
+  await page.click('#concepts button[data-id="Customer"]');
+  assert.equal(await page.locator('#detail .question-banner').count(), 1);
+  assert.equal(await page.locator('#detail h3', { hasText: '確認したいこと' }).count(), 0);
+  assert.equal(await page.locator('#detail h3', { hasText: '定義の確認状況' }).count(), 0);
+  // Retired terms are folded after the terms in use, and open when one of them is selected.
+  // They sit in one section at the bottom of the list, just above the legend.
+  assert.equal(await page.locator('#concepts button[data-id="Account"]').count(), 0);
+  assert.equal(await page.$eval('#retired-section', section => section.nextElementSibling.classList.contains('legend')), true);
+  assert.equal(await page.$eval('#retired-fold', fold => fold.open), false);
+  await page.click('#retired-fold summary');
+  await page.click('#retired button[data-id="Account"]');
+  assert.equal(await page.innerText('#detail h2'), '得意先');
+  assert.equal(await page.$eval('#retired-fold', fold => fold.open), true);
+  await page.click('#review-toggle');
+  assert.equal(await page.locator('.retired-heading + .retired-note + .review-grid [data-review-term="Account"]').count(), 1);
+  await page.click('#diagram-toggle');
+  await page.click('#mode-process');
+  await page.locator('#process-list [data-pick="Sign"]').click();
+  assert.equal(await page.locator('#process-detail', { hasText: '説明はまだ' }).count(), 0);
+  // Back walks the same way: step → process view → term → definitions list.
+  await page.click('#mode-unconfirmed');
+  await page.locator('[data-completion-target]').first().click();
+  const opened = await page.innerText('#detail h2');
+  await page.goBack();
+  await page.waitForFunction(() => unconfirmedMode);
+  await page.goBack();
+  await page.waitForFunction(() => processMode && activeStep === 'Sign');
+  await page.goBack();
+  await page.waitForFunction(() => processMode && !activeStep);
+  await page.goForward();
+  await page.goForward();
+  await page.goForward();
+  await page.waitForFunction(() => !processMode && !unconfirmedMode);
+  assert.equal(await page.innerText('#detail h2'), opened);
   assert.deepEqual(errors, []);
 });
 
