@@ -9,6 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 import { renderModel } from '../src/build.js';
+import { loadModel } from '../src/validate.js';
+import { exportOntology, exportSkos } from '../src/ontology.js';
 import { writeLargeWorkspace } from './fixtures/large-workspace.js';
 
 async function launch() {
@@ -209,6 +211,30 @@ test('a workspace at company scale stays readable: the term diagram narrows, ope
   assert.equal(await page.locator('#unconfirmed-workspace .completion-issue').count(), all);
   assert.deepEqual(errors, []);
   console.log(`large workspace: ${Date.now() - started} ms`);
+});
+
+test('the export menu saves the model shown as OWL and SKOS, the same as the CLI', async t => {
+  const browser = await launch();
+  if (!browser) { t.skip('Chromium not found'); return; }
+  t.after(() => browser.close());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-browser-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'index.html');
+  fs.writeFileSync(file, renderModel('samples'));
+  const page = await browser.newPage({ acceptDownloads: true });
+  await page.goto('file://' + file);
+  // billing imports customer-contract, so the output must carry owl:imports and the imported IRIs.
+  const index = await page.$$eval('#model-choice option', options => options.findIndex(o => o.textContent.includes('請求')));
+  assert.ok(index >= 0);
+  await page.selectOption('#model-choice', String(index));
+  const save = async format => {
+    await page.click('.header-menu:has([data-export]) summary');
+    const [saved] = await Promise.all([page.waitForEvent('download'), page.click(`[data-export="${format}"]`)]);
+    return { name: saved.suggestedFilename(), text: fs.readFileSync(await saved.path(), 'utf8') };
+  };
+  const model = loadModel('samples/billing.yaml');
+  assert.deepEqual(await save('owl'), { name: 'billing.owl.ttl', text: exportOntology(model) });
+  assert.deepEqual(await save('skos'), { name: 'billing.skos.ttl', text: exportSkos(model) });
 });
 
 test('answers from colleagues can be opened next to the questions, and differing ones stand out', async t => {

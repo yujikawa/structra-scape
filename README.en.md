@@ -98,7 +98,7 @@ The header switches models (when a folder is built) and views. Tool buttons (exp
 - **Large models**: the diagram's *Show* control narrows the view to the selected term and its neighbours (or two steps away); selecting a neighbour re-centres on it. Models with more than 40 terms open this way. In Open questions, the count tiles filter by kind and a search box filters by name or question. A workspace of 7 domains, ~400 terms and 30 flows switches views in under a second (`tests/fixtures/large-workspace.js`).
 - The page reloads when the YAML changes, keeping the view, selection and zoom. Invalid YAML keeps the last valid view and shows the error.
 - The color-scheme button in the header picks System, Light or Dark (icons; System follows the OS and is the default). The choice is remembered in the browser. Diagrams keep a light sheet in dark mode. Printing gives the open view as a clean light document.
-- *Export* saves the current diagram as SVG or PNG and all definitions as Markdown.
+- *Export* saves the current diagram as SVG or PNG, all definitions as Markdown, and the model shown as OWL or SKOS (both RDF in Turtle). Everything except PNG can also be exported from the CLI, with the same content.
 
 ```bash
 strscape export models/business.yaml --format svg --process Intake --output intake.svg

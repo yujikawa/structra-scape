@@ -1,9 +1,11 @@
 // Detail panes, header menus and icons for the read-only reader.
 const exportMenu=document.createElement('details');exportMenu.className='header-menu';
-exportMenu.innerHTML='<summary>出力</summary><div class="menu-panel"><p class="hint">図：現在の業務／オントロジー<br>定義：全用語</p><button data-export="svg">図をSVGで保存</button><button data-export="png">図をPNGで保存</button><button data-export="md">全用語をMarkdownで保存</button></div>';
+exportMenu.innerHTML='<summary>出力</summary><div class="menu-panel"><p class="hint">図：現在の業務／オントロジー<br>定義：全用語<br>OWL・SKOS：表示中のモデル</p><button data-export="svg">図をSVGで保存</button><button data-export="png">図をPNGで保存</button><button data-export="md">全用語をMarkdownで保存</button><button data-export="owl">OWL（Turtle）で保存</button><button data-export="skos">SKOS（Turtle）で保存</button></div>';
 document.querySelector('header').append(exportMenu);
 exportMenu.querySelectorAll('[data-export]').forEach(button=>button.onclick=async()=>{
  try{const format=button.dataset.export;if(format==='md'){download('definitions.md',publicationMarkdown(model),'text/markdown');return;}
+ // RDF exports take the model as built, imports included, the same as `strscape export --format ttl|skos`.
+ if(format==='owl'||format==='skos'){const slug=entries[Number(entryIndex)].slug;download(`${slug}.${format}.ttl`,format==='owl'?exportOntology(model):exportSkos(model),'text/turtle');return;}
  const svg=publicationSvg(model,{process:processMode?activeProcess:undefined});
  if(format==='svg'){download('diagram.svg',svg,'image/svg+xml');return;}
  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
