@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import yaml from 'js-yaml';
+import { loadYaml } from './yaml-load.js';
 import { validateOntology } from './ontology.js';
 import { diffModels, describeChange } from './diff.js';
 import { resolveImports, dependentModels } from './imports.js';
@@ -17,7 +18,7 @@ function fail(code, message) { throw Object.assign(new Error(message), { code })
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value); }
 function load(file) {
   const text = fs.readFileSync(file, 'utf8');
-  const model = yaml.load(text, { schema: yaml.CORE_SCHEMA });
+  const model = loadYaml(text);
   if (model?.kind !== 'ontology') fail('MODEL_TYPE', 'Expected kind: ontology');
   return { text, model, revision: hash(text) };
 }

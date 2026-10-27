@@ -52,7 +52,7 @@ Code in those shared modules runs both in Node (CLI and tests) and as plain brow
 - These commands work on ontology models only.
 - `revision` is the sha256 of the file text. `--expect-revision` rejects stale writes.
 - Writes take a lock file and validate the whole model (with imports, and sibling files that import it) before saving.
-- `yaml-document.js` edits the YAML in place with the `yaml` package, so comments and styles survive; js-yaml stays the parser everywhere else.
+- `yaml-document.js` edits the YAML in place with the `yaml` package, so comments and styles survive; js-yaml stays the parser everywhere else, always through `yaml-load.js#loadYaml` (it refuses alias expansion bombs).
 - Changes to anything with `review_state: agreed` fail with `AGREED_CHANGE` unless `--allow-agreed-change` is passed (`diff.js` decides what counts as a change).
 - Attributes are a nested entity (`--concept`), like steps (`--process`). The `model` entity edits only the root `name` / `base` / `imports`.
 - `promote` moves definitions into a shared file and adds the import, locking and validating both files (and their importers) together.

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { loadYaml } from './yaml-load.js';
 import { validateOntology } from './ontology.js';
 
 const slash = value => value.split(path.sep).join('/');
@@ -24,7 +24,7 @@ export function resolveImports(model, file, stack = [], overrides = new Map()) {
     const target = path.resolve(dir, relative);
     if (target === absolute || stack.includes(target)) throw new Error(`imports が循環しています: ${relative}`);
     if (!overrides.has(target) && !fs.existsSync(target)) throw new Error(`imports の参照先が見つかりません: ${relative}`);
-    const raw = overrides.get(target) || yaml.load(fs.readFileSync(target, 'utf8'), { schema: yaml.CORE_SCHEMA }) || {};
+    const raw = overrides.get(target) || loadYaml(fs.readFileSync(target, 'utf8')) || {};
     if (raw.kind !== 'ontology') throw new Error(`${relative}: kind: ontology のモデルだけを読み込めます`);
     const imported = resolveImports(raw, target, [...stack, absolute], overrides);
     const errors = validateOntology(imported);
@@ -65,7 +65,7 @@ export function dependentModels(changes) {
   for (const sibling of siblings) {
     if (changes.has(sibling)) continue;
     let raw;
-    try { raw = yaml.load(fs.readFileSync(sibling, 'utf8'), { schema: yaml.CORE_SCHEMA }); } catch { continue; }
+    try { raw = loadYaml(fs.readFileSync(sibling, 'utf8')); } catch { continue; }
     if (raw?.kind !== 'ontology' || !Array.isArray(raw.imports)) continue;
     const before = check(raw, sibling, new Map()), after = check(raw, sibling, changes);
     if (!before.imports && !after.imports) continue;

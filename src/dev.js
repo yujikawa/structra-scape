@@ -17,6 +17,12 @@ export function dev(file, { port = 4173, host = '127.0.0.1', compare = 'HEAD' } 
     if (allowed.has(hostname(req.headers.host))) return next();
     res.status(403).type('text').send(`Host not allowed: ${req.headers.host}. Open http://localhost:${port} or start strscape dev with --host <name>.`);
   });
+  // Another site must not frame the viewer (clicks there could post answers as this page).
+  app.disable('x-powered-by');
+  app.use((_req, res, next) => {
+    res.set({ 'Content-Security-Policy': "frame-ancestors 'none'", 'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
+    next();
+  });
   const clients = new Set();
   let html = '', issue = '';
   // Imported definition files are watched too; the list is updated on every successful render.

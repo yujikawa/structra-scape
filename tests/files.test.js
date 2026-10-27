@@ -163,6 +163,11 @@ test('hardening: dev answers only local hosts, stale locks are recovered, unsafe
   const port = server.address().port;
   const get = host => new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port, path: '/', headers: { host } }, res => { res.resume(); resolve(res.statusCode); }).on('error', reject));
   assert.equal(await get(`localhost:${port}`), 200);
+  // Another site cannot frame the viewer.
+  const headers = await new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port, path: '/' }, res => { res.resume(); resolve(res.headers); }).on('error', reject));
+  assert.equal(headers['content-security-policy'], "frame-ancestors 'none'");
+  assert.equal(headers['x-frame-options'], 'DENY');
+  assert.equal(headers['x-content-type-options'], 'nosniff');
   assert.equal(await get(`127.0.0.1:${port}`), 200);
   // A rebinding attack reaches 127.0.0.1 under the attacker's host name.
   assert.equal(await get(`attacker.example:${port}`), 403);
@@ -178,4 +183,14 @@ test('hardening: dev answers only local hosts, stale locks are recovered, unsafe
   fs.writeFileSync(billing, fs.readFileSync(billing, 'utf8').replace('  - customer-contract.yaml', `  - ${file}`));
   assert.match(validateFile(billing).join(), /相対パス/);
   assert.throws(() => renderBundle(file, { compare: '--output=pwned' }), /Invalid git revision/);
+
+  // A few lines of nested aliases would expand to a billion values: refused before anything expands them.
+  const bomb = path.join(dir, 'bomb.yaml'), levels = ['a0: &a0 [x,x,x,x,x,x,x,x,x,x]'];
+  for (let i = 1; i < 9; i++) levels.push(`a${i}: &a${i} [${Array(10).fill(`*a${i - 1}`).join(',')}]`);
+  fs.writeFileSync(bomb, ['kind: ontology', 'name: x', 'base: https://example.com/x#', ...levels, 'concepts: []', 'properties: []', 'restrictions: []'].join('\n'));
+  assert.match(validateFile(bomb).join(), /エイリアス/);
+  assert.throws(() => renderBundle(bomb), /エイリアス/);
+  // Ordinary reuse through an alias stays allowed.
+  fs.writeFileSync(bomb, ['kind: ontology', 'name: x', 'base: https://example.com/x#', 'concepts:', '  - {id: A, name: &n 顧客}', '  - {id: B, name: *n}', 'properties: []', 'restrictions: []'].join('\n'));
+  assert.deepEqual(validateFile(bomb), []);
 });
