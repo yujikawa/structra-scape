@@ -9,11 +9,43 @@ concepts:
     agreed_by: 営業部・経理部
     agreed_at: 2026-09-15
     evidence: 2026-09-15 営業部・経理部の定例（説明用の仮定）
+    attributes:
+      - id: organizationId
+        name: 法人ID
+        type: identifier
+        required: true
+        description: 法人ごとに採番される番号。社名が変わっても変わらない。
+        data_mapping:
+          source: example_warehouse.organizations.organization_id（架空の説明用カラム）
+          status: verified
+          grain: 1行は1法人。
+          condition: organizations の主キー。
+          gap: 一意で欠損がないことは確認済み。法人の統合・分割のときにIDがどう引き継がれるかは未確認。
+      - id: industry
+        name: 業種
+        type: code
+        description: 法人の主たる業種。変わることがあるため、履歴で管理する。
+        values:
+          - { value: manufacturing, name: 製造業 }
+          - { value: retail, name: 小売業 }
+          - { value: it, name: 情報通信業 }
+        data_mapping:
+          source: example_warehouse.organization_history.industry_code（架空の説明用カラム）
+          status: proposed
+          grain: 1行は法人の1版（有効期間ごと）。
+          condition: 基準日時を有効期間に含む版の値を使う。
+          history: versioned
   - id: Customer
     name: 契約顧客
     aliases: [ 顧客, 取引先, 得意先 ]
     parent: Organization
-    description: 有効な契約を少なくとも1つ持つ法人。
+    description: 基準日時点で有効な契約を少なくとも1つ持つ法人。
+    # 「いつの時点で判定するか」。現在の契約顧客は、基準日時を現在に置いた場合にあたる。
+    temporal:
+      basis: as_of
+      timezone: Asia/Tokyo
+      description: 基準日時を指定して判定する。現在の契約顧客は、基準日時を現在に置いた場合にあたる。
+    effective_from: 2026-04-01
     example: A社は有効な保守契約を持つため、契約顧客に含める。
     question: 契約が終了した会社は別の呼び名で管理する？
     review_state: discussion
@@ -34,6 +66,8 @@ concepts:
       grain: 1行は1契約。契約顧客数は法人IDの重複を除いて数える。
       condition: status = 'active' の契約に紐づく organization_id を抽出する案。
       gap: statusだけでは基準日・開始日・終了日を判定できない可能性がある。有効期間と解約の扱いを業務担当者に確認する。
+      # contracts は最新の状態で上書きされる。過去の基準日時点（先月末など）の契約顧客は判定できない。
+      history: current_only
   # 旧システムの呼び方。古い帳票に残っているため、検索できるように残す。
   - id: Account
     name: 得意先
@@ -53,18 +87,18 @@ concepts:
           source: example_warehouse.contracts.contract_no（架空の説明用カラム）
           status: proposed
       - id: startDate
-        name: 契約開始日
-        type: date
+        name: 契約開始日時
+        type: datetime
         required: true
-        description: 契約の効力が始まる日。
+        description: 契約の効力が始まる日時。この時点から有効。
         data_mapping:
           source: example_warehouse.contracts.start_date（架空の説明用カラム）
           status: proposed
           gap: 申込日を入れている行があるかもしれない。
       - id: endDate
-        name: 契約終了日
-        type: date
-        description: 契約の効力が終わる日。自動更新の契約では未設定。
+        name: 契約終了日時
+        type: datetime
+        description: 契約の効力が終わる日時。この時点ではもう有効ではない。自動更新の契約では未設定。
       - id: status
         name: 契約状態
         type: code
@@ -77,7 +111,17 @@ concepts:
   - id: ActiveContract
     name: 有効契約
     parent: Contract
-    description: 基準日時点で有効と判断された契約。日時の判定は別途実装する。
+    description: 基準日時点で有効な契約。開始日時を含み、終了日時を含まない。
+    temporal:
+      basis: as_of
+      period: { start: startDate, end: endDate, start_inclusive: true, end_inclusive: false }
+      timezone: Asia/Tokyo
+    cases:
+      - description: 基準日時ちょうどに開始する契約
+        result: included
+      - description: 基準日時ちょうどに終了する契約
+        result: excluded
+        reason: 終了日時の時点では、もう有効ではない。
 properties:
   - id: hasContract
     name: 契約を持つ
@@ -89,6 +133,37 @@ restrictions:
     operator: someValuesFrom
     target: ActiveContract
     mode: equivalent
+# 指標：概念とは別に定義する「数」。業務での意味と数え方を書き、実装は書かない。
+metrics:
+  - id: ContractCustomerCount
+    name: 契約顧客数
+    aliases: [ 顧客数 ]
+    description: 基準日時点の契約顧客にあたる法人の数。法人IDの重複を除いて数える。
+    concept: Customer
+    aggregation: count_distinct
+    attribute: organizationId
+    unit: 社
+    temporal:
+      basis: as_of
+      timezone: Asia/Tokyo
+      description: 「現在の契約顧客数」は基準日時を現在に、「先月末の契約顧客数」は先月末に置いた同じ指標。先月末の値には、過去の状態を保持したデータが必要。
+    dimensions:
+      - name: 基準日
+        additive: false
+        note: 日別の契約顧客数を合計しても、月間の顧客数にはならない。
+      - name: 業種
+        additive: true
+        note: 基準日時点の業種で分ける。法人は一時点では1つの業種に属するため、業種別の合計は全体と一致する。
+    cases:
+      - description: 同じ法人に、有効な契約が2件ある
+        expected: 1社と数える
+        reason: 数えるのは法人で、契約の件数ではない。
+      - description: 基準日までに業種が変わった法人を、業種別に数える
+        expected: 基準日時点の業種で1社と数える
+      - description: 停止中の契約しかない法人
+        reason: 停止中の契約を有効契約に含めるかが決まっていない。
+    review_state: discussion
+    evidence: このファイルの説明用の仮定。実際の業務担当者との合意は未実施。
 processes:
   - id: ContractProcess
     name: 申込みから契約まで

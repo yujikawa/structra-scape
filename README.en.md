@@ -4,7 +4,7 @@
 
 <p align="center"><a href="README.md">日本語</a> | English</p>
 
-`structra-scape` (CLI: `strscape`) helps business users and data teams agree on how their work flows and what their words mean. An AI agent (Claude Code or Codex) writes the model as YAML; people read it in a single self-contained HTML viewer.
+`structra-scape` (CLI: `strscape`) makes visible the knowledge that lives only in people's heads: what words mean, where the boundaries are, at what point in time things are judged, how things are counted, and what the data cannot tell. An AI agent (Claude Code or Codex) turns conversations into YAML; business users and data teams read it in a single self-contained HTML viewer and share what is agreed and what is still open.
 
 - **Terms and relationships**: definitions, aliases, included and excluded examples, evidence and agreement state; how terms relate and the rules that classify them
 - **Attributes (data items)**: the values a term carries (dates, amounts, codes…) and where they live in the data
@@ -202,6 +202,25 @@ processes:
 - **Detail flows**: `subprocess: ReviewDetails` on a task links to another flow for drill-down. A flow has one parent; cycles are rejected.
 - **Shared definitions**: `imports: [common.yaml]` reads another file's terms, relationships and rules (read-only; processes are not imported). `strscape promote <file> <ids...> --to models/common.yaml` moves existing terms into a shared file.
 
+### Tacit knowledge behind an analysis (time, metrics)
+
+What an AI should know before writing SQL, and that only people know. Implementation (join
+keys, SQL) is not recorded: it lives in the code and data tools and changes too often.
+Everything is optional; open questions appear only for the items a model uses.
+
+- `temporal` on a concept: `basis` (`current`, `as_of` a reference time, `period`), the
+  validity `period` (attributes, `start_inclusive` / `end_inclusive`) and `timezone`.
+  `effective_from` / `effective_to` are when a definition applies (not `agreed_at`).
+- `data_mapping.history`: `current_only`, `snapshot` or `versioned`. `status` may also be
+  `rejected` (checked and found wrong); limits and reasons go in `gap`.
+- `metrics`: the counted concept, `aggregation` and `attribute` (e.g. distinct
+  organization IDs), formula (text), unit, time basis, `dimensions` with `additive`, and
+  `cases` in words (without `expected`, the viewer asks how to count it). The viewer shows
+  what the records can answer: the current value, and values at a past moment such as last
+  month-end (not answerable from `current_only` data).
+- OWL and SKOS exports leave this out and say so in a comment at the top; the Markdown
+  export includes it. See `samples/customer-contract.yaml`.
+
 ## How the AI edits, and how agreed definitions are protected
 
 ```bash
@@ -254,6 +273,7 @@ On every pull request that touches the models, the workflow validates them, post
 
 ## Limits
 
+- No implementation details such as joins or SQL. Their source of truth is the code and the data platform.
 - The viewer does not edit models; answers are recorded by the AI.
 - No OWL import, reasoning or satisfiability checks. Validation covers references, input shapes and supported operators.
 - Data mappings are records. No database connection or SQL; `check-mapping` only compares names with schema files.

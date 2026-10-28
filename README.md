@@ -4,7 +4,7 @@
 
 <p align="center">日本語 | <a href="README.en.md">English</a></p>
 
-`structra-scape`（CLI: `strscape`）は、業務の流れと、そこで使われる「ことば」の意味を、業務担当者とデータ担当者がそろえるためのツールです。AI（Claude Code / Codex）がYAMLに整理し、人は1ファイルのHTMLビューアで確認します。
+`structra-scape`（CLI: `strscape`）は、業務担当者の頭の中にしかない知識（ことばの意味、判断の境界、いつの時点で判断するか、どう数えるか、データでは分からないこと）を見える形にするツールです。AI（Claude Code / Codex）が会話からYAMLに整理し、業務担当者とデータ担当者が1ファイルのHTMLビューアで確認して、合意と未決定を共有します。
 
 - **ことばと関係**：用語の定義・別名・含む例／含まない例・根拠・合意状態、用語同士のつながりと分類条件
 - **属性（データ項目）**：用語が持つ値（日付・金額・区分値など）と、その値が実際のデータのどこにあるか
@@ -232,6 +232,46 @@ processes:
 - **分類条件（restrictions）**：`someValuesFrom`（少なくとも1つある）、`allValuesFrom`（相手はすべて。存在は要求しない）、`minCardinality` / `maxCardinality` / `cardinality`（重複を除いた相手の数）。`mode: equivalent` は「この条件で呼び分ける」、`necessary` は「必ず満たす」です。
 - **詳細フロー**：作業に `subprocess: ReviewDetails` のように別の業務フローのIDを指定すると、図から掘り下げられます。親は1つで、循環は検証で拒否します。
 
+### 分析の前提になる暗黙知（時間・指標）
+
+AIがSQLを書いたり分析したりする前に知っておくべき、人の頭の中にしかない前提を記録する項目です。結合キーやSQLなどの実装は書きません（実装はコードやデータ基盤の側にあり、変わりやすいため）。すべて任意で、使った項目にだけ未確認事項が出ます。
+
+```yaml
+concepts:
+  - id: ActiveContract
+    name: 有効契約
+    temporal:                       # いつの時点で判定するか
+      basis: as_of                  # current / as_of（基準日時点）/ period（期間中）
+      period: { start: startDate, end: endDate, start_inclusive: true, end_inclusive: false }
+      timezone: Asia/Tokyo
+    cases:
+      - { description: 基準日時ちょうどに終了する契約, result: excluded }
+  - id: Customer
+    effective_from: 2026-04-01      # 定義を業務で適用する期間（合意日 agreed_at とは別）
+    data_mapping:
+      source: example_warehouse.contracts
+      status: proposed              # proposed / verified / rejected（誤りと確認）
+      history: current_only         # current_only / snapshot / versioned
+      gap: 解約・停止の履歴は上書きされて残らない。
+metrics:                            # 指標：概念とは別に定義する「数」
+  - id: ContractCustomerCount
+    name: 契約顧客数
+    concept: Customer
+    aggregation: count_distinct
+    attribute: organizationId       # 同じ法人を二度数えない
+    temporal: { basis: as_of, timezone: Asia/Tokyo }
+    dimensions:
+      - { name: 基準日, additive: false, note: 日別の値を合計しても月間の値にはならない }
+    cases:
+      - { description: 同じ法人に有効な契約が2件ある, expected: 1社と数える }
+      - { description: 停止中の契約しかない法人 }   # expected がない → 未決定として質問する
+```
+
+- **現在と過去の違い**：指標の画面の「答えられる範囲」に、記録から「現在の値」と「先月末などの過去の値」に答えられるかを表示します。サンプルでは契約データが `current_only` のため、先月末の契約顧客数には答えられないと表示します。
+- **合意と確認は別の軸です**：`review_state` は業務上の合意、`data_mapping.status` はデータ側の確認です。確認済みでも残る制約や、誤りと分かった理由は `gap` に書きます。
+- **指標の数え方の例**（`cases`）は言葉で書きます。`expected` がないものは、未確認事項で業務担当者に「どう数えますか？」と聞きます。
+- OWL・SKOS には出力しません（対応する標準の語彙がないため）。出力ファイルの先頭のコメントに、出力していない情報を書きます。Markdown出力には含めます。
+
 ### 共通定義の読み込み（imports）
 
 複数の業務で同じ用語を使う場合は、定義を1つのファイルに置き、ほかのファイルから読み込みます。
@@ -323,9 +363,10 @@ strscape ci                     # .github/workflows/strscape.yml を作成（モ
 
 ## できないこと
 
+- 結合方法やSQLなどの実装は持ちません。実装の正本はコードやデータ基盤の側です。
 - 画面上でモデルを編集することはできません（閲覧専用です）。未確認事項への回答は書けますが、YAMLへの反映はAIが行います。
 - OWLの読み込み、推論、論理的な充足可能性の検査はしません。構造検証は参照・入力形式・対応演算子のみを確認します。`domain` / `range` は入力チェックではなく型の定義です。
-- データ対応は記録のみです。データベースへの接続やSQLの実行はしません（スキーマのファイルとの名前の照合だけは `check-mapping` でできます）。
+- データ対応と指標は記録のみです。結合方法などの実装は持たず、SQLの生成・実行、計算式の評価、データベースへの接続はしません（スキーマのファイルとの名前の照合だけは `check-mapping` でできます）。
 - 同時の共同編集はできません。
 
 ## 開発

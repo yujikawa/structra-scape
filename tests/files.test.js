@@ -44,7 +44,7 @@ test('imports merge shared definitions read-only and export them by reference', 
 test('a change to a shared file is rejected when it breaks a model importing it', t => {
   const dir = workspace(t), shared = path.join(dir, 'customer-contract.yaml');
   const before = fs.readFileSync(shared, 'utf8');
-  assert.throws(() => updateDocument(shared, { operations: [{ op: 'remove', entity: 'concept', id: 'Customer' }, { op: 'remove', entity: 'concept', id: 'Account' }, { op: 'replace', entity: 'restriction', value: [] }] }), e => e.code === 'VALIDATION' && e.errors.some(m => m.startsWith('billing.yaml:')));
+  assert.throws(() => updateDocument(shared, { operations: [{ op: 'remove', entity: 'concept', id: 'Customer' }, { op: 'remove', entity: 'concept', id: 'Account' }, { op: 'replace', entity: 'restriction', value: [] }, { op: 'remove', entity: 'metric', id: 'ContractCustomerCount' }] }), e => e.code === 'VALIDATION' && e.errors.some(m => m.startsWith('billing.yaml:')));
   assert.equal(fs.readFileSync(shared, 'utf8'), before);
   assert.throws(() => updateDocument(path.join(dir, 'billing.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Customer', value: { name: '上書き' } }] }), { code: 'VALIDATION' });
 });

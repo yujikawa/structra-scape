@@ -42,6 +42,7 @@ export function validateOntology(model) {
     if (item.agreed_at !== undefined && !isDate(item.agreed_at)) errors.push(`${item.id}.agreed_at: YYYY-MM-DD の日付にしてください`);
     if ((item.agreed_by !== undefined || item.agreed_at !== undefined) && item.review_state !== 'agreed') errors.push(`${item.id}: agreed_by・agreed_at は review_state: agreed のときだけ指定してください`);
     if (item.deprecated !== undefined && typeof item.deprecated !== 'boolean') errors.push(`${item.id}.deprecated: true または false にしてください`);
+    errors.push(...validateEffective(item.id, item));
     if (item.position !== undefined && (!item.position || !Number.isFinite(item.position.x) || !Number.isFinite(item.position.y))) errors.push(`${item.id}: 配置には有限のx・y座標が必要です`);
   }
   const concepts = new Set(model.concepts.filter(Boolean).map(c => c.id));
@@ -56,9 +57,11 @@ export function validateOntology(model) {
     if (c.parent && !concepts.has(c.parent)) errors.push(`${c.id}: 上位概念が見つかりません`);
     if (c.parent === c.id) errors.push(`${c.id}: 自分自身を上位概念には指定できません`);
     if (c.attributes !== undefined) errors.push(...validateAttributes(c));
+    if (c.temporal !== undefined) errors.push(...validateTemporal(`${c.id}.temporal`, c.temporal, new Set(conceptAttributes(model, c.id).map(row => row.attribute?.id))));
   }
   for (const p of model.properties.filter(Boolean)) {
     if (p.attributes !== undefined) errors.push(`${p.id}: 属性は概念に指定してください`);
+    if (p.temporal !== undefined) errors.push(`${p.id}: temporal は概念に指定してください`);
     if (!concepts.has(p.domain) || !concepts.has(p.range)) errors.push(`${p.id}: 主語・関係先の概念が見つかりません`);
   }
   for (const r of model.restrictions) {
@@ -71,6 +74,7 @@ export function validateOntology(model) {
     if (!['necessary', 'equivalent'].includes(r.mode)) errors.push('制限の定義方法は necessary または equivalent にしてください');
   }
   if (model.processes !== undefined) errors.push(...validateProcesses(model));
+  if (model.metrics !== undefined) errors.push(...validateMetrics(model, ids));
   return errors;
 }
 
@@ -82,7 +86,91 @@ function validateMapping(owner, mapping) {
     if (mapping[field] !== undefined && typeof mapping[field] !== 'string') errors.push(`${owner}.data_mapping.${field}: 文字列にしてください`);
   }
   if (typeof mapping.source !== 'string' || !mapping.source.trim()) errors.push(`${owner}.data_mapping.source: データの所在が必要です`);
-  if (!['proposed', 'verified'].includes(mapping.status)) errors.push(`${owner}.data_mapping.status: proposed または verified にしてください`);
+  if (!Object.hasOwn(mappingStatuses, mapping.status)) errors.push(`${owner}.data_mapping.status: proposed、verified、rejected のいずれかにしてください`);
+  if (mapping.history !== undefined && !Object.hasOwn(historyKinds, mapping.history)) errors.push(`${owner}.data_mapping.history: ${Object.keys(historyKinds).join(' / ')} のいずれかにしてください`);
+  return errors;
+}
+// proposed: a guess; verified: checked against the data; rejected: checked and found wrong.
+// How it was checked belongs to the data team's tools; the caveats people know go in gap.
+export const mappingStatuses = { proposed: '対応案・未確認', verified: '確認済み', rejected: '誤りと確認' };
+// Whether the data keeps past states: what people who work with it know, and what decides
+// whether a question about a past moment can be answered at all.
+export const historyKinds = { current_only: '現在の状態のみ（過去の時点は復元できない）', snapshot: '定期的なスナップショット（取得した時点だけ復元できる）', versioned: '履歴あり（過去の任意の時点を復元できる）' };
+// The days a definition applies in the business (both inclusive). Not the day it was agreed.
+function validateEffective(owner, item) {
+  const errors = [];
+  for (const key of ['effective_from', 'effective_to']) if (item[key] !== undefined && !isDate(item[key])) errors.push(`${owner}.${key}: YYYY-MM-DD の日付にしてください`);
+  if (!errors.length && item.effective_from && item.effective_to && item.effective_from > item.effective_to) errors.push(`${owner}: effective_from が effective_to より後になっています`);
+  return errors;
+}
+
+// Time in a business definition: which moment membership (or a metric) is judged at, which
+// attributes bound validity and whether each boundary counts. Unknown parts stay out of the
+// YAML and become open questions; they are never guessed.
+export const temporalBases = { current: '現在の状態', as_of: '基準日時点の状態', period: '対象期間中の状態・出来事' };
+const validTimezone = zone => { try { new Intl.DateTimeFormat('en', { timeZone: zone }); return true; } catch { return false; } };
+function validateTemporal(at, temporal, attributes) {
+  if (!temporal || typeof temporal !== 'object' || Array.isArray(temporal)) return [`${at}: オブジェクトにしてください`];
+  const errors = [];
+  if (temporal.basis !== undefined && !Object.hasOwn(temporalBases, temporal.basis)) errors.push(`${at}.basis: ${Object.keys(temporalBases).join(' / ')} のいずれかにしてください`);
+  if (temporal.timezone !== undefined && (typeof temporal.timezone !== 'string' || !validTimezone(temporal.timezone))) errors.push(`${at}.timezone: Asia/Tokyo や UTC などのタイムゾーン名にしてください`);
+  for (const field of ['description', 'question']) if (temporal[field] !== undefined && typeof temporal[field] !== 'string') errors.push(`${at}.${field}: 文字列にしてください`);
+  const period = temporal.period;
+  if (period === undefined) return errors;
+  if (!attributes) return [...errors, `${at}.period: 有効期間は概念に記録してください`];
+  if (!period || typeof period !== 'object' || Array.isArray(period) || (period.start === undefined && period.end === undefined)) return [...errors, `${at}.period: start・end の少なくとも一方を持つオブジェクトにしてください`];
+  for (const end of ['start', 'end']) {
+    if (period[end] !== undefined && !attributes.has(period[end])) errors.push(`${at}.period.${end}: 属性 ${period[end]} が見つかりません（この概念と上位概念の属性を指定します）`);
+    if (period[end + '_inclusive'] !== undefined && typeof period[end + '_inclusive'] !== 'boolean') errors.push(`${at}.period.${end}_inclusive: true または false にしてください`);
+    if (period[end + '_inclusive'] !== undefined && period[end] === undefined) errors.push(`${at}.period.${end}_inclusive: ${end} を指定したときだけ記録してください`);
+  }
+  if (period.start !== undefined && period.start === period.end) errors.push(`${at}.period: start と end に同じ属性は指定できません`);
+  return errors;
+}
+
+// Metrics: a number the business reads (契約顧客数), defined apart from the concept it counts.
+// What it means and how people count it; where and how it is implemented stays in the code.
+export const metricAggregations = { count: '件数', count_distinct: '重複を除いた件数', sum: '合計', average: '平均', min: '最小', max: '最大', custom: '計算式で定義' };
+function validateMetrics(model, termIds) {
+  if (!Array.isArray(model.metrics)) return ['metrics は配列にしてください'];
+  const errors = [], ids = new Set(), concepts = new Set(model.concepts.filter(Boolean).map(c => c.id));
+  for (const m of model.metrics) {
+    if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(m.id)) { errors.push(`指標のIDが無効です: ${m?.id}`); continue; }
+    if (ids.has(m.id) || termIds.has(m.id)) errors.push(`重複ID: ${m.id}（指標は概念・関係とIDを共有します）`);
+    ids.add(m.id);
+    if (typeof m.name !== 'string' || !m.name.trim()) errors.push(`${m.id}: 名前が必要です`);
+    for (const field of ['description', 'question', 'evidence', 'formula', 'condition', 'exclusion', 'unit']) if (m[field] !== undefined && typeof m[field] !== 'string') errors.push(`${m.id}.${field}: 文字列にしてください`);
+    if (m.review_state !== undefined && !['draft', 'discussion', 'agreed'].includes(m.review_state)) errors.push(`${m.id}: 話し合いの状態が無効です`);
+    if (m.agreed_by !== undefined && (typeof m.agreed_by !== 'string' || !m.agreed_by.trim())) errors.push(`${m.id}.agreed_by: 空でない文字列にしてください`);
+    if (m.agreed_at !== undefined && !isDate(m.agreed_at)) errors.push(`${m.id}.agreed_at: YYYY-MM-DD の日付にしてください`);
+    if ((m.agreed_by !== undefined || m.agreed_at !== undefined) && m.review_state !== 'agreed') errors.push(`${m.id}: agreed_by・agreed_at は review_state: agreed のときだけ指定してください`);
+    errors.push(...validateEffective(m.id, m));
+    if (m.aliases !== undefined && (!Array.isArray(m.aliases) || m.aliases.some(a => typeof a !== 'string' || !a.trim()) || new Set(m.aliases).size !== m.aliases.length)) errors.push(`${m.id}.aliases: 重複のない空でない文字列の配列にしてください`);
+    if (m.deprecated !== undefined && typeof m.deprecated !== 'boolean') errors.push(`${m.id}.deprecated: true または false にしてください`);
+    if (m.concept !== undefined && !concepts.has(m.concept)) errors.push(`${m.id}.concept: 対象の概念が見つかりません`);
+    if (m.aggregation !== undefined && !Object.hasOwn(metricAggregations, m.aggregation)) errors.push(`${m.id}.aggregation: ${Object.keys(metricAggregations).join(' / ')} のいずれかにしてください`);
+    if (m.aggregation === 'custom' && (typeof m.formula !== 'string' || !m.formula.trim())) errors.push(`${m.id}.formula: aggregation: custom には計算式（formula）が必要です`);
+    if (m.attribute !== undefined) {
+      if (m.concept === undefined) errors.push(`${m.id}.attribute: 集計対象の属性は concept と一緒に指定してください`);
+      else if (concepts.has(m.concept) && !conceptAttributes(model, m.concept).some(r => r.attribute?.id === m.attribute)) errors.push(`${m.id}.attribute: 属性 ${m.attribute} が ${m.concept} とその上位概念にありません`);
+    }
+    if (m.temporal !== undefined) errors.push(...validateTemporal(`${m.id}.temporal`, m.temporal));
+    if (m.dimensions !== undefined) {
+      if (!Array.isArray(m.dimensions)) errors.push(`${m.id}.dimensions: 配列にしてください`);
+      else m.dimensions.forEach((d, i) => {
+        const at = `${m.id}.dimensions[${i}]`;
+        if (!d || typeof d !== 'object' || typeof d.name !== 'string' || !d.name.trim()) { errors.push(`${at}: name（軸の名前）が必要です`); return; }
+        if (d.additive !== undefined && typeof d.additive !== 'boolean') errors.push(`${at}.additive: true（足し合わせられる）または false にしてください`);
+        if (d.note !== undefined && typeof d.note !== 'string') errors.push(`${at}.note: 文字列にしてください`);
+      });
+    }
+    // Worked examples in words: a situation and the number people expect. No expected value yet means undecided.
+    if (m.cases !== undefined && (!Array.isArray(m.cases) || m.cases.some(c => !c || typeof c.description !== 'string' || !c.description.trim() || ['expected', 'reason'].some(k => c[k] !== undefined && (typeof c[k] !== 'string' || !c[k].trim()))))) errors.push(`${m.id}.cases: [{description, expected?, reason?}]（文字列）の配列にしてください`);
+  }
+  for (const m of model.metrics.filter(m => m && m.replaced_by !== undefined)) {
+    if (m.deprecated !== true) errors.push(`${m.id}.replaced_by: deprecated: true のときだけ指定してください`);
+    if (!ids.has(m.replaced_by) || m.replaced_by === m.id) errors.push(`${m.id}.replaced_by: 置き換え先の指標が見つかりません`);
+  }
   return errors;
 }
 // Data items carried by a concept (OWL datatype properties). The type is the business-level kind of value.
@@ -114,7 +202,7 @@ export function conceptAttributes(model, conceptId) {
   const result = [], seen = new Set();
   for (let c = model.concepts.find(x => x.id === conceptId), inherited = false; c && !seen.has(c.id); c = model.concepts.find(x => x.id === c.parent), inherited = true) {
     seen.add(c.id);
-    for (const attribute of c.attributes || []) result.push({ attribute, owner: c.id, ownerName: c.name, inherited });
+    for (const attribute of Array.isArray(c.attributes) ? c.attributes : []) result.push({ attribute, owner: c.id, ownerName: c.name, inherited });
   }
   return result;
 }
@@ -184,11 +272,24 @@ export function describeRestriction(model, r) {
   return `${name(r.subject)}${r.mode === 'equivalent' ? 'の必要十分条件' : 'の必要条件'} — ${start}${condition}`;
 }
 
+// What the RDF exports leave out, stated in the file: these have no natural OWL/SKOS vocabulary,
+// and turning them into look-alike triples would read as more than they are.
+export function rdfOmissions(model) {
+  const own = item => item && !item.imported_from;
+  const items = [...(model.concepts || []), ...(model.properties || [])].filter(own);
+  const left = [
+    [(model.metrics || []).length, '指標（metrics）'],
+    [items.some(c => c.temporal || c.effective_from || c.effective_to), '時間の意味（temporal）と適用期間（effective_from / effective_to）'],
+    [items.some(c => c.data_mapping || (c.attributes || []).some(a => a.data_mapping)), 'データ対応（data_mapping）'],
+  ].filter(([present]) => present).map(([, label]) => label);
+  return left.length ? [`# 出力していない情報: ${left.join('、')}。`, '# OWL・SKOS に対応する標準の語彙がないため、YAML を正本として参照してください。', ''] : [];
+}
+
 export function exportOntology(model) {
   const errors = validateOntology(model);
   if (errors.length) throw new Error(errors.join('\n'));
   const literal = value => JSON.stringify(String(value));
-  const lines = ['@prefix : <' + model.base + '> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '@prefix dcterms: <http://purl.org/dc/terms/> .', '', `<${model.base}> a owl:Ontology ; rdfs:label ${literal(model.name)} .`, ''];
+  const lines = [...rdfOmissions(model), '@prefix : <' + model.base + '> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '@prefix dcterms: <http://purl.org/dc/terms/> .', '', `<${model.base}> a owl:Ontology ; rdfs:label ${literal(model.name)} .`, ''];
   // Imported definitions are declared by the file that owns them; reference it with owl:imports.
   for (const imported of model.imported_models || []) if (imported.base) lines.push(`<${model.base}> owl:imports <${imported.base}> .`);
   if (model.imported_models?.length) lines.push('');
@@ -233,7 +334,7 @@ export function exportSkos(model) {
   const bases = new Map((model.imported_models || []).map(m => [m.path, m.base]));
   const owners = new Map(model.concepts.filter(c => c.imported_from).map(c => [c.id, bases.get(c.imported_from)]));
   const ref = id => owners.get(id) ? `<${owners.get(id)}${id}>` : `:${id}`;
-  const lines = ['@prefix : <' + model.base + '> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix dcterms: <http://purl.org/dc/terms/> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '',
+  const lines = [...rdfOmissions(model), '@prefix : <' + model.base + '> .', '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .', '@prefix dcterms: <http://purl.org/dc/terms/> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .', '',
     `<${model.base}> a skos:ConceptScheme ; skos:prefLabel ${literal(model.name)} .`, ''];
   const related = new Map();
   for (const p of model.properties) if (p.domain !== p.range) {
@@ -256,4 +357,35 @@ export function exportSkos(model) {
     lines.push(`:${c.id} ${facts.join(' ;\n  ')} .`, '');
   }
   return lines.join('\n');
+}
+
+// Plain-language facts for the reader and the Markdown export. Each value is a fixed phrase or
+// recorded text, so the viewer can translate the phrases without touching model text.
+export function temporalFacts(temporal, attributeName = id => id) {
+  if (!temporal) return [];
+  const facts = [];
+  if (temporal.basis) facts.push(['判定の時点', temporalBases[temporal.basis]]);
+  const period = temporal.period || {};
+  for (const [end, label] of [['start', '有効期間の開始'], ['end', '有効期間の終了']]) if (period[end] !== undefined) facts.push([label, attributeName(period[end]), period[end + '_inclusive'] === undefined ? '含むかは未記録' : period[end + '_inclusive'] ? 'ちょうどの時点を含む' : 'ちょうどの時点を含まない']);
+  if (temporal.timezone) facts.push(['タイムゾーン', temporal.timezone]);
+  if (temporal.description) facts.push(['時点の説明', temporal.description]);
+  if (temporal.question) facts.push(['時点について未決定', temporal.question]);
+  return facts;
+}
+// Whether the records say a metric can be answered now and at a past moment, from the data
+// mapping of the concept it counts. Derived from what people recorded; no data was looked at.
+export function metricReach(model, metric) {
+  const concept = model.concepts.find(c => c.id === metric.concept), mapping = concept?.data_mapping;
+  const now = !mapping ? ['unknown', 'データ対応が記録されていません。'] : mapping.status === 'rejected' ? ['no', 'データ対応が誤りと確認されています。'] : mapping.status === 'verified' ? ['ok', '記録上は答えられます（データ対応は確認済み）。'] : ['limited', '記録上は答えられますが、データ対応は未確認です。'];
+  const rows = [{ label: '現在の値', state: now[0], note: now[1] }];
+  if (metric.temporal?.basis !== 'current') {
+    const history = mapping?.history;
+    const past = !mapping || mapping.status === 'rejected' ? now
+      : history === 'current_only' ? ['no', '答えられません。データが現在の状態しか保持していません。']
+        : history === 'snapshot' ? ['limited', 'スナップショットを取得した時点についてだけ答えられます。']
+          : history === 'versioned' ? ['ok', '記録上は答えられます（データに履歴があります）。']
+            : ['unknown', '未確認です。データが過去の状態を保持しているか記録されていません。'];
+    rows.push({ label: metric.temporal?.basis === 'period' ? '過去の期間の値（例：先月）' : '過去の基準日時点の値（例：先月末）', state: past[0], note: past[1] });
+  }
+  return { concept: concept && { id: concept.id, name: concept.name }, rows };
 }

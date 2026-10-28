@@ -229,11 +229,11 @@ test('attributes and aliases validate, inherit, export and appear in open questi
   assert.deepEqual(conceptAttributes(m, 'ActiveContract').map(r => [r.attribute.id, r.inherited]), contract.attributes.map(a => [a.id, true]));
   const ttl = exportOntology(m);
   assert.match(ttl, /skos:altLabel "取引先"/);
-  assert.match(ttl, /<https:\/\/example.com\/customer#Contract.startDate> a owl:DatatypeProperty ; rdfs:label "契約開始日" ; rdfs:domain :Contract ; rdfs:range xsd:date/);
+  assert.match(ttl, /<https:\/\/example.com\/customer#Contract.startDate> a owl:DatatypeProperty ; rdfs:label "契約開始日時" ; rdfs:domain :Contract ; rdfs:range xsd:dateTime/);
   const issues = assessCompletion(m).issues.filter(i => i.id === 'Contract').map(i => i.message);
   assert.ok(issues.includes('属性「契約状態」：停止中の契約を有効契約に含める？'));
-  assert.ok(issues.some(i => i.startsWith('属性「契約開始日」：申込日')));
-  assert.match(publicationMarkdown(m, { concept: 'Contract' }), /\| 契約開始日 \| startDate \| date \| はい \|/);
+  assert.ok(issues.some(i => i.startsWith('属性「契約開始日時」：申込日')));
+  assert.match(publicationMarkdown(m, { concept: 'Contract' }), /\| 契約開始日時 \| startDate \| datetime \| はい \|/);
   for (const [patch, pattern] of [[{ type: 'money' }, /type は/], [{ id: 'bad id' }, /無効な属性ID/], [{ values: [{ value: 'x' }] }, /type: code/], [{ required: 'yes' }, /required/]]) {
     const broken = sample();
     Object.assign(broken.concepts.find(c => c.id === 'Contract').attributes[2], patch);

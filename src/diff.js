@@ -7,6 +7,9 @@ export const changeFieldLabels = {
   aliases: '別名', domain: '始点', range: '相手', owner: '担当', type: '種類', items: '登場することば',
   subprocess: '詳細フロー', required: '必須', values: '区分値', label: '条件', base: 'IRI', imports: '読み込む共通定義',
   agreed_by: '合意した人', agreed_at: '合意した日', deprecated: '廃止', replaced_by: '置き換え先',
+  temporal: '時間の意味', effective_from: '適用開始日', effective_to: '適用終了日', concept: '対象の概念',
+  aggregation: '集計方法', attribute: '集計対象', formula: '計算式', condition: '条件', unit: '単位',
+  dimensions: '集計の軸', metrics: '指標', status: '確認状態', history: '過去の状態の保持', gap: '業務定義との差',
 };
 // Recording who agreed and when, where nothing was recorded, does not change an agreed definition.
 const recordsAgreement = f => ['agreed_by', 'agreed_at'].includes(f.field) && f.before === undefined;
@@ -51,7 +54,7 @@ export function diffModels(before, after) {
   // A file that did not exist in the baseline is one added model, not a list of new top-level fields.
   if (!before.kind && after.kind) changes.push({ entity: 'model', change: 'added', id: '', name: after.name || '', agreed: false });
   else {
-    const modelFields = fieldChanges(before, after, ['concepts', 'properties', 'restrictions', 'processes', 'kind', 'imported_models']);
+    const modelFields = fieldChanges(before, after, ['concepts', 'properties', 'restrictions', 'processes', 'metrics', 'kind', 'imported_models']);
     if (modelFields.length) changes.push({ entity: 'model', change: 'changed', id: '', name: after.name || before.name || '', fields: modelFields, agreed: false });
   }
   changes.push(...compareById('concept', before.concepts, after.concepts, ['id', 'position', 'attributes'], {}, isAgreed));
@@ -64,6 +67,8 @@ export function diffModels(before, after) {
   }
   for (const old of beforeConcepts.values()) if (!local(after.concepts).some(c => c.id === old.id) && old.attributes?.length) changes.push(...compareById('attribute', old.attributes, [], ['id'], { concept: old.id, conceptName: old.name }, () => isAgreed(old)));
   changes.push(...compareById('property', before.properties, after.properties, ['id', 'position'], {}, isAgreed));
+  // Metrics carry their own agreement, like concepts.
+  changes.push(...compareById('metric', before.metrics, after.metrics, ['id'], {}, isAgreed));
   const names = new Map([...local(before.concepts), ...local(before.properties), ...local(after.concepts), ...local(after.properties)].map(item => [item.id, item.name]));
   const name = id => names.get(id) || id;
   const subjectAgreed = r => isAgreed(local(before.concepts).find(c => c.id === r.subject));
@@ -84,7 +89,7 @@ export function diffModels(before, after) {
   return changes;
 }
 
-const entityLabels = { model: 'モデル', concept: 'ことば', attribute: '属性', property: 'つながり', restriction: '分類条件', process: '業務フロー', step: '作業', flow: '流れ' };
+const entityLabels = { model: 'モデル', concept: 'ことば', attribute: '属性', property: 'つながり', restriction: '分類条件', process: '業務フロー', step: '作業', flow: '流れ', metric: '指標' };
 const changeLabels = { added: '追加', removed: '削除', changed: '変更' };
 export function describeChange(change) {
   const owner = change.entity === 'attribute' ? `${change.conceptName} › ` : ['step', 'flow'].includes(change.entity) ? `${change.processName} › ` : '';

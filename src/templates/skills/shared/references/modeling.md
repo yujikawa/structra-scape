@@ -10,6 +10,7 @@ syntax is in `strscape guide`; this file is about choosing the right construct.
 4. Process flows
 5. Data mappings
 6. IDs and names
+7. Time and metrics
 
 ## 1. Work first, then words
 
@@ -32,6 +33,10 @@ each once. Connect steps to the concepts they create, read, update or involve th
 | Another word people use for the same thing | `aliases` of that concept | 顧客, 取引先 for 契約顧客 |
 | The same word used for different things | separate concepts with distinct names, plus a `question` | 「顧客」 meaning 契約顧客 in sales but 見込み客 in marketing |
 | A borderline example someone asked about | `cases` with included / excluded / unresolved | 「契約開始日が来月の法人」→ unresolved |
+| Membership judged at a moment, with a validity period | `temporal` on the concept: `basis`, `period` (attributes, inclusive or not), `timezone` | 有効契約: as_of, startDate included, endDate excluded |
+| Whether data keeps past states | `data_mapping.history` | contracts overwritten → `current_only` |
+| A number the business reads | `metrics` entry (not a concept) | 契約顧客数 = count_distinct organizationId of Customer |
+| How people count a borderline situation | `cases` on the metric (`expected`, or none if undecided) | 2 active contracts of one company → 1社 |
 | Something nobody has decided yet | `question` (on the concept, attribute or step) | 停止中の契約は有効契約に含める？ |
 
 Rules of thumb:
@@ -110,3 +115,21 @@ Data mappings document where a business definition lives in data; they are not p
 - Names, descriptions and questions use the user's language.
 - Renaming is a name change; the ID stays. Change an ID only when it is wrong, using the
   rename recipe in `cli-recipes.md`.
+
+## 7. Time and metrics
+
+A model holds what people know and do not write down; implementation (join keys, SQL,
+column types, test runs) stays in the code and data tools. Add time and metrics when the
+user works on analysis, not to every concept.
+- Time: ask whether a definition means "now" or "at a reference time", which dates bound
+  validity, whether a contract ending exactly at the reference time still counts, and the
+  time zone people mean. Record only answers; the rest goes in `temporal.question`.
+- Whether data keeps past states (`data_mapping.history`) comes from the data team or the
+  repository. "Current customers" and "customers at the end of last month" are one metric
+  with `basis: as_of`; only data that keeps history answers the second.
+- Metrics: the counted concept, what makes two items the same (`attribute`), the unit, and
+  dimensions whose values must not be added up (`additive: false`).
+- Metric `cases`: the situations people argue about, in words (two contracts of one company,
+  a company whose industry changed). Leave `expected` out until someone decides.
+- `rejected`: a mapping someone checked and found wrong. Keep it with the reason in `gap`,
+  so nobody uses that column again.

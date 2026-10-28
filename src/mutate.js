@@ -9,7 +9,7 @@ import { diffModels, describeChange } from './diff.js';
 import { resolveImports, dependentModels } from './imports.js';
 import { updateYamlText } from './yaml-document.js';
 
-const collections = { concept: 'concepts', property: 'properties', attribute: 'attributes', process: 'processes', step: 'steps', flow: 'flows', restriction: 'restrictions' };
+const collections = { concept: 'concepts', property: 'properties', attribute: 'attributes', process: 'processes', step: 'steps', flow: 'flows', restriction: 'restrictions', metric: 'metrics' };
 // Nested entities and the field naming their parent.
 const parents = { step: ['process', 'processes'], flow: ['process', 'processes'], attribute: ['concept', 'concepts'] };
 const modelFields = ['name', 'base', 'imports'];
@@ -254,7 +254,7 @@ export function registerAuthoringCommands(program) {
     .option('--name <name>', 'model name when the target is created').option('--base <iri>', 'base IRI when the target is created')
     .option('--dry-run', 'validate without saving').option('--expect-revision <sha256>', 'require revision of <file>')
     .action(run((file, ids, options) => promoteDefinitions(file, ids, options.to, options)));
-  for (const entity of ['concept', 'property', 'attribute', 'process', 'step']) {
+  for (const entity of ['concept', 'property', 'attribute', 'process', 'step', 'metric']) {
     const group = program.command(entity).description(`Read and mutate ${entity}`);
     group.command('get <file> [id]').option('--process <id>', 'parent process for steps').option('--concept <id>', 'parent concept for attributes').action(run((file, id, options) => {
       const doc = readDocument(file);

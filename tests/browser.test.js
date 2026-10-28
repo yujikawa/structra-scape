@@ -95,6 +95,12 @@ test('every view of the built reader runs without page errors', async t => {
   assert.equal(await page.isVisible('#review-board'), false);
   assert.equal(await page.locator('#concepts button.active').count(), 1);
   assert.equal(await page.innerText('#detail h2'), await page.$eval('#concepts button.active', button => button.firstChild.textContent.trim()));
+  // Metrics say what the records can answer: now, but not at the end of last month (current-only data).
+  await page.locator('#metrics-list button').first().click();
+  assert.equal(await page.innerText('#detail h2'), '契約顧客数');
+  assert.match(await page.innerText('#detail .reach-row.no'), /過去の基準日時点/);
+  // Worked examples are words: an undecided one is shown as such.
+  assert.equal(await page.locator('#detail .case-card.unresolved').count(), 1);
   await page.click('#mode-unconfirmed');
   // Open items read as questions, with the recording task underneath; data mappings have no answer box.
   assert.ok(await page.locator('.completion-issue p', { hasText: 'どんなものが含まれますか？' }).count() > 0);
@@ -143,6 +149,7 @@ test('every view of the built reader runs without page errors', async t => {
       };
       await clickAll('#concepts button', () => clickAll('.reader-tabs button:visible'));
       await clickAll('#properties button');
+      await clickAll('#metrics-list button', async () => { const links = page.locator('#detail [data-open-kind]'); if (await links.count()) await links.first().click(); });
       await clickAll('#retired button');
       await page.click('#review-toggle');
       await page.click('#diagram-toggle');

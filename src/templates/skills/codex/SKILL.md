@@ -1,13 +1,16 @@
 ---
 name: strscape-modeling
-description: Organize business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions (including checking data mappings against a dbt or warehouse schema), start from an existing glossary spreadsheet, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
+description: Make tacit business knowledge visible by organizing business workflows and the meaning of business terms into structra-scape (strscape) YAML models through the strscape CLI — definitions, aliases, attributes (data items), relationships, classification rules, process flows, data mappings and shared common.yaml definitions. Use this whenever the user wants to define or clarify business terms, build a glossary or ontology, map a 業務フロー, align business and data definitions (including checking data mappings against a dbt or warehouse schema), start from an existing glossary spreadsheet, record open questions about meaning, take in answers business users exported from the viewer (answers-*.json, models/answers/), or change anything under models/*.yaml, even if they do not name structra-scape.
 ---
 
 # structra-scape modeling
 
-Help business users and data engineers agree on what their words mean and how their work
-flows. You write the model; they read it in the strscape viewer and correct you. A model
-that records an honest question is better than one that guesses confidently.
+Make visible what business users and data engineers know but never wrote down: what their
+words mean, where the boundaries are, when things are judged, how they are counted, how the
+work flows, and what the data cannot tell. You write the model; they read it in the
+strscape viewer and correct you. A model that records an honest question is better than one
+that guesses confidently. Implementation (join keys, SQL, column types, test runs) is not
+tacit knowledge: it lives in the code and data tools, so leave it out of the model.
 
 The user's request is the message that invoked this skill (for example
 `$strscape-modeling 契約受付業務を整理して`).

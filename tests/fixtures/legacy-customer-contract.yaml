@@ -1,0 +1,137 @@
+kind: ontology
+name: 顧客と契約の定義
+base: https://example.com/customer#
+concepts:
+  - id: Organization
+    name: 法人
+    description: 契約の当事者となる組織。名前が変わっても同じ法人として扱う。
+    review_state: agreed
+    agreed_by: 営業部・経理部
+    agreed_at: 2026-09-15
+    evidence: 2026-09-15 営業部・経理部の定例（説明用の仮定）
+  - id: Customer
+    name: 契約顧客
+    aliases: [ 顧客, 取引先, 得意先 ]
+    parent: Organization
+    description: 有効な契約を少なくとも1つ持つ法人。
+    example: A社は有効な保守契約を持つため、契約顧客に含める。
+    question: 契約が終了した会社は別の呼び名で管理する？
+    review_state: discussion
+    exclusion: 有効な契約がなく、過去の契約だけが残っている法人は含めない。
+    cases:
+      - description: 有効な契約が1件ある法人
+        result: included
+        reason: サンプル定義に基づく判定例。業務上の合意は未実施。
+      - description: 終了した契約しかない法人
+        result: excluded
+      - description: 契約開始日が来月の法人
+        result: unresolved
+        reason: 契約の有効開始時点を確認する必要がある。
+    evidence: このファイルの説明用の仮定。実際の業務担当者との合意は未実施。
+    data_mapping:
+      source: example_warehouse.contracts（架空の説明用テーブル）
+      status: proposed
+      grain: 1行は1契約。契約顧客数は法人IDの重複を除いて数える。
+      condition: status = 'active' の契約に紐づく organization_id を抽出する案。
+      gap: statusだけでは基準日・開始日・終了日を判定できない可能性がある。有効期間と解約の扱いを業務担当者に確認する。
+  # 旧システムの呼び方。古い帳票に残っているため、検索できるように残す。
+  - id: Account
+    name: 得意先
+    deprecated: true
+    replaced_by: Customer
+    description: 旧販売管理システムでの呼び方。契約の有無を問わず取引のある法人を指していた。
+  - id: Contract
+    name: 契約
+    description: 当事者間の合意。
+    attributes:
+      - id: contractNo
+        name: 契約番号
+        type: identifier
+        required: true
+        description: 契約ごとに採番される番号。更新しても変わらない。
+        data_mapping:
+          source: example_warehouse.contracts.contract_no（架空の説明用カラム）
+          status: proposed
+      - id: startDate
+        name: 契約開始日
+        type: date
+        required: true
+        description: 契約の効力が始まる日。
+        data_mapping:
+          source: example_warehouse.contracts.start_date（架空の説明用カラム）
+          status: proposed
+          gap: 申込日を入れている行があるかもしれない。
+      - id: endDate
+        name: 契約終了日
+        type: date
+        description: 契約の効力が終わる日。自動更新の契約では未設定。
+      - id: status
+        name: 契約状態
+        type: code
+        description: 契約の手続き上の状態。
+        values:
+          - { value: active, name: 有効 }
+          - { value: suspended, name: 停止中 }
+          - { value: terminated, name: 解約済み }
+        question: 停止中の契約を有効契約に含める？
+  - id: ActiveContract
+    name: 有効契約
+    parent: Contract
+    description: 基準日時点で有効と判断された契約。日時の判定は別途実装する。
+properties:
+  - id: hasContract
+    name: 契約を持つ
+    domain: Organization
+    range: Contract
+restrictions:
+  - subject: Customer
+    property: hasContract
+    operator: someValuesFrom
+    target: ActiveContract
+    mode: equivalent
+processes:
+  - id: ContractProcess
+    name: 申込みから契約まで
+    steps:
+      - id: Start
+        name: 申込みを受け取る
+        type: start
+        position: { x: 100, y: 160 }
+        items:
+          - { concept: Organization, role: participates }
+      - id: Review
+        name: 内容を審査する
+        type: task
+        owner: 営業担当
+        position: { x: 340, y: 160 }
+        items:
+          - { concept: Organization, role: reads }
+      - id: Decision
+        name: 審査結果
+        type: decision
+        position: { x: 580, y: 160 }
+        items: []
+      - id: Sign
+        name: 契約を締結する
+        type: task
+        owner: 契約担当
+        position: { x: 820, y: 160 }
+        items:
+          - { concept: Organization, role: participates }
+          - { concept: Contract, role: creates }
+      - id: End
+        name: 手続き完了
+        type: end
+        position: { x: 1060, y: 160 }
+        items: []
+      - id: Reject
+        name: 見送りを通知
+        type: end
+        position: { x: 580, y: 380 }
+        items: []
+    flows:
+      - { source: Start, target: Review }
+      - { source: Review, target: Decision }
+      - { source: Decision, target: Sign, label: 審査OK }
+      - { source: Decision, target: Reject, label: 審査NG }
+      - { source: Sign, target: End }

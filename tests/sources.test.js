@@ -36,10 +36,10 @@ test('data mappings are checked against dbt manifests, catalogs and information_
   assert.deepEqual([...readSchema(catalog)[0].columns], ['contract_no', 'status']);
   // The sample records example_warehouse.contracts and two of its columns.
   const byManifest = checkMappings('samples/customer-contract.yaml', [manifest]);
-  assert.deepEqual(byManifest.results.map(r => [r.target.id, r.status]), [['Customer', 'found'], ['contractNo', 'found'], ['startDate', 'found']]);
-  assert.equal(byManifest.missing, 0);
+  assert.deepEqual(byManifest.results.map(r => [r.target.id, r.status]), [['organizationId', 'table-missing'], ['industry', 'table-missing'], ['Customer', 'found'], ['contractNo', 'found'], ['startDate', 'found']]);
+  assert.equal(byManifest.missing, 2);
   const byCatalog = checkMappings('samples', [catalog]);
-  assert.deepEqual(byCatalog.results.map(r => [r.target.id, r.status]), [['Customer', 'found'], ['contractNo', 'found'], ['startDate', 'column-missing']]);
+  assert.deepEqual(byCatalog.results.map(r => [r.target.id, r.status]), [['organizationId', 'table-missing'], ['industry', 'table-missing'], ['Customer', 'found'], ['contractNo', 'found'], ['startDate', 'column-missing']]);
   // Imported definitions are checked in the file that owns them, not again in billing.yaml.
   assert.ok(byCatalog.results.every(r => r.file === 'customer-contract.yaml'));
   const model = path.join(dir, 'm.yaml');

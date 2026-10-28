@@ -25,7 +25,9 @@ Inside this repo, use `node src/index.js` wherever the docs say `strscape`. No l
 
 ## Architecture
 
-**One model format.** A model is `kind: ontology` YAML: `concepts` (with optional `aliases` and `attributes`) / `properties` / `restrictions` / `processes` (with `steps` and `flows`). It is validated by `ontology.js#validateOntology` and rendered with `templates/ontology.html`. The project is pre-release: there is no backward compatibility to keep, so change formats and commands freely and update samples, recipes and docs with them, including `templates/reading.md` (the reading guide for AIs handed a model).
+**What belongs in a model.** structra-scape makes tacit knowledge visible: what people know and do not write down (meaning, boundaries, when something is judged, how people count, what the data cannot tell). Implementation details that live in code or data tools and change often (join keys, SQL, column types, how checks were run) do not belong in the YAML; use this test before adding a field.
+
+**One model format.** A model is `kind: ontology` YAML: `concepts` (with optional `aliases`, `attributes` and `temporal`) / `properties` / `restrictions` / `processes` (with `steps` and `flows`), plus optional `metrics`. `review_state` is business agreement; `data_mapping.status` (proposed / verified / rejected) is the data side. Metrics are not imported. It is validated by `ontology.js#validateOntology` and rendered with `templates/ontology.html`. The project is pre-release: there is no backward compatibility to keep, so change formats and commands freely and update samples, recipes and docs with them, including `templates/reading.md` (the reading guide for AIs handed a model).
 
 **Imports.** An ontology model may list `imports` (relative YAML paths). `imports.js#resolveImports` merges their concepts/properties/restrictions, tagged with `imported_from`, plus an `imported_models` list. `validate.js#loadModel` resolves by default (`{ resolve: false }` for the raw file). Anything that writes or diffs must use the raw model; completion, diff and OWL export skip `imported_from` entries.
 
@@ -36,12 +38,12 @@ Inside this repo, use `node src/index.js` wherever the docs say `strscape`. No l
 - browser-only scripts from `src/templates/*.js`
 
 Code in those shared modules runs both in Node (CLI and tests) and as plain browser globals:
-- Keep them free of imports of any kind; in the browser they all share one script scope, so avoid generic top-level names.
+- They may import only each other, with one-line `import` statements (the build drops `^import ` lines; in the browser they all share one script scope). Avoid generic top-level names.
 - Keep each `export` at the start of a line, because the build only strips `^export `.
 - To add a new browser script, add a placeholder to the template and a matching `.replace` call in `build.js`.
 - Always use replacement callbacks in `.replace`, because the minified bundles contain `$&`.
 
-**Ontology viewer.** The viewer is read-only; there are no in-browser authoring controls. The base script in `templates/ontology.html` owns the term graph, lists and glossary. Later scripts extend it by reassigning global functions (`refresh`, `setProcessMode`, `renderProcess`, `processDetail`): `process-view.js` → `reader.js` (detail panes, menus, icons) → `graph-scope.js` (表示範囲: the term diagram narrowed to the selection's neighbourhood) → `completion-view.js` / `answers-view.js` (answer fields in the open questions) / `changes-view.js` / `overview-view.js` (全体マップ, first tab when several models are built) (extra mode tabs) → `process-hierarchy.js` → `language-view.js` → `view-state.js` (restores navigation from sessionStorage, and records it in the browser history for back and forward).
+**Ontology viewer.** The viewer is read-only; there are no in-browser authoring controls. The base script in `templates/ontology.html` owns the term graph, lists and glossary. Later scripts extend it by reassigning global functions (`refresh`, `setProcessMode`, `renderProcess`, `processDetail`): `process-view.js` → `reader.js` (detail panes, menus, icons) → `analysis-view.js` (metrics and time in the catalog and detail pane; `selectionCollection(kind)`) → `graph-scope.js` (表示範囲: the term diagram narrowed to the selection's neighbourhood) → `completion-view.js` / `answers-view.js` (answer fields in the open questions) / `changes-view.js` / `overview-view.js` (全体マップ, first tab when several models are built) (extra mode tabs) → `process-hierarchy.js` → `language-view.js` → `view-state.js` (restores navigation from sessionStorage, and records it in the browser history for back and forward).
 - All CSS lives in the single `<style>` block in `templates/ontology.html`, including for elements the scripts create. The scripts must not inject their own styles.
 - Colors are tokens on `:root`, redefined in two identical dark blocks (system dark unless `data-theme=light`, and `data-theme=dark` from the header's 配色 menu, `theme-view.js`); diagram sheets (`--canvas`, `--sheet`) stay light because Cytoscape styles use fixed light-theme colors. A test rejects hex colors outside the token blocks and the print block. Navy (`--accent`) marks business meaning and navigation, teal (`--data`) marks the data layer (IDs, attributes, data mapping), and amber (`--warn`) marks open items.
 - New UI text must be added to `i18n.js`. Translation works per DOM text node, so keep each label in its own node and model text in separate nodes.
@@ -54,7 +56,7 @@ Code in those shared modules runs both in Node (CLI and tests) and as plain brow
 - Writes take a lock file and validate the whole model (with imports, and sibling files that import it) before saving.
 - `yaml-document.js` edits the YAML in place with the `yaml` package, so comments and styles survive; js-yaml stays the parser everywhere else, always through `yaml-load.js#loadYaml` (it refuses alias expansion bombs).
 - Changes to anything with `review_state: agreed` fail with `AGREED_CHANGE` unless `--allow-agreed-change` is passed (`diff.js` decides what counts as a change).
-- Attributes are a nested entity (`--concept`), like steps (`--process`). The `model` entity edits only the root `name` / `base` / `imports`.
+- Attributes are a nested entity (`--concept`), like steps (`--process`). `metric` is a top-level entity with IDs. The `model` entity edits only the root `name` / `base` / `imports`.
 - `promote` moves definitions into a shared file and adds the import, locking and validating both files (and their importers) together.
 - Flows and restrictions have no IDs, so they are replaced as whole lists.
 - Nested values are replaced, not merged.

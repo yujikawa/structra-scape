@@ -37,7 +37,7 @@ setTimeout(() => {
     model=structuredClone(entries[index].model);
     cy.elements().remove();
   }
-  const collection = state.selected?.kind === 'property' ? model.properties : model.concepts;
+  const collection = selectionCollection(state.selected?.kind);
   selected = collection.some(x=>x.id===state.selected?.id) ? state.selected : {kind:'concept',id:model.concepts[0]?.id};
   const candidates = Array.isArray(state.ancestors) ? state.ancestors : [state.activeProcess];
   activeProcess=candidates.find(id=>model.processes?.some(p=>p.id===id)) || model.processes?.[0]?.id;
@@ -91,7 +91,7 @@ function applyNav(state) {
       model = structuredClone(entries[Number(entryIndex)].model);
       cy.elements().remove();
     }
-    const collection = state.selected?.kind === 'property' ? model.properties : model.concepts;
+    const collection = selectionCollection(state.selected?.kind);
     if (collection.some(x => x.id === state.selected?.id)) selected = { ...state.selected };
     if (model.processes?.some(p => p.id === state.activeProcess)) { activeProcess = state.activeProcess; activeStep = state.activeStep; }
     refresh(Boolean(modelChanged));

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Analysis
+- Models record the tacit knowledge an analysis depends on, not its implementation:
+  `temporal` on concepts (basis current / as_of / period, validity period with inclusive
+  boundaries, time zone) and `effective_from` / `effective_to` (when a definition applies,
+  separate from `agreed_at`).
+- `metrics`: numbers defined apart from concepts (aggregation, counted attribute, formula as
+  text, conditions, unit, time basis, non-additive dimensions, and `cases` in words), agreed
+  and guarded like definitions. The viewer shows what the records can answer now and at a
+  past moment.
+- `data_mapping.history` (current_only / snapshot / versioned) and status `rejected`.
+- Open questions are derived only for the features a definition uses; models without them
+  get no new items. CLI entity `metric`; semantic diff and Markdown export cover it; OWL/SKOS
+  exports state what they leave out.
+
 ### Docs
 - README.en.md, an English README.
 - Screenshots of the viewer in both READMEs, captured from the samples by

@@ -160,6 +160,25 @@ references to the replacement in the same transaction.
 ]}
 ```
 
+## 9. Record time and a metric
+
+Record only what people told you; leave out what nobody said (it becomes an open question).
+Never guess a boundary or a time zone. (Customer was agreed in recipe 8, so adding its own
+`temporal` would be an agreed change: ask first.)
+
+```json
+{"operations":[
+  {"op":"upsert","entity":"attribute","concept":"Company","id":"companyId","value":{"name":"法人ID","type":"identifier","required":true,"description":"法人ごとに採番される番号。"}},
+  {"op":"upsert","entity":"concept","id":"ActiveContract","value":{"temporal":{"basis":"as_of","period":{"start":"startDate","end":"endDate","start_inclusive":true,"end_inclusive":false},"timezone":"Asia/Tokyo"}}},
+  {"op":"upsert","entity":"attribute","concept":"Contract","id":"startDate","value":{"data_mapping":{"source":"dwh.contracts.start_date","status":"proposed","history":"current_only","gap":"申込日が入っている行があるかもしれない。"}}},
+  {"op":"upsert","entity":"metric","id":"CustomerCount","value":{"name":"契約顧客数","description":"基準日時点の契約顧客にあたる法人の数。","concept":"Customer","aggregation":"count_distinct","attribute":"companyId","unit":"社","temporal":{"basis":"as_of","timezone":"Asia/Tokyo"},
+    "dimensions":[{"name":"基準日","additive":false,"note":"日別の値を合計しても月間の値にはならない。"}],
+    "cases":[{"description":"同じ法人に有効な契約が2件ある","expected":"1社と数える"},{"description":"停止中の契約しかない法人"}]}}
+]}
+```
+
+A case without `expected` is asked in the viewer (「…のとき、どう数えますか？」).
+
 ## When a command fails
 
 Every command prints JSON; `ok: false` comes with `code` and `errors`.

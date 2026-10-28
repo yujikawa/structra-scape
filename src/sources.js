@@ -122,7 +122,7 @@ export function mappingMarkdown(report) {
   const cell = value => String(value ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
   for (const r of report.results) {
     const target = r.target.kind === 'attribute' ? `${r.target.conceptName} › ${r.target.name}` : r.target.name;
-    lines.push(`| ${statusLabels[r.status]} | ${cell(target)} (${cell(r.file)}) | ${cell(r.source)} | ${r.recorded === 'verified' ? '確認済み' : '対応案'} | ${cell(r.message)} |`);
+    lines.push(`| ${statusLabels[r.status]} | ${cell(target)} (${cell(r.file)}) | ${cell(r.source)} | ${({ verified: '確認済み', rejected: '誤りと確認' })[r.recorded] || '対応案'} | ${cell(r.message)} |`);
   }
   return lines.join('\n') + '\n';
 }

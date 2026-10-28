@@ -266,6 +266,23 @@ details.reader-section>summary~*{margin-left:2px}
 .attr-required{background:var(--accent-soft);color:var(--accent-ink)}
 .attr-status{background:var(--warn-soft);color:var(--warn)}
 .attr-status.verified{background:var(--ok-soft);color:var(--ok)}
+.attr-status.rejected{background:var(--danger-soft);color:var(--danger)}
+/* Metrics and time (analysis-view.js). */
+.kind-line{margin-top:6px}
+.fact-list{display:grid;grid-template-columns:minmax(7em,auto) 1fr;gap:4px 12px;margin:6px 0;font-size:13.5px}
+.fact-list dt{color:var(--ink-3);font-size:12px;padding-top:2px}
+.fact-list dd{margin:0;overflow-wrap:anywhere}
+.reach-row{display:grid;gap:2px;margin:6px 0;padding:8px 10px;border-left:3px solid var(--rule-strong);border-radius:0 6px 6px 0;background:var(--sunken);font-size:13px}
+.reach-row.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.reach-row.limited,.reach-row.unknown{border-left-color:var(--warn-line);background:var(--warn-soft)}
+.reach-row.no{border-left-color:var(--danger);background:var(--danger-soft)}
+.data-table{width:100%;margin:6px 0;border-collapse:collapse;font-size:12.5px}
+.data-table th,.data-table td{padding:4px 6px;border:1px solid var(--rule);text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.data-table th{background:var(--sunken);font-weight:600;color:var(--ink-2)}
+.additive{padding:0 8px;border-radius:999px;background:var(--sunken);font-size:11.5px;font-weight:600}
+.additive.ok{background:var(--ok-soft);color:var(--ok)}
+.additive.no{background:var(--danger-soft);color:var(--danger)}
+.case-expected{font-weight:600;color:var(--accent-ink)}
 .attribute .reader-text,.attr-mapping .reader-text{margin-top:4px;font-size:13px}
 .attr-values{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px}
 .attr-values li{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}

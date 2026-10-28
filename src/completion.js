@@ -14,10 +14,28 @@ export function assessCompletion(model) {
   const current = item => !item.deprecated;
   const entries = [...model.concepts.filter(local).filter(current).map(item => ({ item, kind: 'concept' })), ...model.properties.filter(local).filter(current).map(item => ({ item, kind: 'property' }))];
   if (!model.concepts.length) add('不足', '対象とする業務の概念を登録してください。', undefined, 'この業務では、どんな「もの」や「こと」を扱いますか？');
-  const mappingIssues = (mapping, target, prefix = '') => {
+  // `definition` is the temporal meaning of what the data stands for: a definition judged at a
+  // past moment needs data that keeps past states.
+  const mappingIssues = (mapping, target, prefix = '', definition) => {
     if (text(mapping.gap)) add('データ対応', prefix + mapping.gap, target);
-    if (mapping.status !== 'verified') add('データ対応', prefix + 'データとの対応が未確認です。', target);
+    if (mapping.status === 'rejected') add('データ対応', prefix + '確認の結果、この対応は誤りと分かっています。正しい所在を記録するか、対応を外してください。', target);
+    else if (mapping.status !== 'verified') add('データ対応', prefix + 'データとの対応が未確認です。', target);
     for (const [key, label] of [['grain', '1件が表すもの'], ['condition', '判定条件']]) if (!text(mapping[key])) add('データ対応', prefix + `${label}を記録してください。`, target);
+    if (definition?.basis && definition.basis !== 'current' && !mapping.history) add('データ対応', prefix + '基準日時点で判定する定義です。データが過去の状態を保持しているか（history）を記録してください。', target);
+  };
+  // Time in a business definition (concepts and metrics). Asked only once temporal is recorded,
+  // so models that never describe time get no new questions.
+  const temporalIssues = (temporal, target, subject) => {
+    if (text(temporal.question)) add('未決定', temporal.question, target);
+    if (!temporal.basis) add('不足', '判定の時点（temporal.basis: current / as_of / period）を記録してください。', target, `${subject}は、いつの時点の状態で判断しますか？（現在か、指定した基準日時点か、期間中か）`);
+    if (((temporal.basis && temporal.basis !== 'current') || temporal.period) && !text(temporal.timezone)) add('不足', 'タイムゾーン（temporal.timezone）を記録してください。', target, '日付や月末の区切りは、どの地域の時刻で考えますか？');
+    const period = temporal.period;
+    if (period?.start !== undefined && period.start_inclusive === undefined) add('不足', '有効期間の開始時点を含むか（temporal.period.start_inclusive）を記録してください。', target, '開始日時ちょうどの時点では、もう有効ですか？');
+    if (period?.end !== undefined && period.end_inclusive === undefined) add('不足', '有効期間の終了時点を含むか（temporal.period.end_inclusive）を記録してください。', target, '終了日時ちょうどの時点では、まだ有効ですか？');
+  };
+  const agreementIssues = (item, target, ask) => {
+    if (item.review_state !== 'agreed') add('未合意', '業務担当者と定義を確認し、合意状態を記録してください。', target, ask);
+    else if (!text(item.agreed_by) || !item.agreed_at) add('不足', '誰がいつ合意したか（agreed_by・agreed_at）を記録してください。', target, 'この定義は、どなたがいつ確認しましたか？');
   };
   for (const { item, kind } of entries) {
     const target = { kind, id: item.id, name: item.name };
@@ -27,9 +45,9 @@ export function assessCompletion(model) {
     if (!text(item.example) && !(item.cases || []).some(c => c.result === 'included')) add('不足', '含む具体例を記録してください。', target, '具体的には、どんなものが含まれますか？');
     if (!text(item.exclusion) && !(item.cases || []).some(c => c.result === 'excluded')) add('不足', '含まない具体例を記録してください。', target, '似ているけれど含まれないものはありますか？');
     if (!text(item.evidence)) add('不足', '定義の根拠・合意の記録を残してください。', target, 'この定義は、どの資料や打ち合わせで決まったものですか？');
-    if (item.review_state !== 'agreed') add('未合意', '業務担当者と定義を確認し、合意状態を記録してください。', target, 'この定義で合っていますか？');
-    else if (!text(item.agreed_by) || !item.agreed_at) add('不足', '誰がいつ合意したか（agreed_by・agreed_at）を記録してください。', target, 'この定義は、どなたがいつ確認しましたか？');
-    if (item.data_mapping) mappingIssues(item.data_mapping, target);
+    agreementIssues(item, target, 'この定義で合っていますか？');
+    if (item.temporal) temporalIssues(item.temporal, target, `「${item.name}」に当たるかどうか`);
+    if (item.data_mapping) mappingIssues(item.data_mapping, target, '', item.temporal);
     for (const a of item.attributes || []) {
       const prefix = `属性「${a.name}」：`;
       if (text(a.question)) add('未決定', prefix + a.question, target);
@@ -39,14 +57,30 @@ export function assessCompletion(model) {
       if (a.data_mapping) mappingIssues(a.data_mapping, target, prefix);
     }
   }
+  const metrics = (model.metrics || []).filter(current);
+  for (const m of metrics) metricIssues(m);
+  function metricIssues(m) {
+    const target = { kind: 'metric', id: m.id, name: m.name };
+    if (text(m.question)) add('未決定', m.question, target);
+    if (!text(m.description)) add('不足', '指標の意味を記録してください。', target, 'この指標は、何を表す数ですか？');
+    if (!m.concept) add('不足', '集計の対象となる概念（concept）を記録してください。', target, 'この指標は、何を数える（集計する）ものですか？');
+    if (!m.aggregation && !text(m.formula)) add('不足', '集計方法（aggregation）か計算式（formula）を記録してください。', target, 'どのように数えますか？（件数、重複を除いた件数、合計など）');
+    if (['count_distinct', 'sum', 'average', 'min', 'max'].includes(m.aggregation) && !m.attribute) add('不足', '集計対象の属性・識別子（attribute）を記録してください。', target, m.aggregation === 'count_distinct' ? '同じものを二度数えないために、何で同じものと判断しますか？' : 'どの値を集計しますか？');
+    if (!m.temporal) add('不足', '基準日や対象期間の意味（temporal.basis）を記録してください。', target, 'これは、ある日時点の数ですか、ある期間中の数ですか？');
+    else temporalIssues(m.temporal, target, `「${m.name}」`);
+    for (const d of m.dimensions || []) if (d.additive === undefined) add('不足', `軸「${d.name}」：足し合わせられるか（additive）を記録してください。`, target, `「${d.name}」ごとの値を足し合わせると、全体の値になりますか？`);
+    for (const c of m.cases || []) if (!text(c.expected)) add('未決定', `数え方が未決定：${c.description}`, target, `「${c.description}」のとき、どう数えますか？`);
+    if (!text(m.evidence)) add('不足', '定義の根拠・合意の記録を残してください。', target, 'この指標の定義は、どの資料や打ち合わせで決まったものですか？');
+    agreementIssues(m, target, 'この指標の定義で合っていますか？');
+  }
   // The same word must not point at two different definitions.
   const labels = new Map();
-  for (const item of [...model.concepts, ...model.properties].filter(current)) for (const label of [item.name, ...(item.aliases || [])]) {
+  for (const item of [...model.concepts, ...model.properties, ...metrics].filter(current)) for (const label of [item.name, ...(item.aliases || [])]) {
     const key = String(label).trim().toLowerCase();
     if (!labels.has(key)) labels.set(key, new Set());
     labels.get(key).add(item);
   }
-  for (const { item, kind } of entries) for (const alias of item.aliases || []) {
+  for (const { item, kind } of [...entries, ...metrics.map(item => ({ item, kind: 'metric' }))]) for (const alias of item.aliases || []) {
     const others = [...labels.get(alias.trim().toLowerCase())].filter(other => other !== item);
     if (others.length) add('不整合', `別名「${alias}」が「${others.map(o => o.name).join('」「')}」の名前・別名と重なっています。`, { kind, id: item.id, name: item.name }, `「${alias}」は、「${[item, ...others].map(o => o.name).join('」「')}」のどれを指しますか？`);
   }
@@ -78,12 +112,14 @@ export function assessCompletion(model) {
     const target = { kind, id: item.id, name: item.name };
     for (const id of kind === 'concept' ? [item.parent] : [item.domain, item.range]) if (retired(id)) stillUsed(retired(id), target);
   }
+  for (const m of metrics) if (retired(m.concept)) stillUsed(retired(m.concept), { kind: 'metric', id: m.id, name: m.name });
   for (const p of model.processes || []) for (const s of p.steps || []) for (const use of s.items || []) {
     if (retired(use.concept)) stillUsed(retired(use.concept), { kind: 'step', process: p.id, processName: p.name, id: s.id, name: s.name });
   }
   for (const p of model.processes || []) assessProcess(p, add, text);
-  const ready = entries.filter(({ item, kind }) => !issues.some(issue => issue.kind === kind && issue.id === item.id)).length;
-  return { issues, ready, total: entries.length };
+  const reviewed = [...entries, ...metrics.map(item => ({ item, kind: 'metric' }))];
+  const ready = reviewed.filter(({ item, kind }) => !issues.some(issue => issue.kind === kind && issue.id === item.id)).length;
+  return { issues, ready, total: reviewed.length };
 }
 
 // Stable key of an open item, shared by the viewer's answer form and `strscape answers`. It

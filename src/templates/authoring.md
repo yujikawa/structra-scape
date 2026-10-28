@@ -24,7 +24,7 @@ Patch example:
 ]}
 ```
 
-Entities concept/property/attribute/process/step support upsert and remove by id.
+Entities concept/property/attribute/process/step/metric support upsert and remove by id.
 Step requires process; attribute requires concept. Upsert merges top-level fields;
 nested objects and arrays replace the entire field. Patch operations may include
 unset: ["example"] to remove fields. IDs cannot be changed. To rename an ID, add the
@@ -45,7 +45,7 @@ Convenience commands:
     strscape concept upsert business.yaml Customer --input customer.json
     strscape concept remove business.yaml Customer
     strscape attribute get business.yaml --concept Contract
-Replace concept with property/attribute/process/step; step requires --process ID,
+Replace concept with property/attribute/process/step/metric; step requires --process ID,
 attribute requires --concept ID.
 All mutation commands support --dry-run, --expect-revision HASH and --allow-agreed-change.
 
@@ -109,14 +109,48 @@ Concepts and properties may also include exclusion (non-example), evidence
 and cases: [{description: string, result: included|excluded|unresolved, reason?: string}].
 Cases are human-authored review examples, not reasoner results. Preserve unresolved
 cases until the user decides. They can be set using concept/property upsert.
-data_mapping requires source (text) and status (proposed or verified), with optional
+data_mapping requires source (text) and status (proposed, verified or rejected), with optional
 grain (what one row represents), condition (implemented selection rule, text only),
 and gap (difference from the business definition). Never invent actual table names
 or mark a mapping verified without evidence. SQL-derived meaning is an implementation
 observation, not business agreement. Use proposed for inferred mappings and record
 unresolved gaps. These fields are documentation, not executable SQL or automatic
 database validation.
-Required arrays: concepts, properties, restrictions. Optional array: processes.
+What belongs in a model: knowledge people hold and do not write down — what a word means,
+where its boundary is, when it is judged, how people count it, what the data cannot tell.
+Not implementation: join keys, SQL, column types and how checks were run live in the code
+and data tools, and change too often to keep here. Point at them in data_mapping.source or
+gap only when a business definition depends on them.
+
+Statuses: review_state is business agreement (concepts, properties, metrics);
+data_mapping.status is the data side: proposed (a guess), verified (checked), rejected
+(checked and found wrong). Set verified or rejected only when the user or a data owner
+reports a check; put what is still unchecked or known to be off in gap.
+data_mapping.history: current_only (only the current state; past moments cannot be
+reconstructed), snapshot (only the snapshot times), versioned (past states are kept).
+
+Time (optional; record only what people decided, put the rest in temporal.question):
+- concept.temporal: basis? (current | as_of | period), period? {start?, end? (attribute
+  IDs of the concept or its ancestors), start_inclusive?, end_inclusive? (booleans)},
+  timezone? (IANA name, e.g. Asia/Tokyo), description?, question?.
+- effective_from / effective_to (YYYY-MM-DD, inclusive) on concepts, properties and
+  metrics: when the definition applies in the business. This is not agreed_at.
+A definition judged as_of a past moment can be answered only from data that keeps past
+states; the open questions ask for history once the concept records a basis.
+
+metrics (optional array; IDs share the namespace of concepts and properties): id, name,
+aliases?, description?, concept? (concept ID), aggregation? (count, count_distinct, sum,
+average, min, max, custom), attribute? (attribute ID of the concept or its ancestors: what
+makes two items the same, or the value summed), formula? (text, required for custom; never
+evaluated), condition?, exclusion?, unit?, temporal? {basis, timezone?, description?,
+question?}, dimensions? [{name, additive? (false: values must not be summed across it),
+note?}], cases? [{description, expected?, reason?}] (a situation and how it is counted;
+without expected it is undecided), evidence?, question?, review_state?, agreed_by?,
+agreed_at?, effective_from?, effective_to?, deprecated?, replaced_by?.
+Metrics are not imported (like processes) but may count imported concepts. OWL/SKOS exports
+leave out metrics, temporal and data mappings and say so in a comment at the top.
+
+Required arrays: concepts, properties, restrictions. Optional arrays: processes, metrics.
 IDs start with an ASCII letter, followed by letters, digits, underscores or hyphens.
 Concept and property IDs share a namespace (including imported ones). Process IDs are
 unique, step IDs are unique within each process, attribute IDs are unique within
