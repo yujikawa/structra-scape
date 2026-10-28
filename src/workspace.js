@@ -6,14 +6,18 @@
 export function workspaceOverview(entries) {
   const domains = new Map(), concepts = new Map(), links = new Map(), questions = [];
   const processes = [], relations = new Map();
-  const roleOrder = ['creates', 'updates', 'reads', 'participates'];
+  const roleOrder = ['creates', 'receives', 'updates', 'reads', 'participates'];
+  // A file that only lists places (places.yaml) is a shared catalog, not a business domain.
+  const catalog = model => !model.concepts.some(c => !c.imported_from) && !(model.processes || []).length && (model.places || []).some(s => !s.imported_from);
+  const catalogs = new Set(entries.filter(entry => catalog(entry.model)).map(entry => entry.file));
+  entries = entries.filter(entry => !catalogs.has(entry.file));
   for (const entry of entries) {
     const model = entry.model;
     domains.set(entry.file, { file: entry.file, name: entry.name || model.name || entry.file, slug: entry.slug, local: true, concepts: 0, processes: (model.processes || []).length });
   }
   // Shared files outside the workspace still appear, as domains that cannot be opened.
   for (const entry of entries) for (const imported of entry.model.imported_models || []) {
-    if (!domains.has(imported.path)) domains.set(imported.path, { file: imported.path, name: imported.name || imported.path, local: false, concepts: 0, processes: 0 });
+    if (!domains.has(imported.path) && !catalogs.has(imported.path)) domains.set(imported.path, { file: imported.path, name: imported.name || imported.path, local: false, concepts: 0, processes: 0 });
   }
   const ownerOf = (entry, item) => item.imported_from || entry.file;
   const conceptIn = (entry, id) => {
@@ -72,7 +76,7 @@ export function workspaceOverview(entries) {
   // A term created in one domain's work and read or updated in another's is handed over.
   for (const c of concepts.values()) {
     const creators = c.usages.filter(u => u.role === 'creates');
-    const consumers = c.usages.filter(u => u.role === 'reads' || u.role === 'updates');
+    const consumers = c.usages.filter(u => ['receives', 'reads', 'updates'].includes(u.role));
     for (const from of creators) for (const to of consumers.filter(u => u.domain !== from.domain)) {
       link(from.domain, to.domain).handoffs.push({ concept: c.name, conceptId: c.id, owner: c.owner, from, to });
     }
@@ -100,6 +104,8 @@ export function workspaceOverview(entries) {
     for (const list of Object.values(cells)) list.sort((a, b) => roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role));
     return { key: c.key, id: c.id, name: c.name, owner: c.owner, cells };
   }).sort((a, b) => [...domains.keys()].indexOf(a.owner) - [...domains.keys()].indexOf(b.owner) || a.name.localeCompare(b.name, 'ja'));
+  // Where data is and how it moves between work places, read from the steps.
+  const uses = placeUses(entries), placeData = { uses, moves: dataMoves(uses) };
   // What crosses a domain boundary: the diagram can show only these.
   const relationList = [...relations.values()];
   for (const r of relationList) r.cross = new Set([r.owner, concepts.get(r.from).owner, concepts.get(r.to).owner]).size > 1;
@@ -113,10 +119,71 @@ export function workspaceOverview(entries) {
     links: [...links.values()].filter(l => l.imports || l.handoffs.length || l.uses.length),
     matrix: usedConcepts,
     questions,
+    places: placeData,
   };
 }
 
-const overviewRoleNames = { creates: '作成する', reads: '参照する', updates: '更新する', participates: '参加する' };
+// Where data is, read from the steps: a step names the place (作業場所) it is done on and the
+// terms it creates, receives, reads or updates there. Across every model built together.
+// Terms and places are identified by the file that owns them and their ID.
+export function placeUses(entries) {
+  const uses = [];
+  for (const entry of entries) {
+    const model = entry.model, owner = item => item.imported_from || entry.file;
+    const placeOf = s => s?.place && (model.places || []).find(x => x.id === s.place);
+    for (const p of model.processes || []) for (const s of p.steps || []) {
+      const place = placeOf(s);
+      if (!place) continue;
+      for (const item of s.items || []) {
+        const concept = model.concepts.find(c => c.id === item.concept);
+        if (!concept || item.role === 'participates') continue;
+        // A receiving step takes the term from the place of the nearest earlier step in its flow
+        // that holds it elsewhere, when there is one.
+        const prior = item.role === 'receives' && earlier(p, s.id).map(id => p.steps.find(x => x.id === id)).find(x => placeOf(x) && placeOf(x) !== place && (x.items || []).some(i => i.concept === item.concept && i.role !== 'reads' && i.role !== 'participates'));
+        uses.push({ concept: `${owner(concept)}#${concept.id}`, conceptId: concept.id, conceptName: concept.name, place: `${owner(place)}#${place.id}`, placeId: place.id, placeName: place.name, role: item.role,
+          domain: entry.file, domainName: entry.name || model.name, process: p.id, processName: p.name, step: s.id, stepName: s.name, ...(s.timing ? { timing: s.timing } : {}),
+          ...(prior ? { from: `${owner(placeOf(prior))}#${placeOf(prior).id}` } : {}) });
+      }
+    }
+  }
+  return uses;
+}
+// Step IDs before `id` in a process, nearest first (breadth-first along the flows, backwards).
+function earlier(p, id) {
+  const order = [], queue = [id], seen = new Set([id]);
+  while (queue.length) {
+    const at = queue.shift();
+    for (const f of (p.flows || []).filter(f => f.target === at)) if (!seen.has(f.source)) { seen.add(f.source); order.push(f.source); queue.push(f.source); }
+  }
+  return order;
+}
+const holds = role => role === 'creates' || role === 'receives';
+// How each term moves between places. A step that receives a term on a place takes it from the
+// place of the nearest earlier step in its flow that holds the term; failing that, from the
+// places where it is created or updated (or, failing those, received). A term used on a place
+// where nothing creates or receives it has no recorded way of getting there: a gap.
+export function dataMoves(uses) {
+  const moves = new Map();
+  const move = (u, from, via) => {
+    const key = [u.concept, from.place, u.place].join('\u0000');
+    if (!moves.has(key)) moves.set(key, { concept: u.concept, conceptName: u.conceptName, from: from.place, fromName: from.placeName, to: u.place, toName: u.placeName, via: [], gap: !via });
+    if (via && !moves.get(key).via.some(v => v.domain === via.domain && v.process === via.process && v.step === via.step)) moves.get(key).via.push(via);
+  };
+  for (const u of uses) {
+    const others = uses.filter(o => o.concept === u.concept && o.place !== u.place);
+    const makers = others.filter(o => o.role === 'creates' || o.role === 'updates'), sources = makers.length ? makers : others.filter(o => o.role === 'receives');
+    if (u.role === 'receives') for (const from of u.from ? others.filter(o => o.place === u.from).slice(0, 1) : sources) move(u, from, u);
+    else if (!uses.some(o => o.concept === u.concept && o.place === u.place && holds(o.role))) for (const from of makers) move(u, from, null);
+  }
+  return [...moves.values()];
+}
+// What the open questions need from the rest of the workspace: every place use, and which
+// file the model being checked is.
+export function completionContext(entries, file) {
+  return { file, uses: placeUses(entries) };
+}
+
+const overviewRoleNames = { creates: '作成する', receives: '受け取る', reads: '参照する', updates: '更新する', participates: '参加する' };
 export function overviewMarkdown(overview) {
   const name = file => overview.domains.find(d => d.file === file)?.name || file;
   const lines = ['# 全体マップ', '', '## ドメイン', ''];
@@ -136,6 +203,18 @@ export function overviewMarkdown(overview) {
     lines.push(`| ことば | 定義元 | ${used.map(d => d.name).join(' | ')} |`, `|---|---|${used.map(() => '---|').join('')}`);
     for (const row of overview.matrix) lines.push(`| ${row.name} | ${name(row.owner)} | ${used.map(d => [...new Set((row.cells[d.file] || []).map(u => overviewRoleNames[u.role]))].join('、')).join(' | ')} |`);
   } else lines.push('業務フローで使われていることばはありません。');
+  const { uses, moves } = overview.places;
+  if (uses.length) {
+    lines.push('', '## 作業場所とデータ', '', '作業に書かれた作業場所から読み取ったものです。渡し方（手渡し・ファイル・APIなど）は区別していません。', '');
+    const roleNames = { creates: '作成', receives: '受け取り', reads: '参照', updates: '更新' };
+    for (const concept of [...new Set(uses.map(u => u.concept))]) {
+      const rows = uses.filter(u => u.concept === concept);
+      lines.push(`### ${rows[0].conceptName}`, '');
+      for (const u of rows) lines.push(`- ${u.placeName}：${u.processName} › ${u.stepName} が${roleNames[u.role]}${u.timing ? `（${u.timing}）` : ''}`);
+      for (const m of moves.filter(m => m.concept === concept)) lines.push(m.gap ? `- **経路が未記録**：${m.fromName} → ${m.toName}` : `- 移動：${m.fromName} → ${m.toName}（${m.via.map(v => v.stepName).join('、')}）`);
+      lines.push('');
+    }
+  }
   lines.push('', '## 確認したいこと', '');
   if (!overview.questions.length) lines.push('確認したいことはありません。');
   for (const q of overview.questions) lines.push(`- ${q.ask}`);

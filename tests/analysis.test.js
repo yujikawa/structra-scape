@@ -66,7 +66,7 @@ test('the records tell the current count from the count at the end of last month
 test('metrics are edited, diffed and guarded like definitions', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-analysis-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const f of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
+  for (const f of ['customer-contract.yaml', 'billing.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
   const file = path.join(dir, 'customer-contract.yaml');
   const result = updateDocument(file, { operations: [{ op: 'upsert', entity: 'metric', id: 'ContractCustomerCount', value: { review_state: 'agreed', agreed_by: '営業部', agreed_at: '2026-10-20' } }] });
   assert.deepEqual(result.changes.map(c => [c.entity, c.id, c.fields]), [['metric', 'ContractCustomerCount', ['review_state', 'agreed_by', 'agreed_at']]]);

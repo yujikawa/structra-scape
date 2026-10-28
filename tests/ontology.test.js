@@ -248,7 +248,8 @@ test('attributes and aliases validate, inherit, export and appear in open questi
 
 test('flow checks report owners, decisions, gateways, reachability and dead ends', () => {
   const m = sample();
-  assert.deepEqual(assessCompletion(m).issues.filter(i => i.kind === 'step' || i.kind === 'process'), []);
+  // Work-place questions (how data gets to a place) are covered in places.test.js.
+  assert.deepEqual(assessCompletion(m).issues.filter(i => (i.kind === 'step' || i.kind === 'process') && !/作られるか受け取る/.test(i.message)), []);
   const p = m.processes[0];
   p.steps.push({ id: 'Orphan', name: '孤立した作業', type: 'task', owner: '誰か' }, { id: 'Split', name: '並行', type: 'parallel' });
   p.flows.find(f => f.label === '審査NG').label = '';

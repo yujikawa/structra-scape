@@ -9,7 +9,7 @@ changesRoot.hidden = true;
 changesRoot.setAttribute('aria-labelledby', 'changes-title');
 document.body.append(changesRoot);
 let changesMode = false;
-const changeKindLabels = { model: 'モデル', concept: 'ことば', attribute: '属性', property: 'つながり', restriction: '分類条件', process: '業務フロー', step: '作業', flow: '流れ', metric: '指標' };
+const changeKindLabels = { model: 'モデル', concept: 'ことば', attribute: '属性', property: 'つながり', restriction: '分類条件', process: '業務フロー', step: '作業', flow: '流れ', metric: '指標', place: '作業場所' };
 const changeTypeLabels = { added: '追加', removed: '削除', changed: '変更' };
 function changeValue(value) {
   if (value === undefined || value === null || value === '') return '<span class="hint">（なし）</span>';

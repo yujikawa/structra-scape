@@ -3,6 +3,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { loadModel } from './validate.js';
 import { assessCompletion } from './completion.js';
+import { completionContext } from './workspace.js';
+import { loadWorkspace } from './build.js';
 
 // Business users answer open questions in the viewer and hand the answers over as a JSON file
 // (or the dev server saves it under answers/ next to the models). An AI agent turns them into
@@ -12,12 +14,18 @@ const object = value => value && typeof value === 'object' && !Array.isArray(val
 const text = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 const ANSWERS_KIND = 'strscape-answers';
 
+// The steps of the other models next to this one, so the checks on work places see the whole
+// folder as the viewer does when it is built from the folder.
+function contextFor(file) {
+  try { return completionContext(loadWorkspace(path.dirname(file)), path.basename(file)); } catch { return undefined; }
+}
+
 // The questions the viewer offers an answer box for: everything except data-mapping work.
 export function openQuestions(file) {
   const absolute = path.resolve(process.cwd(), file);
   const source = fs.readFileSync(absolute, 'utf8');
   const model = loadModel(absolute);
-  const questions = assessCompletion(model).issues.filter(issue => issue.category !== 'データ対応').map(issue => ({
+  const questions = assessCompletion(model, contextFor(absolute)).issues.filter(issue => issue.category !== 'データ対応').map(issue => ({
     key: issue.key,
     category: issue.category,
     target: issue.id ? { kind: issue.kind, id: issue.id, name: issue.name, ...(issue.process ? { process: issue.process, processName: issue.processName } : {}) } : { kind: 'model' },
@@ -105,7 +113,7 @@ export function answersPatch(target, { model } = {}) {
   if (modelFiles.length !== 1) fail('VALUE', modelFiles.length ? 'The answers refer to several models; give one answers file or folder per model' : 'No answers for a model were found; pass --model');
   const modelFile = path.resolve(process.cwd(), modelFiles[0]);
   const raw = loadModel(modelFile, { resolve: false }), draft = structuredClone(raw);
-  const issues = new Map(assessCompletion(loadModel(modelFile)).issues.map(issue => [issue.key, issue]));
+  const issues = new Map(assessCompletion(loadModel(modelFile), contextFor(modelFile)).issues.map(issue => [issue.key, issue]));
   const lists = { concept: 'concepts', property: 'properties', metric: 'metrics' }, touched = new Set(), attributeOps = [], notes = [], recorded = [];
   const find = issue => (draft[lists[issue.kind]] || []).find(item => item.id === issue.id);
   for (const f of files) for (const a of f.answers) {

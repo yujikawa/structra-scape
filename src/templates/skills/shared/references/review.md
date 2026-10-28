@@ -17,6 +17,13 @@
      joins have two or more paths; flows with start/end reach the end without dead ends
    - data mappings are `proposed` unless verified, with `grain`, `condition` and `gap`
      where known
+   - steps name their work `place` where people said it; every term used on a place is
+     created or received there (a step with `role: receives`, with `timing`), or the gap
+     stays as an open question — never invent how data moves
+   - boundary cases are left `unresolved` for people to judge; judgments are recorded per
+     department, and `result` changes only when the user says it was decided
+   - metrics have their concept, how they count, their time basis and non-additive
+     dimensions
 4. Open questions do not have to reach zero. A remaining question that names exactly what
    needs deciding is a good result; a confident guess is not.
 

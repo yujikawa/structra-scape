@@ -23,6 +23,7 @@ Read them when the step below points to them:
 - `references/cli-recipes.md` — tested patch JSON for each kind of change, and error codes
 - `references/review.md` — checks before handing off, and the report format
 - `references/answers.md` — taking in answers business users wrote in the viewer
+- `references/places.md` — work places (where each step is done) and how data gets between them
 - `references/existing-assets.md` — starting from a glossary spreadsheet, table definitions
   or dbt, and checking data mappings against the warehouse schema
 
@@ -38,11 +39,14 @@ Read them when the step below points to them:
 
 ## 2. Understand the work
 
-Start from what people do — steps, owners, decisions — then the words those steps use.
-Use `references/modeling.md` to choose between concept, attribute, property, alias,
-subtype, rule and case. Ask the user only when the answer changes the model (same or
-different meaning, who decides, which domain). Otherwise proceed and record what you
-assumed as a `question` so it shows up in the viewer's 未確認事項.
+Start from what people do — steps, owners, where each step is done (its work place),
+decisions — then the words those steps create, receive and use. The words are the shared
+vocabulary; the steps tie the process, the words and the places together. Use
+`references/modeling.md` to choose between concept, attribute, property, alias, subtype,
+rule and case, and `references/places.md` for work places and how data gets between them.
+Ask the user only when the answer changes the model (same or different meaning, who
+decides, which domain). Otherwise proceed and record what you assumed as a `question` so it
+shows up in the viewer's 未確認事項.
 
 Answers from business users (an `answers-*.json` file, or `models/answers/`) are
 handled with `references/answers.md`: read them with `strscape answers`, record what they

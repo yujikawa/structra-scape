@@ -95,6 +95,16 @@ test('every view of the built reader runs without page errors', async t => {
   assert.equal(await page.isVisible('#review-board'), false);
   assert.equal(await page.locator('#concepts button.active').count(), 1);
   assert.equal(await page.innerText('#detail h2'), await page.$eval('#concepts button.active', button => button.firstChild.textContent.trim()));
+  // Work places: a step shows where it is done; a term shows where it is created, received and used.
+  await page.click('#mode-process');
+  await page.locator('#process-list button', { hasText: '契約を締結する' }).click();
+  assert.equal(await page.innerText('#process-detail .step-place'), '販売管理システム');
+  assert.match(await page.evaluate(() => pc.$id('Sign').data('label')), /＠販売管理システム/);
+  await page.click('#mode-ontology');
+  await page.click('#concepts button[data-id="Contract"]');
+  await page.locator('.reader-tabs button').nth(1).click();
+  assert.match(await page.innerText('#detail .place-trail'), /生まれる\s*販売管理システム[\s\S]*受け取る\s*請求システム/);
+  await page.locator('.reader-tabs button').nth(0).click();
   // Metrics say what the records can answer: now, but not at the end of last month (current-only data).
   await page.locator('#metrics-list button').first().click();
   assert.equal(await page.innerText('#detail h2'), '契約顧客数');
@@ -221,8 +231,8 @@ test('the reader shows each thing once, and browser back returns to where people
   // One model opens on its business flow; the tabs read flow first, then terms.
   assert.equal(await page.isVisible('#process-workspace'), true);
   assert.deepEqual(await page.$$eval('.mode-bar button:not([hidden])', bs => bs.map(b => b.id)).then(ids => ids.slice(0, 2)), ['mode-process', 'mode-ontology']);
-  // Step nodes carry only their name: the shape says what kind of step it is.
-  assert.equal(await page.evaluate(() => pc.$id('Sign').data('label')), '契約を締結する');
+  // Step nodes carry their name and work place: the shape says what kind of step it is.
+  assert.equal(await page.evaluate(() => pc.$id('Sign').data('label')), '契約を締結する\n＠販売管理システム');
   // The open question is shown once, above the tabs, and missing fields leave no placeholder.
   await page.click('#mode-ontology');
   await page.click('#diagram-toggle');

@@ -1,0 +1,26 @@
+kind: ontology
+name: 作業場所の一覧
+base: https://example.com/places#
+# 作業をする場所（＝そこにデータがある場所）の一覧。業務システムも、部署の手元のスプレッドシートも
+# 同じように並べる。手作業か自動化されているかは区別しない。各ドメインのYAMLが imports で読み込み、
+# 作業の place で参照する（説明用の架空のもの）。
+concepts: []
+properties: []
+restrictions: []
+places:
+  - id: SalesSystem
+    name: 販売管理システム
+    description: 申込み・審査・契約を記録する。
+    owner: 営業部
+  - id: BillingSystem
+    name: 請求システム
+    description: 契約をもとに毎月の請求額を計算し、請求書を発行する。
+    owner: 経理部
+  - id: BillingCheckSheet
+    name: 請求確認シート
+    aliases: [ 請求確認Excel ]
+    description: 請求書を送る前に、値引きや例外の扱いを経理部が確認するスプレッドシート。
+    owner: 経理部
+  - id: Accounting
+    name: 会計システム
+    description: 売上を仕訳として記録する。

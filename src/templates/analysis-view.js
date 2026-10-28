@@ -17,6 +17,14 @@ function decorateConcept(item){
   if(item.temporal||item.effective_from||item.effective_to)panes[0]?.insertAdjacentHTML('afterbegin',`<section class="reader-section"><h3>時間の意味</h3>${factsHtml(temporalFacts(item.temporal,attributeName))}${effectiveHtml(item)}</section>`);
   const metrics=(model.metrics||[]).filter(m=>m.concept===item.id);
   if(metrics.length)panes[1]?.insertAdjacentHTML('beforeend',`<section class="reader-section"><h3>この概念を数える指標</h3><div class="reader-links">${metrics.map(m=>openButton('metric',m)).join('')}</div></section>`);
+  // Where the term is: the steps that create, receive, update or read it, by work place.
+  const owner=item.imported_from||entries[Number(entryIndex)]?.file, key=`${owner}#${item.id}`;
+  const uses=placeUses(entries).filter(u=>u.concept===key), gaps=dataMoves(placeUses(entries)).filter(m=>m.concept===key&&m.gap);
+  if(uses.length){
+    const roleNames={creates:'生まれる',receives:'受け取る',updates:'更新する',reads:'使う'};
+    panes[1]?.insertAdjacentHTML('beforeend',`<section class="reader-section"><h3>作業場所とデータ</h3><ol class="place-trail">${['creates','receives','updates','reads'].flatMap(role=>uses.filter(u=>u.role===role).map(u=>`<li class="${role}"><span class="kind-tag">${roleNames[role]}</span><b>${esc(u.placeName)}</b><button data-place-step="${uses.indexOf(u)}">${esc(u.stepName)} ↗<small>${esc(u.domainName)} · ${esc(u.processName)}${u.timing?` · ${esc(u.timing)}`:''}</small></button></li>`)).join('')}</ol>${gaps.map(g=>`<p class="attr-question"><span>経路が未記録</span>${esc(g.fromName)} → ${esc(g.toName)}</p>`).join('')}<p class="hint">作業に書かれた作業場所から読み取っています。渡し方（手渡し・ファイル・APIなど）は区別していません。</p></section>`);
+    $('detail').querySelectorAll('[data-place-step]').forEach(b=>b.onclick=()=>{const u=uses[Number(b.dataset.placeStep)];openFromOverview(u.domain,()=>{activeProcess=u.process;activeStep=u.step;setProcessMode(true);pickStep(u.step)})});
+  }
   if(item.data_mapping?.history)panes[2]?.querySelector('.reader-section')?.insertAdjacentHTML('beforeend',`<h3>過去の状態</h3><p class="reader-text">${esc(historyKinds[item.data_mapping.history])}</p>`);
   wireOpenButtons();
 }

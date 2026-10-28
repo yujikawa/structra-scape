@@ -24,7 +24,7 @@ Patch example:
 ]}
 ```
 
-Entities concept/property/attribute/process/step/metric support upsert and remove by id.
+Entities concept/property/attribute/process/step/metric/place support upsert and remove by id.
 Step requires process; attribute requires concept. Upsert merges top-level fields;
 nested objects and arrays replace the entire field. Patch operations may include
 unset: ["example"] to remove fields. IDs cannot be changed. To rename an ID, add the
@@ -45,7 +45,7 @@ Convenience commands:
     strscape concept upsert business.yaml Customer --input customer.json
     strscape concept remove business.yaml Customer
     strscape attribute get business.yaml --concept Contract
-Replace concept with property/attribute/process/step/metric; step requires --process ID,
+Replace concept with property/attribute/process/step/metric/place; step requires --process ID,
 attribute requires --concept ID.
 All mutation commands support --dry-run, --expect-revision HASH and --allow-agreed-change.
 
@@ -160,7 +160,19 @@ agreed_at?, effective_from?, effective_to?, deprecated?, replaced_by?.
 Metrics are not imported (like processes) but may count imported concepts. OWL/SKOS exports
 leave out metrics, temporal and data mappings and say so in a comment at the top.
 
-Required arrays: concepts, properties, restrictions. Optional arrays: processes, metrics.
+places (optional; usually only in a shared models/places.yaml that domains import): work
+places, where steps are done — a business system, a department's spreadsheet, a partner.
+Manual or automated is not recorded. id, name, description?, owner? (department), aliases?,
+question?, evidence?. Places are imported like concepts; IDs are unique per resolved model.
+Steps may name their place? (place ID) and timing? (when the step is done). A step on a
+place that creates, reads or updates a term says the data is there. Work that moves data to
+another place is a step on the receiving place with an item `role: receives`; how it is
+done (by hand, a file, an API) is not categorized — describe it only as people say it, never
+guess. The open questions ask, across the folder, how a term gets to a place where it is
+used but neither created nor received. `promote` also moves places into a shared file.
+
+Required arrays: concepts, properties, restrictions. Optional arrays: processes, metrics,
+places.
 IDs start with an ASCII letter, followed by letters, digits, underscores or hyphens.
 Concept and property IDs share a namespace (including imported ones). Process IDs are
 unique, step IDs are unique within each process, attribute IDs are unique within
@@ -195,7 +207,8 @@ each concept. References must resolve.
 - processes: id, name, steps, flows.
 - steps: id, name, type (start, task, decision, parallel, join, end), owner?,
   description?, example?, question?, position?, subprocess? (process ID, tasks only),
-  items? [{concept: concept ID, role: creates|reads|updates|participates}].
+  items? [{concept: concept ID, role: creates|receives|reads|updates|participates}],
+  place? (place ID), timing?.
 - flows: source (step ID), target (step ID), label? (condition or explanation).
 
 Start by expressing the business steps, then define terms used by those steps.

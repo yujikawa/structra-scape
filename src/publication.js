@@ -19,12 +19,17 @@ export function publicationMarkdown(model, { concept, date = new Date().toISOStr
     const uses=(model.processes||[]).flatMap(p=>p.steps.filter(s=>s.items?.some(i=>i.concept===c.id)).map(s=>`- ${md(p.name)} → ${md(s.name)}`));
     blocks.push(`### 業務での利用\n\n${uses.join('\n')||'関連づけは未登録です。'}`);
   }
-  if(!concept)blocks.push(...analysisBlocks(model));
+  if(!concept)blocks.push(...analysisBlocks(model),...placeBlocks(model));
   return blocks.join('\n\n')+'\n';
 }
 const factLines=facts=>facts.map(([label,...values])=>`- ${md(label)}: ${values.map(md).join(' — ')}`).join('\n');
 function mappingLines(m){
   return [['データの所在',m.source],['確認状態',mappingStatuses[m.status]||m.status],m.grain&&['1件が表すもの',m.grain],m.condition&&['実装上の判定条件',m.condition],m.history&&['過去の状態',historyKinds[m.history]],m.gap&&['業務定義との差・確認事項',m.gap]].filter(Boolean).map(([label,value])=>`- ${md(label)}: ${md(value)}`).join('\n');
+}
+// Work places: where steps are done, and so where their data is.
+function placeBlocks(model){
+  const own=(model.places||[]).filter(s=>!s.imported_from);
+  return own.length?[`## 作業場所\n\n${own.map(s=>`- **${md(s.name)}**（${md(s.id)}）${s.owner?` · 担当: ${md(s.owner)}`:''}${s.description?` — ${md(s.description)}`:''}${s.question?`\n  - 確認事項: ${md(s.question)}`:''}`).join('\n')}`]:[];
 }
 // Metrics as people define them; nothing here computes them.
 function analysisBlocks(model){

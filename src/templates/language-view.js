@@ -62,7 +62,7 @@ function localizeScreen() {
   const currentProcess = process();
   pc.nodes().forEach(element => {
     const step = currentProcess?.steps.find(item => item.id === element.id());
-    if (step) element.data('label', step.name + (step.subprocess ? (uiLanguage === 'en' ? '\nDetails ›' : '\n詳細 ›') : ''));
+    if (step) element.data('label', stepLabel(step) + (step.subprocess ? (uiLanguage === 'en' ? '\nDetails ›' : '\n詳細 ›') : ''));
   });
   languageObserver.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'title', 'placeholder'] });
 }

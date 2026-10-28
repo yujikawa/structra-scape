@@ -12,7 +12,9 @@ export const answerChoices = {
 // Shared, deterministic checks of recorded information; not an OWL reasoner.
 // `message` tells the modeler what to record; `ask` (when set) is the same item as a question
 // for business users, shown in the viewer above the task.
-export function assessCompletion(model) {
+// `context` ({file, uses} from completionContext) lets the checks on work places see the steps of
+// the other models built together; without it, only this model's steps are known.
+export function assessCompletion(model, context) {
   const issues = [];
   const text = value => typeof value === 'string' && value.trim().length > 0;
   // `extra` (choices, case) does not enter the key: changing the offered choices keeps answers.
@@ -148,9 +150,50 @@ export function assessCompletion(model) {
     if (retired(use.concept)) stillUsed(retired(use.concept), { kind: 'step', process: p.id, processName: p.name, id: s.id, name: s.name });
   }
   for (const p of model.processes || []) assessProcess(p, add, text);
+  assessPlaces(model, add, text, local, context);
   const reviewed = [...entries, ...metrics.map(item => ({ item, kind: 'metric' }))];
   const ready = reviewed.filter(({ item, kind }) => !issues.some(issue => issue.kind === kind && issue.id === item.id)).length;
   return { issues, ready, total: reviewed.length };
+}
+
+// Work places (where a step is done, and so where its data is). Places are reviewed in the file
+// that owns them (usually places.yaml). Data must get to every place a step uses it on: from a
+// step that creates or receives it there. How it gets there (by hand, a file, an API) is asked,
+// never assumed, and recorded as a step that receives it.
+function assessPlaces(model, add, text, local, context) {
+  const places = model.places || [], name = id => places.find(s => s.id === id)?.name || id;
+  for (const s of places.filter(local)) {
+    const target = { kind: 'place', id: s.id, name: s.name };
+    if (text(s.question)) add('未決定', s.question, target);
+    if (!text(s.description)) add('不足', '説明を記録してください。', target, `「${s.name}」では、何のデータを扱い、どんな仕事をしていますか？`);
+    if (!text(s.owner)) add('不足', '担当（owner）を記録してください。', target, `「${s.name}」は、どの部署が担当していますか？`);
+  }
+  const file = context?.file || '';
+  const keyOf = item => `${item.imported_from || file}#${item.id}`;
+  const own = [];
+  for (const p of model.processes || []) for (const s of p.steps || []) {
+    const place = s.place && places.find(x => x.id === s.place);
+    if (!place) continue;
+    for (const item of s.items || []) {
+      const concept = model.concepts.find(c => c.id === item.concept);
+      if (concept && item.role !== 'participates') own.push({ p, s, concept, conceptKey: keyOf(concept), place, placeKey: keyOf(place), role: item.role });
+    }
+  }
+  // Every use of a work place in the workspace (this model's own steps when there is no context).
+  const uses = context?.uses || own.map(u => ({ concept: u.conceptKey, place: u.placeKey, placeName: u.place.name, role: u.role }));
+  const asked = new Set(), once = key => !asked.has(key) && asked.add(key);
+  for (const u of own) {
+    const target = { kind: 'step', process: u.p.id, processName: u.p.name, id: u.s.id, name: u.s.name };
+    const elsewhere = uses.filter(o => o.concept === u.conceptKey && o.place !== u.placeKey);
+    if (u.role === 'receives') {
+      if (!text(u.s.timing) && once(`timing\u0000${u.p.id}\u0000${u.s.id}`)) add('不足', 'いつ行うか（timing）を記録してください。', target, `「${u.s.name}」は、いつ行っていますか？（毎日、月末、その都度など）`);
+      if (!elsewhere.some(o => o.role !== 'reads') && once(`from\u0000${u.conceptKey}\u0000${u.placeKey}`)) add('不足', `「${u.concept.name}」をどこから受け取るか、記録されていません。`, target, `「${u.concept.name}」は、どこから「${u.place.name}」に受け取っていますか？`);
+    } else if (u.role !== 'creates' && !uses.some(o => o.concept === u.conceptKey && o.place === u.placeKey && (o.role === 'creates' || o.role === 'receives')) && once(`gap\u0000${u.conceptKey}\u0000${u.placeKey}`)) {
+      const makers = [...new Set(elsewhere.filter(o => o.role === 'creates' || o.role === 'updates').map(o => o.placeName))];
+      add('不足', `「${u.concept.name}」は「${u.place.name}」で使われていますが、そこで作られるか受け取る作業が記録されていません。`, target,
+        makers.length ? `「${u.concept.name}」は「${makers.join('」「')}」で作られています。「${u.place.name}」へは、どうやって渡っていますか？` : `「${u.concept.name}」は、どうやって「${u.place.name}」に入ってきますか？`);
+    }
+  }
 }
 
 // Stable key of an open item, shared by the viewer's answer form and `strscape answers`. It

@@ -283,6 +283,13 @@ details.reader-section>summary~*{margin-left:2px}
 .additive.ok{background:var(--ok-soft);color:var(--ok)}
 .additive.no{background:var(--danger-soft);color:var(--danger)}
 .case-expected{font-weight:600;color:var(--accent-ink)}
+/* Work places: where a step is done, in the teal data layer. */
+.step-meta .step-place,.step-meta .step-timing{background:var(--data-soft);color:var(--data)}
+.place-trail{margin:6px 0;padding:0;list-style:none;display:grid;gap:6px}
+.place-trail li{display:grid;grid-template-columns:4.5em minmax(6em,9em) 1fr;align-items:center;gap:4px 8px;font-size:13px}
+.place-trail li b{color:var(--data);font-weight:600}
+.place-trail li button{padding:2px 0;border:0;background:none;text-align:left;color:var(--accent-ink)}
+.place-trail li button small{display:block;color:var(--ink-3)}
 .attribute .reader-text,.attr-mapping .reader-text{margin-top:4px;font-size:13px}
 .attr-values{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px}
 .attr-values li{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
@@ -317,6 +324,7 @@ details.reader-section>summary~*{margin-left:2px}
 #process-breadcrumbs button[aria-current=page]{color:var(--ink);font-weight:700}
 #process-breadcrumbs span{color:var(--ink-3)}
 #process-cy{position:absolute;inset:48px 0 0}
+
 #process-detail>h2+.hint{margin-top:4px}
 #process-detail>p:not(.hint){margin-top:14px;color:var(--ink-2)}
 .step-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}

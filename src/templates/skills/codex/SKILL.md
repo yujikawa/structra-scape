@@ -22,6 +22,7 @@ them with the shell (`cat`) when a step below points to them:
 - `cli-recipes.md` — tested patch JSON for each kind of change, and error codes
 - `review.md` — checks before handing off, and the report format
 - `answers.md` — taking in answers business users wrote in the viewer
+- `places.md` — work places (where each step is done) and how data gets between them
 - `existing-assets.md` — starting from a glossary spreadsheet, table definitions or dbt,
   and checking data mappings against the warehouse schema
 
@@ -37,11 +38,14 @@ them with the shell (`cat`) when a step below points to them:
 
 ## 2. Understand the work
 
-Start from what people do — steps, owners, decisions — then the words those steps use.
-Use `modeling.md` to choose between concept, attribute, property, alias, subtype, rule
-and case. Ask the user only when the answer changes the model (same or different meaning,
-who decides, which domain). Otherwise proceed and record what you assumed as a `question`
-so it shows up in the viewer's 未確認事項.
+Start from what people do — steps, owners, where each step is done (its work place),
+decisions — then the words those steps create, receive and use. The words are the shared
+vocabulary; the steps tie the process, the words and the places together. Use
+`modeling.md` to choose between concept, attribute, property, alias, subtype, rule and
+case, and `places.md` for work places and how data gets between them. Ask the user only
+when the answer changes the model (same or different meaning, who decides, which domain).
+Otherwise proceed and record what you assumed as a `question` so it shows up in the
+viewer's 未確認事項.
 
 When the user hands you an existing glossary, table definitions or dbt docs, start from
 them with `existing-assets.md`.

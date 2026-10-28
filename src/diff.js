@@ -9,7 +9,7 @@ export const changeFieldLabels = {
   agreed_by: '合意した人', agreed_at: '合意した日', deprecated: '廃止', replaced_by: '置き換え先',
   temporal: '時間の意味', effective_from: '適用開始日', effective_to: '適用終了日', concept: '対象の概念',
   aggregation: '集計方法', attribute: '集計対象', formula: '計算式', condition: '条件', unit: '単位',
-  dimensions: '集計の軸', metrics: '指標', status: '確認状態', history: '過去の状態の保持', gap: '業務定義との差',
+  dimensions: '集計の軸', metrics: '指標', places: '作業場所', place: '作業場所', timing: 'いつ行うか', status: '確認状態', history: '過去の状態の保持', gap: '業務定義との差',
 };
 // Recording who agreed and when, where nothing was recorded, does not change an agreed definition.
 const recordsAgreement = f => ['agreed_by', 'agreed_at'].includes(f.field) && f.before === undefined;
@@ -57,7 +57,7 @@ export function diffModels(before, after) {
   // A file that did not exist in the baseline is one added model, not a list of new top-level fields.
   if (!before.kind && after.kind) changes.push({ entity: 'model', change: 'added', id: '', name: after.name || '', agreed: false });
   else {
-    const modelFields = fieldChanges(before, after, ['concepts', 'properties', 'restrictions', 'processes', 'metrics', 'kind', 'imported_models']);
+    const modelFields = fieldChanges(before, after, ['concepts', 'properties', 'restrictions', 'processes', 'metrics', 'places', 'kind', 'imported_models']);
     if (modelFields.length) changes.push({ entity: 'model', change: 'changed', id: '', name: after.name || before.name || '', fields: modelFields, agreed: false });
   }
   changes.push(...compareById('concept', before.concepts, after.concepts, ['id', 'position', 'attributes'], {}, isAgreed));
@@ -72,6 +72,7 @@ export function diffModels(before, after) {
   changes.push(...compareById('property', before.properties, after.properties, ['id', 'position'], {}, isAgreed));
   // Metrics carry their own agreement, like concepts.
   changes.push(...compareById('metric', before.metrics, after.metrics, ['id'], {}, isAgreed));
+  changes.push(...compareById('place', before.places, after.places, ['id']));
   const names = new Map([...local(before.concepts), ...local(before.properties), ...local(after.concepts), ...local(after.properties)].map(item => [item.id, item.name]));
   const name = id => names.get(id) || id;
   const subjectAgreed = r => isAgreed(local(before.concepts).find(c => c.id === r.subject));
@@ -92,7 +93,7 @@ export function diffModels(before, after) {
   return changes;
 }
 
-const entityLabels = { model: 'モデル', concept: 'ことば', attribute: '属性', property: 'つながり', restriction: '分類条件', process: '業務フロー', step: '作業', flow: '流れ', metric: '指標' };
+const entityLabels = { model: 'モデル', concept: 'ことば', attribute: '属性', property: 'つながり', restriction: '分類条件', process: '業務フロー', step: '作業', flow: '流れ', metric: '指標', place: '作業場所' };
 const changeLabels = { added: '追加', removed: '削除', changed: '変更' };
 export function describeChange(change) {
   const owner = change.entity === 'attribute' ? `${change.conceptName} › ` : ['step', 'flow'].includes(change.entity) ? `${change.processName} › ` : '';

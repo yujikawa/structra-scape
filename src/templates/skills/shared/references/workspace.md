@@ -4,9 +4,10 @@
 
 ```text
 models/
+  places.yaml      the shared list of work places (see places.md)
   common.yaml      terms used by several domains (customer, organization, contract…)
-  contracts.yaml   imports: [common.yaml] + the contract domain's own terms and flows
-  billing.yaml     imports: [common.yaml] + the billing domain's own terms and flows
+  contracts.yaml   imports: [places.yaml, common.yaml] + the contract domain's own terms and flows
+  billing.yaml     imports: [places.yaml, common.yaml] + the billing domain's own terms and flows
 ```
 
 - One YAML file per independent domain, directly under `models/`. The preview and the

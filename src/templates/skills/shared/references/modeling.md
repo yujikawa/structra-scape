@@ -95,8 +95,11 @@ Rules of thumb:
 - A step that is itself a multi-step procedure becomes a separate process referenced by
   `subprocess` (tasks only, one parent per detail flow). Split when a flow grows beyond
   roughly 7–9 steps or mixes levels of detail.
-- `items` roles: `creates` (the step brings it into existence), `updates`, `reads`,
-  `participates` (a party or actor involved). Prefer one precise role per concept and step.
+- `items` roles: `creates` (the step brings it into existence), `receives` (the step takes
+  it in from another work place), `updates`, `reads`, `participates` (a party or actor
+  involved). Prefer one precise role per concept and step.
+- `place`: where the step is done (a system, a spreadsheet, a partner; see `places.md`).
+  Ask where people do the work; data has to get to every place a step uses it on.
 
 ## 5. Data mappings
 

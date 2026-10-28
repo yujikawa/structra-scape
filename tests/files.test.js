@@ -16,7 +16,7 @@ import yaml from 'js-yaml';
 function workspace(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-files-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const name of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
+  for (const name of ['customer-contract.yaml', 'billing.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
   return dir;
 }
 
@@ -106,12 +106,12 @@ test('validate and diff cover every model in a folder, for CI', t => {
   fs.writeFileSync(path.join(dir, 'gone.yaml'), 'kind: ontology\nname: 廃止した領域\nbase: https://e.com/g#\nconcepts: []\nproperties: []\nrestrictions: []\n');
   updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Customer', value: { review_state: 'agreed' } }] });
   git('init', '-q'); git('add', '.'); git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '-q', '-m', 'models');
-  assert.deepEqual(JSON.parse(cli('validate', '.', '--json').stdout).files.map(f => [f.file, f.errors.length]), [['billing.yaml', 0], ['customer-contract.yaml', 0], ['gone.yaml', 0]]);
+  assert.deepEqual(JSON.parse(cli('validate', '.', '--json').stdout).files.map(f => [f.file, f.errors.length]), [['billing.yaml', 0], ['customer-contract.yaml', 0], ['gone.yaml', 0], ['places.yaml', 0]]);
   fs.rmSync(path.join(dir, 'gone.yaml'));
   updateDocument(path.join(dir, 'billing.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Invoice', value: { description: '請求の書類。' } }] });
   updateDocument(path.join(dir, 'customer-contract.yaml'), { operations: [{ op: 'upsert', entity: 'concept', id: 'Customer', value: { description: '変えた説明' } }] }, { allowAgreedChange: true });
   const json = JSON.parse(cli('diff', '.').stdout);
-  assert.deepEqual(json.files.map(f => [f.file, f.changes.map(c => c.change + ':' + (c.id || c.entity))]), [['billing.yaml', ['changed:Invoice']], ['customer-contract.yaml', ['changed:Customer']], ['gone.yaml', ['removed:model']]]);
+  assert.deepEqual(json.files.map(f => [f.file, f.changes.map(c => c.change + ':' + (c.id || c.entity))]), [['billing.yaml', ['changed:Invoice']], ['customer-contract.yaml', ['changed:Customer']], ['gone.yaml', ['removed:model']], ['places.yaml', []]]);
   assert.equal(json.agreed, 1);
   const md = cli('diff', '.', '--format', 'md', '--fail-on-agreed');
   assert.equal(md.status, 1);
@@ -141,8 +141,8 @@ test('promote moves definitions into a shared file that other models already imp
   // A parent that stays behind would be a reference from common.yaml back into the source.
   assert.throws(() => promoteDefinitions(source, ['Customer'], common), e => e.code === 'DEPENDENCY' && e.missing.join() === 'Organization,hasContract,ActiveContract');
   const result = promoteDefinitions(source, ['Customer', 'Organization', 'hasContract', 'ActiveContract', 'Contract'], common);
-  assert.deepEqual(result.moved, { concepts: ['Customer', 'Organization', 'ActiveContract', 'Contract'], properties: ['hasContract'], restrictions: 1 });
-  assert.deepEqual(readDocument(source).model.imports, ['common.yaml']);
+  assert.deepEqual(result.moved, { concepts: ['Customer', 'Organization', 'ActiveContract', 'Contract'], properties: ['hasContract'], places: [], restrictions: 1 });
+  assert.deepEqual(readDocument(source).model.imports, ['places.yaml', 'common.yaml']);
   assert.equal(readDocument(common).model.concepts.find(c => c.id === 'Contract').attributes.length, 4);
   for (const file of ['customer-contract.yaml', 'billing.yaml', 'common.yaml']) assert.deepEqual(validateFile(path.join(dir, file)), [], file);
   assert.equal(loadModel(path.join(dir, 'billing.yaml')).concepts.find(c => c.id === 'Customer').imported_from, 'common.yaml');

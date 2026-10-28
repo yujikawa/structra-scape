@@ -8,13 +8,13 @@ const slash = value => value.split(path.sep).join('/');
 // Merge the concepts, properties and restrictions of shared definition files into a model.
 // Imported entries are tagged with imported_from (relative to the importing file) and are
 // read-only here: they are edited, validated and reviewed in the file that owns them.
-// Processes are never imported. Imports are resolved transitively; cycles are rejected.
+// Places are imported too; processes and metrics never are. Imports are resolved transitively; cycles are rejected.
 // `overrides` maps absolute paths to in-memory models, to check a change before it is saved.
 export function resolveImports(model, file, stack = [], overrides = new Map()) {
   if (model?.kind !== 'ontology' || model.imports === undefined) return model;
   const absolute = path.resolve(file), dir = path.dirname(absolute);
   if (!Array.isArray(model.imports) || model.imports.some(p => typeof p !== 'string' || !p.trim() || path.isAbsolute(p) || /^[A-Za-z]:/.test(p))) throw new Error('imports は共通定義YAMLへの相対パスの配列にしてください');
-  for (const key of ['concepts', 'properties', 'restrictions']) {
+  for (const key of ['concepts', 'properties', 'restrictions', 'places']) {
     if (Array.isArray(model[key]) && model[key].some(item => item?.imported_from !== undefined)) throw new Error('imported_from は読み込み時に付与されます。YAMLには書かないでください');
   }
   const merged = structuredClone(model), seen = new Set();
@@ -30,7 +30,9 @@ export function resolveImports(model, file, stack = [], overrides = new Map()) {
     const errors = validateOntology(imported);
     if (errors.length) throw new Error(`${relative} の検証に失敗しました:\n${errors.map(e => `- ${e}`).join('\n')}`);
     const rebase = inner => slash(path.relative(dir, path.resolve(path.dirname(target), inner)));
-    for (const key of ['concepts', 'properties', 'restrictions']) {
+    // Places are shared like terms (a places.yaml imported by every domain).
+    if (imported.places?.length && merged.places === undefined) merged.places = [];
+    for (const key of ['concepts', 'properties', 'restrictions', ...(imported.places?.length && Array.isArray(merged.places) ? ['places'] : [])]) {
       for (const item of imported[key]) {
         const tagged = { ...item, imported_from: item.imported_from ? rebase(item.imported_from) : slash(relative) };
         // The same file reached through two imports contributes its definitions once.

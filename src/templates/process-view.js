@@ -10,6 +10,8 @@ $('model-choice').after(modeBar);
 // Nodes carry only the step name: the shape (and the legend) says what kind of step it is.
 const pc=cytoscape({container:$('process-cy'),elements:[],style:[{selector:'node',style:{width:180,shape:'round-rectangle','background-color':'#fff','border-color':'#5b6b80','border-width':1.5,'font-family':graphFont,'text-valign':'center','text-wrap':'wrap',color:'#18263a',...labelStyle({width:156,size:16,maxLines:3,minHeight:68})}},{selector:'node[type="start"],node[type="end"]',style:{shape:'round-rectangle','corner-radius':30,width:170,'background-color':'#e2f2e8','border-color':'#3c7d55',...labelStyle({width:140,size:16,maxLines:3,minHeight:64})}},{selector:'node[type="end"]',style:{'background-color':'#eef1f5','border-color':'#738095'}},{selector:'node[type="decision"],node[type="parallel"],node[type="join"]',style:{shape:'diamond',width:190,'background-color':'#fff2d6','border-color':'#b07a14',...labelStyle({width:106,size:15,maxLines:2,minHeight:112,diamond:true})}},{selector:'node[type="parallel"],node[type="join"]',style:{'background-color':'#efeaf8','border-color':'#5a3e9e'}},{selector:'node.has-detail',style:{'border-style':'double','border-width':5,'border-color':'#24498a'}},{selector:'edge',style:{label:ele=>fitLabel(ele.data('label'),{width:84,size:13,weight:600,maxLines:2}).text,'text-wrap':'wrap','text-max-width':100,'curve-style':'bezier',width:1.6,'target-arrow-shape':'triangle','line-color':'#4a576b','target-arrow-color':'#4a576b','font-family':graphFont,'font-size':13,'font-weight':600,color:'#2c3a4f','text-background-color':'#f3f5f8','text-background-opacity':1,'text-background-padding':4,'text-background-shape':'round-rectangle'}},{selector:'node:selected',style:{'border-color':'#24498a','border-width':3,'background-color':'#e7edf7'}},{selector:'node.has-detail:selected',style:{'border-width':6}},{selector:':selected',style:{'overlay-opacity':0}}]});
 const process=()=> (model.processes||[]).find(p=>p.id===activeProcess);
+// A step node shows its name and, under it, the work place it is done on.
+function stepLabel(s){const place=(model.places||[]).find(x=>x.id===s.place);return s.name+(place?'\n＠'+place.name:'')}
 function frameProcess(readable=true){
   pc.resize();
   if(!pc.nodes().length)return;
@@ -32,7 +34,7 @@ function renderProcess(){
   const p=process();
   pc.elements().remove();
   if(!p){processDetail();return}
-  pc.add([...p.steps.map((s,i)=>({data:{id:s.id,type:s.type,label:s.name},position:draggedSteps.get(draggedStepKey(s.id))||s.position||{x:130+(i%3)*240,y:150+Math.floor(i/3)*170}})),...p.flows.map((f,i)=>({data:{id:'flow:'+i,source:f.source,target:f.target,label:f.label||''}}))]);
+  pc.add([...p.steps.map((s,i)=>({data:{id:s.id,type:s.type,label:stepLabel(s)},position:draggedSteps.get(draggedStepKey(s.id))||s.position||{x:130+(i%3)*240,y:150+Math.floor(i/3)*170}})),...p.flows.map((f,i)=>({data:{id:'flow:'+i,source:f.source,target:f.target,label:f.label||''}}))]);
   frameProcess();
   if(activeStep&&!p.steps.some(s=>s.id===activeStep))activeStep=null;
   processDetail();

@@ -1,6 +1,9 @@
 kind: ontology
 name: 顧客と契約の定義
 base: https://example.com/customer#
+# 作業場所（システム・Excel・取引先など）は places.yaml で共有し、各作業の place で参照する。
+imports:
+  - places.yaml
 concepts:
   - id: Organization
     name: 法人
@@ -192,6 +195,7 @@ processes:
         name: 内容を審査する
         type: task
         owner: 営業担当
+        place: SalesSystem
         position: { x: 340, y: 160 }
         items:
           - { concept: Organization, role: reads }
@@ -204,6 +208,7 @@ processes:
         name: 契約を締結する
         type: task
         owner: 契約担当
+        place: SalesSystem
         position: { x: 820, y: 160 }
         items:
           - { concept: Organization, role: participates }

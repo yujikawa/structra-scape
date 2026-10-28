@@ -8,7 +8,7 @@
 
 - **Terms and relationships**: definitions, aliases, included and excluded examples, evidence and agreement state; how terms relate and the rules that classify them
 - **Attributes (data items)**: the values a term carries (dates, amounts, codes…) and where they live in the data
-- **Business processes**: steps in order, who does them, and the terms each step uses, with drill-down into detail flows
+- **Business processes**: steps in order, who does them, where (the work place: a system, a spreadsheet…), and the terms each step uses, with drill-down into detail flows
 - **Open questions**: what is missing, undecided, not yet agreed or not yet mapped to data, and gaps in the flows (owners, decision conditions, dead ends), phrased as questions business users can answer in the viewer
 - **Changes**: how the meaning changed since the last commit, with changes to agreed definitions highlighted
 
@@ -231,6 +231,16 @@ Everything is optional; open questions appear only for the items a model uses.
   differences to reconcile. Recording judgments on an agreed definition is not a change to it.
 - OWL and SKOS exports leave this out and say so in a comment at the top; the Markdown
   export includes it. See `samples/customer-contract.yaml`.
+
+### Work places
+
+Each step may name its work `place` (a business system, a department's spreadsheet, a
+partner; usually listed in a shared `models/places.yaml`) and its `timing`. That says where
+the data a step creates or uses is. Work that moves data to another place is a step on the
+receiving place with `role: receives`; how it is done (by hand, a file, an API) is not
+categorized or guessed. Across the folder, open questions ask how a term gets to a place
+where it is used but neither created nor received. The term detail lists where a term is
+created, received and used; `strscape overview` lists the same per term.
 
 ## How the AI edits, and how agreed definitions are protected
 

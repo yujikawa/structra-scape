@@ -45,7 +45,7 @@ test('open items ask to judge, to settle agreeing judgments, and to reconcile di
 test('recording judgments on an agreed definition is not an agreed change; deciding is', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-judgments-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const f of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
+  for (const f of ['customer-contract.yaml', 'billing.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
   const file = path.join(dir, 'customer-contract.yaml');
   updateDocument(file, { operations: [{ op: 'upsert', entity: 'concept', id: 'ActiveContract', value: { review_state: 'agreed', agreed_by: '営業部', agreed_at: '2026-10-20' } }] });
   const cases = structuredClone(loadModel(file, { resolve: false }).concepts.find(c => c.id === 'ActiveContract').cases);
@@ -59,7 +59,7 @@ test('recording judgments on an agreed definition is not an agreed change; decid
 test('answers to a case carry the judgment, and differ only when the judgments differ', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-judgment-answers-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const f of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
+  for (const f of ['customer-contract.yaml', 'billing.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
   const question = openQuestions(path.join(dir, 'customer-contract.yaml')).questions.find(q => q.case === '契約開始日が来月の法人');
   assert.deepEqual(question.choices.map(c => c.value), ['included', 'excluded', 'unsure']);
   const answer = (by, choice, text) => ({ kind: 'strscape-answers', model: 'customer-contract.yaml', answered_by: by, answers: [{ key: question.key, question: question.question, answer: text, choice }] });
@@ -80,7 +80,7 @@ test('Markdown lists each judgment under its case', () => {
 test('answers given by choice become a proposed transaction; the rest become notes', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-answer-patch-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const f of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
+  for (const f of ['customer-contract.yaml', 'billing.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', f), path.join(dir, f));
   const file = path.join(dir, 'customer-contract.yaml');
   // Leave two things open to answer by choice: a boundary and a dimension's additivity.
   const model = loadModel(file, { resolve: false });

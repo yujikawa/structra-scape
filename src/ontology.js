@@ -75,6 +75,11 @@ export function validateOntology(model) {
   }
   if (model.processes !== undefined) errors.push(...validateProcesses(model));
   if (model.metrics !== undefined) errors.push(...validateMetrics(model, ids));
+  if (model.places !== undefined) errors.push(...validatePlaces(model));
+  const placeIds = new Set((Array.isArray(model.places) ? model.places : []).filter(Boolean).map(x => x.id));
+  for (const p of Array.isArray(model.processes) ? model.processes : []) for (const s of Array.isArray(p?.steps) ? p.steps : []) {
+    if (s?.place !== undefined && !placeIds.has(s.place)) errors.push(`${p.id}/${s.id}.place: 作業場所が見つかりません: ${s.place}`);
+  }
   return errors;
 }
 
@@ -189,6 +194,23 @@ function validateJudgments(at, judgments) {
   });
   return errors;
 }
+// Places: wherever data is handled for the work — a business system, a department's spreadsheet,
+// a partner. Deliberately abstract: whether the work there is manual or automated is not
+// modeled. A shared list (places.yaml) is imported by the domain files, whose steps name the
+// place they are done on. How data moves between places is read from those steps.
+function validatePlaces(model) {
+  if (!Array.isArray(model.places)) return ['places は配列にしてください'];
+  const errors = [], ids = new Set();
+  for (const s of model.places) {
+    if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(s.id)) { errors.push(`作業場所のIDが無効です: ${s?.id}`); continue; }
+    if (ids.has(s.id)) errors.push(`重複した作業場所のID: ${s.id}`);
+    ids.add(s.id);
+    if (typeof s.name !== 'string' || !s.name.trim()) errors.push(`${s.id}: 名前が必要です`);
+    for (const field of ['description', 'owner', 'question', 'evidence']) if (s[field] !== undefined && typeof s[field] !== 'string') errors.push(`${s.id}.${field}: 文字列にしてください`);
+    if (s.aliases !== undefined && (!Array.isArray(s.aliases) || s.aliases.some(a => typeof a !== 'string' || !a.trim()) || new Set(s.aliases).size !== s.aliases.length)) errors.push(`${s.id}.aliases: 重複のない空でない文字列の配列にしてください`);
+  }
+  return errors;
+}
 // Data items carried by a concept (OWL datatype properties). The type is the business-level kind of value.
 export const attributeTypes = { text: '文字列', integer: '整数', decimal: '数値', amount: '金額', boolean: 'はい／いいえ', date: '日付', datetime: '日時', code: '区分値', identifier: '識別子' };
 function validateAttributes(concept) {
@@ -223,7 +245,8 @@ export function conceptAttributes(model, conceptId) {
   return result;
 }
 
-export const usageRoles = { creates: '作成する', reads: '参照する', updates: '更新する', participates: '参加する' };
+// receives: the step takes the term in from another place (a copy, an import, a hand-over by mail).
+export const usageRoles = { creates: '作成する', receives: '受け取る', reads: '参照する', updates: '更新する', participates: '参加する' };
 export const stepTypes = { start: '開始', task: '作業', decision: '分岐（一つ選ぶ）', parallel: '並行開始', join: '合流（すべて待つ）', end: '終了' };
 export function conceptUsages(model, conceptId) {
   return (model.processes || []).flatMap(process => process.steps.flatMap(step => (step.items || []).filter(item => item.concept === conceptId).map(item => ({ process: process.id, processName: process.name, step: step.id, stepName: step.name, role: item.role }))));
@@ -242,7 +265,7 @@ export function validateProcesses(model) {
       if (!s || !validId(s.id) || ids.has(s.id)) { errors.push(`${p.id}: 作業IDが無効または重複しています`); continue; }
       ids.add(s.id);
       if (typeof s.name !== 'string' || !s.name.trim() || !Object.hasOwn(stepTypes,s.type)) errors.push(`${s.id}: 名前と有効な種類が必要です`);
-      for (const field of ['owner','description','example','question']) if(s[field] !== undefined && typeof s[field] !== 'string') errors.push(`${s.id}: ${field} は文字列にしてください`);
+      for (const field of ['owner','description','example','question','timing']) if(s[field] !== undefined && typeof s[field] !== 'string') errors.push(`${s.id}: ${field} は文字列にしてください`);
       if(s.position !== undefined && (!s.position || !Number.isFinite(s.position.x) || !Number.isFinite(s.position.y))) errors.push(`${s.id}: 配置が無効です`);
       if(s.items !== undefined && !Array.isArray(s.items)) { errors.push(`${s.id}: items は配列にしてください`); continue; }
       const seen = new Set();
@@ -294,7 +317,7 @@ export function rdfOmissions(model) {
   const own = item => item && !item.imported_from;
   const items = [...(model.concepts || []), ...(model.properties || [])].filter(own);
   const left = [
-    [(model.metrics || []).length, '指標（metrics）'],
+    [(model.metrics || []).length, '指標（metrics）'], [(model.places || []).some(own), '作業場所（places）'],
     [items.some(c => c.temporal || c.effective_from || c.effective_to), '時間の意味（temporal）と適用期間（effective_from / effective_to）'],
     [items.some(c => c.data_mapping || (c.attributes || []).some(a => a.data_mapping)), 'データ対応（data_mapping）'],
   ].filter(([present]) => present).map(([, label]) => label);

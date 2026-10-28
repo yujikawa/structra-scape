@@ -196,6 +196,25 @@ case or changing its `result` is, so add boundary examples before agreement, or 
 ]}
 ```
 
+## 11. Record where steps are done, and the work that moves data
+
+Places usually live in `models/places.yaml` (see `places.md`); here one is written in the
+domain file to keep the recipe self-contained. The step that takes data in from another place
+has `role: receives`; how it is done goes in its description only as people say it.
+
+```json
+{"operations":[
+  {"op":"upsert","entity":"place","id":"SalesSystem","value":{"name":"販売管理システム","description":"申込みと契約を記録する。","owner":"営業部"}},
+  {"op":"upsert","entity":"place","id":"BillingSheet","value":{"name":"請求確認シート","description":"経理部が請求前に確認するスプレッドシート。"}},
+  {"op":"upsert","entity":"step","process":"ContractProcess","id":"Sign","value":{"place":"SalesSystem"}},
+  {"op":"upsert","entity":"process","id":"ContractsToBilling","value":{"name":"契約を請求確認シートへ","steps":[
+    {"id":"Start","name":"締め日を迎える","type":"start"},
+    {"id":"Copy","name":"契約を請求確認シートに写す","type":"task","owner":"経理担当","place":"BillingSheet","timing":"毎月の締め日","items":[{"concept":"Contract","role":"receives"}]},
+    {"id":"End","name":"写し終わる","type":"end"}
+  ],"flows":[{"source":"Start","target":"Copy"},{"source":"Copy","target":"End"}]}}
+]}
+```
+
 ## When a command fails
 
 Every command prints JSON; `ok: false` comes with `code` and `errors`.

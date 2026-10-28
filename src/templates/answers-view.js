@@ -18,7 +18,7 @@ const answersRenderUnconfirmed = renderUnconfirmed;
 renderUnconfirmed = function() {
   answersRenderUnconfirmed();
   answerStore = readAnswerStore();
-  const open = new Map(assessCompletion(model).issues.filter(issue => issue.category !== 'データ対応').map(issue => [issue.key, issue]));
+  const open = new Map(assessCompletion(model, completionContext(entries, answerEntry().file)).issues.filter(issue => issue.category !== 'データ対応').map(issue => [issue.key, issue]));
   // A question that is no longer asked has been recorded in the model: drop its answer.
   const stale = Object.keys(answerStore.answers).filter(key => !open.has(key));
   for (const key of stale) delete answerStore.answers[key];

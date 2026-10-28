@@ -9,7 +9,7 @@ import { diffModels, describeChange } from './diff.js';
 import { resolveImports, dependentModels } from './imports.js';
 import { updateYamlText } from './yaml-document.js';
 
-const collections = { concept: 'concepts', property: 'properties', attribute: 'attributes', process: 'processes', step: 'steps', flow: 'flows', restriction: 'restrictions', metric: 'metrics' };
+const collections = { concept: 'concepts', property: 'properties', attribute: 'attributes', process: 'processes', step: 'steps', flow: 'flows', restriction: 'restrictions', metric: 'metrics', place: 'places' };
 // Nested entities and the field naming their parent.
 const parents = { step: ['process', 'processes'], flow: ['process', 'processes'], attribute: ['concept', 'concepts'] };
 const modelFields = ['name', 'base', 'imports'];
@@ -30,8 +30,8 @@ export function readDocument(file) {
 function importedSummary(model, file) {
   if (model.imports === undefined) return undefined;
   const resolved = resolveImports(model, file);
-  const pick = key => resolved[key].filter(item => item.imported_from).map(({ id, name, imported_from, ...rest }) => ({ id, name, imported_from, ...(key === 'properties' ? { domain: rest.domain, range: rest.range } : {}) }));
-  return { concepts: pick('concepts'), properties: pick('properties') };
+  const pick = key => (resolved[key] || []).filter(item => item.imported_from).map(({ id, name, imported_from, ...rest }) => ({ id, name, imported_from, ...(key === 'properties' ? { domain: rest.domain, range: rest.range } : {}) }));
+  return { concepts: pick('concepts'), properties: pick('properties'), places: pick('places') };
 }
 export function inspectDocument(file) {
   const doc = readDocument(file), imported = importedSummary(doc.model, file);
@@ -168,7 +168,7 @@ export function updateDocument(file, patch, { dryRun = false, expectRevision, al
   });
 }
 
-// Move concepts/properties (with their attributes and the restrictions on moved concepts) into a
+// Move concepts/properties (with their attributes and the restrictions on moved concepts) or places into a
 // shared definitions file, and make the source import it. Both files are validated together, so a
 // definition can move to common.yaml even while other models already import that file.
 // Moving does not change meaning, so the agreed-definition guard does not apply.
@@ -191,11 +191,12 @@ function promoteLocked(source, target, ids, to, file, { dryRun, expectRevision, 
     const exists = fs.existsSync(target), tgt = exists ? load(target) : null;
     const created = { kind: 'ontology', name, base: base || new URL('common#', src.model.base).href, concepts: [], properties: [], restrictions: [] };
     const sourceNext = structuredClone(src.model), targetNext = structuredClone(tgt?.model || created);
-    const moved = { concepts: [], properties: [], restrictions: 0 };
+    const moved = { concepts: [], properties: [], places: [], restrictions: 0 };
     for (const id of new Set(ids)) {
-      const key = sourceNext.concepts.some(c => c.id === id) ? 'concepts' : sourceNext.properties.some(p => p.id === id) ? 'properties' : null;
-      if (!key) fail('NOT_FOUND', `No local concept or property ${id} in ${file} (imported definitions move from the file that owns them)`);
-      if (targetNext.concepts.some(c => c.id === id) || targetNext.properties.some(p => p.id === id)) fail('VALUE', `${to} already defines ${id}`);
+      const key = sourceNext.concepts.some(c => c.id === id) ? 'concepts' : sourceNext.properties.some(p => p.id === id) ? 'properties' : (sourceNext.places || []).some(s => s.id === id) ? 'places' : null;
+      if (!key) fail('NOT_FOUND', `No local concept, property or place ${id} in ${file} (imported definitions move from the file that owns them)`);
+      if (key === 'places') targetNext.places ??= [];
+      if ((targetNext[key] || []).some(item => item.id === id)) fail('VALUE', `${to} already defines ${id}`);
       targetNext[key].push(sourceNext[key].find(item => item.id === id));
       sourceNext[key] = sourceNext[key].filter(item => item.id !== id);
       moved[key].push(id);
@@ -249,12 +250,12 @@ export function registerAuthoringCommands(program) {
     .option('--dry-run', 'validate without saving').option('--expect-revision <sha256>', 'require revision')
     .option('--allow-agreed-change', 'confirm changes to definitions with review_state: agreed')
     .action(run((file, options) => updateDocument(file, input(options.patch), options)));
-  program.command('promote <file> <ids...>').description('Move concepts/properties into a shared definitions file and import it')
+  program.command('promote <file> <ids...>').description('Move concepts/properties/places into a shared definitions file and import it')
     .requiredOption('--to <file>', 'shared definitions YAML (created if missing)')
     .option('--name <name>', 'model name when the target is created').option('--base <iri>', 'base IRI when the target is created')
     .option('--dry-run', 'validate without saving').option('--expect-revision <sha256>', 'require revision of <file>')
     .action(run((file, ids, options) => promoteDefinitions(file, ids, options.to, options)));
-  for (const entity of ['concept', 'property', 'attribute', 'process', 'step', 'metric']) {
+  for (const entity of ['concept', 'property', 'attribute', 'process', 'step', 'metric', 'place']) {
     const group = program.command(entity).description(`Read and mutate ${entity}`);
     group.command('get <file> [id]').option('--process <id>', 'parent process for steps').option('--concept <id>', 'parent concept for attributes').action(run((file, id, options) => {
       const doc = readDocument(file);

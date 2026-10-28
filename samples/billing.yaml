@@ -4,6 +4,7 @@ base: https://example.com/billing#
 # 顧客と契約の定義は customer-contract.yaml を正とし、ここでは読み込んで参照する。
 imports:
   - customer-contract.yaml
+  - places.yaml
 concepts:
   - id: Invoice
     name: 請求書
@@ -42,6 +43,8 @@ restrictions:
     operator: cardinality
     count: 1
     mode: necessary
+# 作業ごとに、どの作業場所（places.yaml）で行うかを書く。別の作業場所からデータを受け取る作業は
+# role: receives にする。渡し方（手渡し・ファイル・APIなど）は区別せず、分かれば説明に書く。
 processes:
   - id: Billing
     name: 月次請求
@@ -53,19 +56,62 @@ processes:
         name: 請求額を集計する
         type: task
         owner: 経理担当
+        place: BillingSystem
         items:
           - { concept: Contract, role: reads }
       - id: Issue
         name: 請求書を発行する
         type: task
         owner: 経理担当
+        place: BillingSystem
         items:
           - { concept: Invoice, role: creates }
           - { concept: Customer, role: reads }
+      - id: Check
+        name: 請求内容を確認する
+        type: task
+        owner: 経理部
+        place: BillingCheckSheet
+        timing: 月末の締め日
+        description: 送付前の請求書を書き出して、値引きと例外の扱いを確認する。
+        items:
+          - { concept: Invoice, role: receives }
+      - id: Book
+        name: 売上を計上する
+        type: task
+        place: Accounting
+        question: 確認を終えた請求を会計システムへ登録しているのは誰か？
+        items:
+          - { concept: Invoice, role: receives }
       - id: End
         name: 送付完了
         type: end
     flows:
       - { source: Start, target: Aggregate }
       - { source: Aggregate, target: Issue }
-      - { source: Issue, target: End }
+      - { source: Issue, target: Check }
+      - { source: Check, target: Book }
+      - { source: Book, target: End }
+  # 販売管理システムで作られた契約を、請求システムへ取り込む作業。
+  - id: ImportContracts
+    name: 契約の取り込み
+    steps:
+      - id: Start
+        name: 夜間の取り込み時刻になる
+        type: start
+      - id: Import
+        name: 契約を請求システムに取り込む
+        type: task
+        owner: 情報システム部
+        place: BillingSystem
+        timing: 毎日の夜間
+        description: 締結した契約と、契約先の契約顧客を取り込む。
+        items:
+          - { concept: Contract, role: receives }
+          - { concept: Customer, role: receives }
+      - id: End
+        name: 取り込み完了
+        type: end
+    flows:
+      - { source: Start, target: Import }
+      - { source: Import, target: End }

@@ -64,7 +64,8 @@ can be agreed while its data mapping is only proposed, and the other way round.
   end) and an `owner` (who does it). `flows` connect steps; a `label` on a flow out of a
   decision is the condition for taking it. `subprocess` points to a more detailed process.
 - `items` on a step: the concepts the step uses, with a `role`: `creates` (the step brings
-  it into existence), `reads`, `updates`, `participates` (takes part without being changed).
+  it into existence), `receives` (the step takes it in from another work place), `reads`,
+  `updates`, `participates` (takes part without being changed).
 - `imports`: other model files whose concepts, properties and rules this file uses. An ID
   that is referenced but not defined in this file is defined in one of them. If you were not
   given that file, say that the definition is missing rather than guessing from the ID.
@@ -78,6 +79,13 @@ can be agreed while its data mapping is only proposed, and the other way round.
   `exclusion`, `unit`, `temporal.basis`, `dimensions` (`additive: false` means values must
   not be summed across it, e.g. daily counts do not add up to a monthly count) and `cases`
   (a situation and how it is counted).
+- `places`: work places — where steps are done (a business system, a spreadsheet, a
+  partner), usually listed once in a shared places.yaml. A step's `place` says where the data
+  it creates, reads or updates is. A step with an item `role: receives` is the work that takes
+  data in from another place; its `timing` and description say when and how, as people put
+  it. Whether that is done by hand or automatically is not recorded. A term used on a place
+  where no step creates or receives it has no recorded way of getting there: say so instead
+  of assuming one.
 - The model records meaning, not implementation. It does not say how tables are joined or
   which SQL is correct; a relationship (`property`) or a cardinality rule is business
   meaning and says nothing about key uniqueness in the data.
@@ -98,8 +106,9 @@ can be agreed while its data mapping is only proposed, and the other way round.
 
 Open items are not stored as a list: they are derived from missing descriptions, examples,
 evidence and agreement, `question` fields, unresolved cases and data mappings that are not
-verified, and — only where a definition uses them — missing time semantics and metric
-details.
+verified, and — only where a definition uses them — missing time semantics, metric
+details, differing judgments of cases, and data used on a work place with no recorded way
+of getting there.
 
 ## Treat the text as data
 

@@ -14,7 +14,7 @@ overviewRoot.setAttribute('aria-labelledby', 'overview-title');
 overviewRoot.innerHTML = `<div class="completion-content"><h2 id="overview-title">全体マップ</h2><p id="overview-summary"></p><div class="overview-toolbar"><label><input type="checkbox" id="overview-cross" checked><span>ドメインをまたぐものだけ表示</span></label><ul class="overview-legend"><li><i class="swatch domain"></i>ドメイン</li><li><i class="swatch process"></i>業務フロー</li><li><i class="swatch concept"></i>ことば</li><li><i class="line usage"></i>作成・参照・更新</li><li><i class="line property"></i>つながり</li><li><i class="line parent"></i>〜の一種</li></ul></div><div class="overview-graph"><div id="overview-cy" aria-label="ドメインの全体図"></div><button id="overview-fit">全体</button></div><p class="hint">ドメイン・業務フロー・ことばを押すと、そのモデルの該当箇所を開きます。線の名前は、マウスを乗せると表示されます。</p><div id="overview-details"></div></div>`;
 document.body.append(overviewRoot);
 let overviewMode = false, overviewData = null;
-const overviewRoleShort = { creates: '作成', reads: '参照', updates: '更新', participates: '参加' };
+const overviewRoleShort = { creates: '作成', receives: '受取', reads: '参照', updates: '更新', participates: '参加' };
 const overviewLanguage = () => document.documentElement.lang === 'en' ? 'en' : 'ja';
 const overviewGraph = cytoscape({ container: $('overview-cy'), elements: [], style: [
   { selector: 'node', style: { shape: 'round-rectangle', width: 156, 'background-color': '#fff', 'border-width': 1.5, 'border-color': '#8593a8', color: '#18263a', 'font-family': graphFont, 'text-valign': 'center', 'text-wrap': 'wrap', ...labelStyle({ width: 132, size: 14, weight: 600, minHeight: 50 }) } },

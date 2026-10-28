@@ -14,28 +14,28 @@ function workspace(t, files = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-workspace-')), dir = path.join(root, 'models');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(dir);
-  for (const name of ['customer-contract.yaml', 'billing.yaml', 'process-hierarchy.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
+  for (const name of ['customer-contract.yaml', 'billing.yaml', 'process-hierarchy.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
   for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text);
   return dir;
 }
 
 test('overview finds hand-overs and definitions used across domains', () => {
   const overview = workspaceOverview(loadWorkspace('samples'));
-  assert.deepEqual(overview.domains.map(d => [d.file, d.concepts, d.processes]), [['billing.yaml', 1, 1], ['customer-contract.yaml', 5, 1], ['process-hierarchy.yaml', 0, 3]]);
+  assert.deepEqual(overview.domains.map(d => [d.file, d.concepts, d.processes]), [['billing.yaml', 1, 2], ['customer-contract.yaml', 5, 1], ['process-hierarchy.yaml', 0, 3]]);
   // The contract process creates 契約 and the billing process reads it.
   const handover = overview.links.find(l => l.from === 'customer-contract.yaml' && l.to === 'billing.yaml');
-  assert.deepEqual(handover.handoffs.map(h => [h.conceptId, h.from.process, h.to.process, h.to.role]), [['Contract', 'ContractProcess', 'Billing', 'reads']]);
+  assert.deepEqual(handover.handoffs.map(h => [h.conceptId, h.from.process, h.to.process, h.to.role]), [['Contract', 'ContractProcess', 'Billing', 'reads'], ['Contract', 'ContractProcess', 'ImportContracts', 'receives']]);
   // Billing points at terms the contract domain owns, through imports.
   const uses = overview.links.find(l => l.from === 'billing.yaml' && l.to === 'customer-contract.yaml');
   assert.equal(uses.imports, true);
-  assert.deepEqual(uses.uses.map(u => `${u.kind}:${u.id}>${u.conceptId}`).sort(), ['property:basedOn>Contract', 'property:billedTo>Customer', 'step:Aggregate>Contract', 'step:Issue>Customer']);
+  assert.deepEqual(uses.uses.map(u => `${u.kind}:${u.id}>${u.conceptId}`).sort(), ['property:basedOn>Contract', 'property:billedTo>Customer', 'step:Aggregate>Contract', 'step:Import>Contract', 'step:Import>Customer', 'step:Issue>Customer']);
   assert.ok(!overview.links.some(l => l.from === 'process-hierarchy.yaml' || l.to === 'process-hierarchy.yaml'));
   // Matrix rows are grouped by the owning domain and keep each role.
   assert.deepEqual(overview.matrix.map(r => r.id), ['Invoice', 'Contract', 'Customer', 'Organization']);
-  assert.deepEqual(overview.matrix.find(r => r.id === 'Contract').cells['billing.yaml'].map(u => u.role), ['reads']);
+  assert.deepEqual(overview.matrix.find(r => r.id === 'Contract').cells['billing.yaml'].map(u => u.role), ['receives', 'reads']);
   // Only what crosses a boundary is flagged for the diagram's default view.
   assert.deepEqual(overview.concepts.filter(c => c.cross).map(c => c.id).sort(), ['Contract', 'Customer', 'Invoice']);
-  assert.deepEqual(overview.processes.filter(p => p.cross).map(p => p.id).sort(), ['Billing', 'ContractProcess']);
+  assert.deepEqual(overview.processes.filter(p => p.cross).map(p => p.id).sort(), ['Billing', 'ContractProcess', 'ImportContracts']);
   assert.deepEqual(overview.relations.filter(r => r.cross).map(r => r.id).sort(), ['basedOn', 'billedTo']);
   // 契約顧客 is read by billing but no process records creating it.
   assert.deepEqual(overview.questions.map(q => q.ask), ['「契約顧客」は、どの業務で作られますか？']);
@@ -67,7 +67,7 @@ test('overview CLI prints JSON or Markdown, and the viewer carries the overview 
   const md = run('--format', 'md');
   assert.equal(md, overviewMarkdown(workspaceOverview(loadWorkspace('samples'))));
   assert.match(md, /受け渡し：契約（申込みから契約まで › 契約を締結する が作成 → 月次請求 › 請求額を集計する が参照する）/);
-  assert.match(md, /\| 契約 \| 顧客と契約の定義 \| 参照する \| 作成する \|/);
+  assert.match(md, /\| 契約 \| 顧客と契約の定義 \| 受け取る、参照する \| 作成する \|/);
   const html = renderModel('samples');
   assert.match(html, /function workspaceOverview/);
   assert.match(html, /mode-overview/);

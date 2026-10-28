@@ -15,7 +15,7 @@ import { dev } from '../src/dev.js';
 function workspace(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'structra-answers-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const name of ['customer-contract.yaml', 'billing.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
+  for (const name of ['customer-contract.yaml', 'billing.yaml', 'places.yaml']) fs.copyFileSync(path.join('samples', name), path.join(dir, name));
   return dir;
 }
 const answersFor = (questions, picks, extra = {}) => ({

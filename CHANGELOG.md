@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Work places
+- `places` (work places: a system, a spreadsheet, a partner; usually a shared places.yaml
+  imported by every domain) and, on steps, `place` and `timing`. Item role `receives` for the
+  work that takes data in from another place; how it is done is not categorized.
+- Open questions, across every model in the folder: a term used on a place where no step
+  creates or receives it (「…へは、どうやって渡っていますか？」), where a received term comes from,
+  receiving steps without timing, places without a description or owner.
+- The term detail lists where a term is created, received and used; the process diagram
+  shows each step's place; `strscape overview` adds work places and data moves (and gaps).
+- The modeling skill gains `references/places.md`.
+
 ### Answering
 - Questions with a known set of answers are answered by choice in the viewer (yes / no /
   not sure, included / excluded, time basis, value types, aggregation, which term an alias
