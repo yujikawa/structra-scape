@@ -128,8 +128,14 @@ Business users type answers in Open questions and click *Export answers* to save
 ```text
 Business user: answers → exports (or saves through dev)
 Data team:     asks the AI to take in the answers
-AI (skill):    strscape answers → apply → strscape answers --resolve
+AI (skill):    strscape answers (--patch) → apply → strscape answers --resolve
 ```
+
+- Questions with a known set of answers (agreeing with a definition, included or excluded, when something is judged, whether a boundary counts, whether values add up, value types, aggregation, which term an alias means…) are answered by choice, with an optional note; the rest are free text.
+- Each question shows what is recorded now (the description, and the owner of a step).
+- *One question at a time* shows the questions one by one with the progress; moving on skips, while "not sure" is an answer.
+- Filtering by owner shows the questions about that owner's steps and the terms and metrics they use (estimated from process owners).
+- `strscape answers --patch` turns the answers given by choice into a proposed apply transaction; free text, agreement and differing answers are listed as notes for the AI and you.
 
 - Each question lists the answers given so far: under `dev` the ones saved in `answers/`, in any build the files opened with *Open answer files*. Differing answers are marked *Answers differ*, and `strscape answers` reports them as `conflict`; the AI asks you instead of picking one.
 - Answers in progress are kept in the browser and disappear once the model records them.
@@ -218,6 +224,11 @@ Everything is optional; open questions appear only for the items a model uses.
   `cases` in words (without `expected`, the viewer asks how to count it). The viewer shows
   what the records can answer: the current value, and values at a past moment such as last
   month-end (not answerable from `current_only` data).
+- Case `judgments`: people judge examples more easily than they define words. The AI adds
+  boundary examples as undecided cases; the open-questions view asks them with three
+  choices (included / excluded / not sure), and the answers are recorded per department.
+  Cases where departments judge differently, or differently from the decision, are shown as
+  differences to reconcile. Recording judgments on an agreed definition is not a change to it.
 - OWL and SKOS exports leave this out and say so in a comment at the top; the Markdown
   export includes it. See `samples/customer-contract.yaml`.
 
@@ -257,7 +268,7 @@ On every pull request that touches the models, the workflow validates them, post
 | `promote <file> <ids...> --to <file>` | Move terms into a shared file and import it |
 | `overview <dir>` | Hand-overs, shared definitions and overlapping words across domains; `--format json\|md` |
 | `questions <file>` | The open questions that take answers, with their keys |
-| `answers <file\|dir>` | Read exported answers (`open`, `conflict`); `--resolve <keys...>` removes recorded ones |
+| `answers <file\|dir>` | Read exported answers (`open`, `conflict`); `--patch` proposes a transaction for answers given by choice; `--resolve <keys...>` removes recorded ones |
 | `import-glossary <csv>` | Turn a glossary CSV/TSV into a patch for `apply` (needs an ID column) |
 | `check-mapping <file\|dir> --schema <files...>` | Check mapped tables and columns against a dbt manifest/catalog or an information_schema CSV |
 | `diff <file\|dir>` | Changes in meaning: `--base <rev\|file>`, `--format json\|md`, `--fail-on-agreed` |

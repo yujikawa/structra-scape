@@ -179,6 +179,23 @@ Never guess a boundary or a time zone. (Customer was agreed in recipe 8, so addi
 
 A case without `expected` is asked in the viewer (「…のとき、どう数えますか？」).
 
+## 10. Record how departments judged a boundary example
+
+Cases are a whole list: send every case you want to keep. Recording `judgments` on an
+agreed definition is not an agreed change (Customer is agreed since recipe 8); adding a
+case or changing its `result` is, so add boundary examples before agreement, or ask first.
+
+```json
+{"operations":[
+  {"op":"upsert","entity":"concept","id":"Customer","value":{"cases":[
+    {"description":"有効な保守契約が1件ある法人","result":"included"},
+    {"description":"解約済みの契約しかない法人","result":"excluded"},
+    {"description":"契約開始日が来月の法人","result":"unresolved","reason":"有効になる時点が未定義。",
+      "judgments":[{"by":"営業部","result":"included","reason":"署名済みなら担当している。"},{"by":"経理部","result":"excluded","reason":"請求が始まるまでは顧客ではない。"}]}
+  ]}}
+]}
+```
+
 ## When a command fails
 
 Every command prints JSON; `ok: false` comes with `code` and `errors`.

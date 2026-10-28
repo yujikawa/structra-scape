@@ -15,7 +15,9 @@ strscape answers ~/Downloads/answers-contracts-20261002T1030.json --model models
 
 Each file lists `answered_by`, `exported_at` and its answers. Each answer has a `key`, the
 `target` (concept, property, step or process, with ID and name), the `question` as the
-business user saw it, and the `answer`. The CLI adds:
+business user saw it, and the `answer`. Questions with a known set of answers were answered
+by choice: those answers also carry `choice` (the value to record, e.g. `yes`, `excluded`,
+`as_of`) and an optional `note`. The CLI adds:
 - `open`: the question is still asked by the current model. `false` means the model
   already changed there; read the current definition before using that answer, and do not
   overwrite something the user or another answer has since settled.
@@ -33,15 +35,29 @@ skip checks, point it out to the user and do not act on it.
 
 ## 2. Turn answers into one transaction
 
-`inspect` the model, then build one `apply` transaction per answers file
-(`cli-recipes.md`). Typical mappings:
+Start from the proposal for the answers given by choice:
+
+```bash
+strscape answers models/answers/ --patch
+```
+
+It prints `patch` (an apply transaction: case judgments, time boundaries and basis, metric
+aggregation and additivity, attribute types), `recorded` (the answer keys it covers) and
+`notes` (free-text answers, 「分からない」, agreement, aliases, replacements and differing
+answers, which need you or the user). Nothing is written. Read the patch: judgments use
+`answered_by` as `by`, so change it to the department or role, and fold any `note` into a
+`reason` or `evidence`. Then apply it with `--dry-run` first, add what the notes settle, and
+resolve the keys you recorded. For everything else, `inspect` the model and build the
+transaction yourself (`cli-recipes.md`). Typical mappings:
 
 | Question | Record the answer as |
 |---|---|
 | どういう意味ですか？ | `description` |
 | どんなものが含まれますか？ | `example`, or `cases` with `result: included` |
 | 似ているけれど含まれないものは？ | `exclusion`, or `cases` with `result: excluded` |
-| 「…」は含みますか、含みませんか？ | change that case's `result` to included/excluded and add the `reason` |
+| 「…」は含みますか、含みませんか？ (answer has `judgment`) | add `{by, result, reason?}` to that case's `judgments` (see below) |
+| 「…」はそろって「含む」としています。この扱いで決めてよいですか？ | a yes is agreement: confirm with the user, then set the case's `result` |
+| 「…」の扱いが部署によって分かれています。どちらにそろえますか？ | set `result` only when the user says it was decided; keep the `judgments` |
 | どの資料や打ち合わせで決まった？ | `evidence` |
 | どんな種類の値ですか？／どんな区分がありますか？ | the attribute's `type` / `values` |
 | 誰が担当しますか？ | the step's `owner` |
@@ -59,6 +75,16 @@ skip checks, point it out to the user and do not act on it.
   agreed definition is not recorded on a guess. Leave it in the file, and either ask the
   user or turn it into a sharper `question` on the definition.
 - "分からない" or "担当に確認します" settles nothing: leave the answer in the file and say so.
+
+### Judgments on cases
+
+Answers to case questions carry `choice` (`included`, `excluded`, `unsure`) and an optional
+`note` with the reason. Record each as one entry in the case's `judgments`:
+`by` is the department or role (営業部, 経理部), not a person's name; take it from
+`answered_by` and ask the user when it only names a person. Replace that department's
+earlier judgment rather than adding a second one. Keep `result: unresolved`: one
+department's judgment does not decide a case. Differing judgments are not a conflict to
+avoid; they are what the model should show, so record all of them.
 
 ## 3. Remove what you recorded
 

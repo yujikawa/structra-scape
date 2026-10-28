@@ -115,16 +115,44 @@ test('every view of the built reader runs without page errors', async t => {
   assert.equal(Number(await page.innerText('#mode-unconfirmed .unconfirmed-count')), questionCount);
   // Answers are written in place and exported as a file for whoever maintains the model.
   await page.fill('#answer-name', '営業部 山田');
-  await page.locator('.answer-field textarea').first().fill('株式会社や合同会社');
+  await page.locator('.answer-field:not(:has(.answer-choices)) textarea').first().fill('株式会社や合同会社');
   assert.equal(await page.innerText('.answer-summary'), '1件の回答を入力済み');
+  // A case is judged with three choices; the text box holds an optional reason.
+  const judged = page.locator('.completion-issue:has(.answer-choices)', { hasText: '「契約開始日が来月の法人」は含みますか' });
+  await judged.locator('[data-choice="excluded"]').click();
+  await judged.locator('textarea').fill('請求が始まるまでは顧客ではない');
+  // Questions with known answers offer choices, with room for a note.
+  assert.ok(await page.locator('.completion-issue:has-text("この定義で合っていますか？") [data-choice="yes"]').count() > 0);
+  // Each question shows what is recorded now.
+  assert.ok(await page.locator('.completion-group .issue-context').count() > 0);
+  assert.equal(await judged.locator('[data-choice="excluded"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.innerText('.answer-summary'), '2件の回答を入力済み');
+  // Until they are exported, a bar at the bottom says so and exports them too.
+  assert.equal(await page.isVisible('.answer-pending'), true);
+  assert.equal(await page.innerText('.answer-pending b'), '2');
   const [saved] = await Promise.all([page.waitForEvent('download'), page.click('#answer-export')]);
   const exported = JSON.parse(fs.readFileSync(await saved.path(), 'utf8'));
   assert.equal(exported.kind, 'strscape-answers');
   assert.equal(exported.model, 'customer-contract.yaml');
   assert.equal(exported.answered_by, '営業部 山田');
-  assert.deepEqual(exported.answers.map(a => a.answer), ['株式会社や合同会社']);
+  assert.deepEqual(exported.answers.map(a => [a.answer, a.choice, a.note]), [['株式会社や合同会社', undefined, undefined], ['含まない：請求が始まるまでは顧客ではない', 'excluded', '請求が始まるまでは顧客ではない']]);
   assert.match(exported.answers[0].key, /^q[0-9a-f]{8}$/);
   assert.equal(await page.isVisible('.answer-exported'), true);
+  assert.equal(await page.isVisible('.answer-pending'), false);
+  // One question at a time: only the current question shows, with the progress.
+  await page.click('#answer-focus');
+  assert.equal(await page.locator('.completion-issue.current').count(), 1);
+  assert.equal(await page.locator('.completion-content > .completion-group:visible').count(), 1);
+  assert.equal(await page.innerText('.answer-progress b'), '1');
+  await page.click('#answer-next');
+  assert.equal(await page.innerText('.answer-progress b'), '2');
+  await page.click('#answer-focus');
+  assert.ok(await page.locator('.completion-content > .completion-group:visible').count() > 1);
+  // Questions narrowed to one owner's steps and the terms they use.
+  const all = await page.locator('.completion-issue').count();
+  await page.selectOption('#completion-owner', '契約担当');
+  assert.ok(await page.locator('.completion-issue').count() < all);
+  await page.selectOption('#completion-owner', '');
   // Answers survive a reload; an answer whose question is no longer asked is dropped.
   await page.evaluate(() => {
     const stored = JSON.parse(localStorage.getItem(answerStoreKey()));
@@ -132,8 +160,9 @@ test('every view of the built reader runs without page errors', async t => {
     localStorage.setItem(answerStoreKey(), JSON.stringify(stored));
   });
   await page.reload();
-  assert.equal(await page.inputValue('.answer-field textarea >> nth=0'), '株式会社や合同会社');
-  assert.deepEqual(Object.keys(await page.evaluate(() => JSON.parse(localStorage.getItem(answerStoreKey())).answers)), [exported.answers[0].key]);
+  assert.equal(await page.inputValue('.answer-field:not(:has(.answer-choices)) textarea >> nth=0'), '株式会社や合同会社');
+  assert.equal(await page.getAttribute('.completion-issue:has-text("契約開始日が来月の法人") [data-choice="excluded"]', 'aria-pressed'), 'true');
+  assert.deepEqual(Object.keys(await page.evaluate(() => JSON.parse(localStorage.getItem(answerStoreKey())).answers)).sort(), exported.answers.map(a => a.key).sort());
 
   for (const language of ['ja', 'en']) {
     await page.click('#ui-language summary'); await page.click(`[data-language="${language}"]`);

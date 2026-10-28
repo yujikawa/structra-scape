@@ -58,6 +58,14 @@ Rules of thumb:
   could apply. Avoid circular definitions (「契約顧客とは契約している顧客」).
 - `example` / `exclusion`, or `cases`: at least one thing that is in and one that is out.
   Exclusions near the boundary are the most valuable.
+- Boundary examples: people cannot always say what a word means, but they can judge an
+  example. After a definition, add two or three `cases` near its edge with
+  `result: unresolved`, varying one thing at a time: timing (starts next month, ends exactly
+  at the reference time), status (suspended, cancelled but not yet ended), counts (two,
+  none), the kind of counterpart (a group company, an individual), known exceptions. Write
+  each as a situation a business user recognizes, without IDs. Do not judge them yourself;
+  the viewer asks people to answer 含む／含まない／分からない, and how departments differ
+  is recorded as `judgments`.
 - `evidence`: where the definition came from (a meeting, a document, a person's role).
   Write "assumption by AI from <source>" when you inferred it.
 - `question`: anything you had to guess. A concept with a question gets

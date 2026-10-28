@@ -1,0 +1,58 @@
+{
+  "kind": "strscape-answers",
+  "model": "customer-contract.yaml",
+  "model_name": "顧客と契約の定義",
+  "revision": "9f845cf3faf6beec5a0969f72767b7bb071c6ca209ef96b7274f01efe61d3521",
+  "answered_by": "",
+  "exported_at": "2026-10-28T07:06:56.052Z",
+  "answers": [
+    {
+      "key": "qc2801664",
+      "category": "未決定",
+      "target": {
+        "kind": "concept",
+        "id": "Customer",
+        "name": "契約顧客"
+      },
+      "question": "「契約開始日が来月の法人」は含みますか、含みませんか？",
+      "answer": "含む",
+      "choice": "included"
+    },
+    {
+      "key": "q36bc3f34",
+      "category": "不整合",
+      "target": {
+        "kind": "concept",
+        "id": "Customer",
+        "name": "契約顧客"
+      },
+      "question": "「停止中の契約だけを持つ法人」の扱いが部署によって分かれています。どちらにそろえますか？",
+      "answer": "含む",
+      "choice": "included"
+    },
+    {
+      "key": "q91fd044f",
+      "category": "未決定",
+      "target": {
+        "kind": "concept",
+        "id": "Customer",
+        "name": "契約顧客"
+      },
+      "question": "「解約を申し出ていて、契約終了日がまだ来ていない法人」は、判定した部署がそろって「含む」としています。この扱いで決めてよいですか？",
+      "answer": "含む",
+      "choice": "included"
+    },
+    {
+      "key": "q57431591",
+      "category": "不整合",
+      "target": {
+        "kind": "concept",
+        "id": "ActiveContract",
+        "name": "有効契約"
+      },
+      "question": "「基準日時ちょうどに終了する契約」は「含まない」と決まっていますが、違う判断をしている部署があります。どちらに合わせますか？",
+      "answer": "含む",
+      "choice": "included"
+    }
+  ]
+}

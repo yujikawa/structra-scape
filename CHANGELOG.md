@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Answering
+- Questions with a known set of answers are answered by choice in the viewer (yes / no /
+  not sure, included / excluded, time basis, value types, aggregation, which term an alias
+  means…), with free text always possible; exports carry `choice` and `note`.
+- Each question shows what is recorded now; *1問ずつ答える* shows one question at a time with
+  the progress; questions can be filtered by process owner.
+- `strscape answers --patch` proposes an apply transaction for the answers given by choice and
+  lists everything else as notes.
+
+### Judging examples
+- Cases may record `judgments`: how each department or role judged them (included,
+  excluded, unsure, with a reason). Undecided cases are answered in the viewer with three
+  choices, and the exported answer carries the judgment. Differing judgments, and judgments
+  that differ from the decided result, appear as open items to reconcile; agreeing ones ask
+  whether that settles the case. Recording judgments is not an agreed change.
+- The modeling skill adds boundary examples after each definition instead of judging them.
+
 ### Analysis
 - Models record the tacit knowledge an analysis depends on, not its implementation:
   `temporal` on concepts (basis current / as_of / period, validity period with inclusive

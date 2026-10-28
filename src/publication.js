@@ -1,4 +1,4 @@
-import { conceptAttributes, temporalFacts, metricReach, mappingStatuses, historyKinds, metricAggregations } from './ontology.js';
+import { judgmentResults, conceptAttributes, temporalFacts, metricReach, mappingStatuses, historyKinds, metricAggregations } from './ontology.js';
 // Shared, dependency-free document output for CLI and browser.
 const xml = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const md = value => String(value ?? '').replace(/([\\`*_{}\[\]<>#|])/g,'\\$1');
@@ -10,7 +10,7 @@ export function publicationMarkdown(model, { concept, date = new Date().toISOStr
   for(const c of concepts){
     blocks.push(`## ${md(c.name)}\n\nID: ${md(c.id)}${c.aliases?.length?`\n\n別名: ${c.aliases.map(md).join('、')}`:''}${c.imported_from?`\n\n共通定義: ${md(c.imported_from)}`:''}${c.deprecated?`\n\n**廃止**${c.replaced_by?` — 代わりに「${md(model.concepts.find(x=>x.id===c.replaced_by)?.name||c.replaced_by)}」`:''}`:''}`);
     for(const [key,label] of [['description','定義'],['example','具体例'],['exclusion','含まない例'],['question','確認事項'],['evidence','根拠'],['review_state','確認状況'],['agreed_by','合意した人'],['agreed_at','合意した日']])if(c[key])blocks.push(`### ${label}\n\n${md(c[key])}`);
-    if(c.cases?.length)blocks.push(`### ケース\n\n${c.cases.map(x=>`- ${md(x.result)}: ${md(x.description)}${x.reason?' — '+md(x.reason):''}`).join('\n')}`);
+    if(c.cases?.length)blocks.push(`### ケース\n\n${c.cases.map(x=>`- ${md(x.result)}: ${md(x.description)}${x.reason?' — '+md(x.reason):''}${(x.judgments||[]).map(j=>`\n  - ${md(j.by)}: ${md(judgmentResults[j.result])}${j.reason?' — '+md(j.reason):''}`).join('')}`).join('\n')}`);
     if(c.attributes?.length)blocks.push(`### 属性（データ項目）\n\n| 属性 | ID | 種類 | 必須 | 説明 | データの所在 |\n|---|---|---|---|---|---|\n${c.attributes.map(a=>`| ${cell(a.name)} | ${cell(a.id)} | ${cell(a.type)}${a.values?.length?' ('+a.values.map(v=>cell(v.value)).join(', ')+')':''} | ${a.required?'はい':''} | ${cell(a.description)} | ${a.data_mapping?cell(a.data_mapping.source)+' ['+cell(a.data_mapping.status)+']':''} |`).join('\n')}`);
     if(c.effective_from||c.effective_to)blocks.push(`### 適用期間\n\n${md(c.effective_from||'…')} 〜 ${md(c.effective_to||'…')}（定義を業務で適用する期間。合意した日とは別です）`);
     const attributeName=id=>conceptAttributes(model,c.id).find(r=>r.attribute.id===id)?.attribute.name||id;

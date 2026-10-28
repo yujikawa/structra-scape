@@ -1,13 +1,26 @@
+import { attributeTypes, metricAggregations } from './ontology.js';
+
+// Answer choices offered in the viewer for questions with a known set of answers; people can
+// add free text to any of them. Values are what the AI records; labels are what people see.
+const choiceList = pairs => pairs.map(([value, label]) => ({ value, label }));
+const unsureChoice = ['unsure', '分からない'];
+export const answerChoices = {
+  yesNo: choiceList([['yes', 'はい'], ['no', 'いいえ'], unsureChoice]),
+  judge: choiceList([['included', '含む'], ['excluded', '含まない'], unsureChoice]),
+  basis: choiceList([['current', '現在の状態で'], ['as_of', '基準日時点で'], ['period', '期間中で'], unsureChoice]),
+};
 // Shared, deterministic checks of recorded information; not an OWL reasoner.
 // `message` tells the modeler what to record; `ask` (when set) is the same item as a question
 // for business users, shown in the viewer above the task.
 export function assessCompletion(model) {
   const issues = [];
   const text = value => typeof value === 'string' && value.trim().length > 0;
-  const add = (category, message, target, ask) => {
+  // `extra` (choices, case) does not enter the key: changing the offered choices keeps answers.
+  const add = (category, message, target, ask, extra = {}) => {
     const issue = { category, message, ...(ask ? { ask } : {}), ...target };
-    issues.push({ key: completionIssueKey(issue), ...issue });
+    issues.push({ key: completionIssueKey(issue), ...issue, ...extra });
   };
+  const choose = choices => ({ choices });
   // Imported definitions are reviewed in the model that owns them.
   const local = item => !item.imported_from;
   // A deprecated term is no longer reviewed; what still uses it is reported instead.
@@ -27,20 +40,38 @@ export function assessCompletion(model) {
   // so models that never describe time get no new questions.
   const temporalIssues = (temporal, target, subject) => {
     if (text(temporal.question)) add('未決定', temporal.question, target);
-    if (!temporal.basis) add('不足', '判定の時点（temporal.basis: current / as_of / period）を記録してください。', target, `${subject}は、いつの時点の状態で判断しますか？（現在か、指定した基準日時点か、期間中か）`);
+    if (!temporal.basis) add('不足', '判定の時点（temporal.basis: current / as_of / period）を記録してください。', target, `${subject}は、いつの時点の状態で判断しますか？（現在か、指定した基準日時点か、期間中か）`, { ...choose(answerChoices.basis), field: 'temporal.basis' });
     if (((temporal.basis && temporal.basis !== 'current') || temporal.period) && !text(temporal.timezone)) add('不足', 'タイムゾーン（temporal.timezone）を記録してください。', target, '日付や月末の区切りは、どの地域の時刻で考えますか？');
     const period = temporal.period;
-    if (period?.start !== undefined && period.start_inclusive === undefined) add('不足', '有効期間の開始時点を含むか（temporal.period.start_inclusive）を記録してください。', target, '開始日時ちょうどの時点では、もう有効ですか？');
-    if (period?.end !== undefined && period.end_inclusive === undefined) add('不足', '有効期間の終了時点を含むか（temporal.period.end_inclusive）を記録してください。', target, '終了日時ちょうどの時点では、まだ有効ですか？');
+    if (period?.start !== undefined && period.start_inclusive === undefined) add('不足', '有効期間の開始時点を含むか（temporal.period.start_inclusive）を記録してください。', target, '開始日時ちょうどの時点では、もう有効ですか？', { ...choose(answerChoices.yesNo), field: 'temporal.period.start_inclusive' });
+    if (period?.end !== undefined && period.end_inclusive === undefined) add('不足', '有効期間の終了時点を含むか（temporal.period.end_inclusive）を記録してください。', target, '終了日時ちょうどの時点では、まだ有効ですか？', { ...choose(answerChoices.yesNo), field: 'temporal.period.end_inclusive' });
+  };
+  // A case people still have to judge is asked with three choices (`judge`). Judgments that
+  // disagree with each other, or with the decided result, are shown as a difference to settle.
+  const caseIssues = (c, target) => {
+    const label = { included: '含む', excluded: '含まない' };
+    const firm = (c.judgments || []).filter(j => j.result !== 'unsure');
+    const views = firm.map(j => `${j.by}: ${label[j.result]}`).join('、');
+    if (new Set(firm.map(j => j.result)).size > 1) add('不整合', `判定が分かれています：${c.description}（${views}）`, target, `「${c.description}」の扱いが部署によって分かれています。どちらにそろえますか？`, { ...choose(answerChoices.judge), field: 'case', case: c.description });
+    else if (c.result === 'unresolved') {
+      // Everyone who judged agrees: ask whether that settles it, and keep the choices for others.
+      const extra = { ...choose(answerChoices.judge), field: 'case', case: c.description };
+      if (firm.length) add('未決定', `判定はそろっていますが、未決定です：${c.description}（${views}）`, target, `「${c.description}」は、判定した部署がそろって「${label[firm[0].result]}」としています。この扱いで決めてよいですか？`, extra);
+      else add('未決定', `判定が未決定：${c.description}`, target, `「${c.description}」は含みますか、含みませんか？`, extra);
+    }
+    else {
+      const others = firm.filter(j => j.result !== c.result);
+      if (others.length) add('不整合', `決定と異なる判定があります：${c.description}（決定: ${label[c.result]}、${others.map(j => `${j.by}: ${label[j.result]}`).join('、')}）`, target, `「${c.description}」は「${label[c.result]}」と決まっていますが、違う判断をしている部署があります。どちらに合わせますか？`, { ...choose(answerChoices.judge), field: 'case', case: c.description });
+    }
   };
   const agreementIssues = (item, target, ask) => {
-    if (item.review_state !== 'agreed') add('未合意', '業務担当者と定義を確認し、合意状態を記録してください。', target, ask);
+    if (item.review_state !== 'agreed') add('未合意', '業務担当者と定義を確認し、合意状態を記録してください。', target, ask, { ...choose(answerChoices.yesNo), field: 'review_state' });
     else if (!text(item.agreed_by) || !item.agreed_at) add('不足', '誰がいつ合意したか（agreed_by・agreed_at）を記録してください。', target, 'この定義は、どなたがいつ確認しましたか？');
   };
   for (const { item, kind } of entries) {
     const target = { kind, id: item.id, name: item.name };
     if (text(item.question)) add('未決定', item.question, target);
-    for (const c of item.cases || []) if (c.result === 'unresolved') add('未決定', `判定が未決定：${c.description}`, target, `「${c.description}」は含みますか、含みませんか？`);
+    for (const c of item.cases || []) caseIssues(c, target);
     if (!text(item.description)) add('不足', '意味の説明を記録してください。', target, 'これは、どういう意味ですか？');
     if (!text(item.example) && !(item.cases || []).some(c => c.result === 'included')) add('不足', '含む具体例を記録してください。', target, '具体的には、どんなものが含まれますか？');
     if (!text(item.exclusion) && !(item.cases || []).some(c => c.result === 'excluded')) add('不足', '含まない具体例を記録してください。', target, '似ているけれど含まれないものはありますか？');
@@ -52,7 +83,7 @@ export function assessCompletion(model) {
       const prefix = `属性「${a.name}」：`;
       if (text(a.question)) add('未決定', prefix + a.question, target);
       if (!text(a.description)) add('不足', prefix + '意味の説明を記録してください。', target, prefix + 'どういう値ですか？');
-      if (!a.type) add('不足', prefix + '値の種類（type）を記録してください。', target, prefix + '日付・金額・区分など、どんな種類の値ですか？');
+      if (!a.type) add('不足', prefix + '値の種類（type）を記録してください。', target, prefix + '日付・金額・区分など、どんな種類の値ですか？', { ...choose(choiceList([...Object.entries(attributeTypes), unsureChoice])), field: 'attribute.type', attribute: a.id });
       if (a.type === 'code' && !a.values?.length) add('不足', prefix + '取りうる区分値を記録してください。', target, prefix + 'どんな区分がありますか？');
       if (a.data_mapping) mappingIssues(a.data_mapping, target, prefix);
     }
@@ -64,11 +95,11 @@ export function assessCompletion(model) {
     if (text(m.question)) add('未決定', m.question, target);
     if (!text(m.description)) add('不足', '指標の意味を記録してください。', target, 'この指標は、何を表す数ですか？');
     if (!m.concept) add('不足', '集計の対象となる概念（concept）を記録してください。', target, 'この指標は、何を数える（集計する）ものですか？');
-    if (!m.aggregation && !text(m.formula)) add('不足', '集計方法（aggregation）か計算式（formula）を記録してください。', target, 'どのように数えますか？（件数、重複を除いた件数、合計など）');
+    if (!m.aggregation && !text(m.formula)) add('不足', '集計方法（aggregation）か計算式（formula）を記録してください。', target, 'どのように数えますか？（件数、重複を除いた件数、合計など）', { ...choose(choiceList([...Object.entries(metricAggregations).filter(([key]) => key !== 'custom'), unsureChoice])), field: 'aggregation' });
     if (['count_distinct', 'sum', 'average', 'min', 'max'].includes(m.aggregation) && !m.attribute) add('不足', '集計対象の属性・識別子（attribute）を記録してください。', target, m.aggregation === 'count_distinct' ? '同じものを二度数えないために、何で同じものと判断しますか？' : 'どの値を集計しますか？');
-    if (!m.temporal) add('不足', '基準日や対象期間の意味（temporal.basis）を記録してください。', target, 'これは、ある日時点の数ですか、ある期間中の数ですか？');
+    if (!m.temporal) add('不足', '基準日や対象期間の意味（temporal.basis）を記録してください。', target, 'これは、ある日時点の数ですか、ある期間中の数ですか？', { ...choose(answerChoices.basis), field: 'temporal.basis' });
     else temporalIssues(m.temporal, target, `「${m.name}」`);
-    for (const d of m.dimensions || []) if (d.additive === undefined) add('不足', `軸「${d.name}」：足し合わせられるか（additive）を記録してください。`, target, `「${d.name}」ごとの値を足し合わせると、全体の値になりますか？`);
+    for (const d of m.dimensions || []) if (d.additive === undefined) add('不足', `軸「${d.name}」：足し合わせられるか（additive）を記録してください。`, target, `「${d.name}」ごとの値を足し合わせると、全体の値になりますか？`, { ...choose(answerChoices.yesNo), field: 'dimension.additive', dimension: d.name });
     for (const c of m.cases || []) if (!text(c.expected)) add('未決定', `数え方が未決定：${c.description}`, target, `「${c.description}」のとき、どう数えますか？`);
     if (!text(m.evidence)) add('不足', '定義の根拠・合意の記録を残してください。', target, 'この指標の定義は、どの資料や打ち合わせで決まったものですか？');
     agreementIssues(m, target, 'この指標の定義で合っていますか？');
@@ -82,7 +113,7 @@ export function assessCompletion(model) {
   }
   for (const { item, kind } of [...entries, ...metrics.map(item => ({ item, kind: 'metric' }))]) for (const alias of item.aliases || []) {
     const others = [...labels.get(alias.trim().toLowerCase())].filter(other => other !== item);
-    if (others.length) add('不整合', `別名「${alias}」が「${others.map(o => o.name).join('」「')}」の名前・別名と重なっています。`, { kind, id: item.id, name: item.name }, `「${alias}」は、「${[item, ...others].map(o => o.name).join('」「')}」のどれを指しますか？`);
+    if (others.length) add('不整合', `別名「${alias}」が「${others.map(o => o.name).join('」「')}」の名前・別名と重なっています。`, { kind, id: item.id, name: item.name }, `「${alias}」は、「${[item, ...others].map(o => o.name).join('」「')}」のどれを指しますか？`, { ...choose(choiceList([...[item, ...others].map(o => [o.id, o.name]), unsureChoice])), field: 'alias', alias });
   }
   // Report cycles and direct count contradictions without claiming full reasoning.
   for (const c of model.concepts.filter(local)) {
@@ -106,7 +137,7 @@ export function assessCompletion(model) {
   const stillUsed = (old, target) => {
     const next = old.replaced_by && byId.get(old.replaced_by);
     add('不整合', `廃止したことば「${old.name}」を使っています。${next ? `「${next.name}」に置き換えてください。` : '置き換え先を確認してください。'}`, target,
-      next ? `ここで扱うのは「${next.name}」ですか？（「${old.name}」は廃止されました）` : `「${old.name}」は廃止されました。ここでは代わりに何を扱いますか？`);
+      next ? `ここで扱うのは「${next.name}」ですか？（「${old.name}」は廃止されました）` : `「${old.name}」は廃止されました。ここでは代わりに何を扱いますか？`, next ? { ...choose(answerChoices.yesNo), field: 'replaced_by', replacement: next.id } : {});
   };
   for (const { item, kind } of entries) {
     const target = { kind, id: item.id, name: item.name };

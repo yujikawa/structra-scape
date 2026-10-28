@@ -22,6 +22,9 @@ export function openQuestions(file) {
     category: issue.category,
     target: issue.id ? { kind: issue.kind, id: issue.id, name: issue.name, ...(issue.process ? { process: issue.process, processName: issue.processName } : {}) } : { kind: 'model' },
     question: issue.ask || issue.message,
+    // Questions with known answers offer choices; the answer then carries `choice` (and `note`).
+    ...(issue.choices ? { choices: issue.choices } : {}),
+    ...(issue.case ? { case: issue.case } : {}),
   }));
   return { ok: true, model: path.basename(absolute), name: model.name, revision: createHash('sha256').update(source).digest('hex'), questions };
 }
@@ -37,6 +40,8 @@ export function validateAnswers(data) {
     if (!object(answer) || !/^q[0-9a-f]{8}$/.test(answer.key)) errors.push(`answers[${i}].key is invalid`);
     else if (!text(answer.answer, 10000)) errors.push(`answers[${i}].answer must be nonempty text`);
     else if (!text(answer.question, 2000)) errors.push(`answers[${i}].question must be nonempty text`);
+    else if (answer.choice !== undefined && !text(answer.choice, 200)) errors.push(`answers[${i}].choice must be a choice value`);
+    else if (answer.note !== undefined && typeof answer.note !== 'string') errors.push(`answers[${i}].note must be text`);
   });
   return errors;
 }
@@ -79,15 +84,71 @@ export function listAnswers(target, { model } = {}) {
     if (!byKey.has(id)) byKey.set(id, []);
     byKey.get(id).push({ file: f.file, answered_by: f.answered_by, answer: a });
   }
-  const same = (a, b) => a.trim().replace(/\s+/g, ' ') === b.trim().replace(/\s+/g, ' ');
+  // Answers with a choice differ when the choices differ; notes may be worded differently.
+  const same = (a, b) => a.choice || b.choice ? a.choice === b.choice : a.answer.trim().replace(/\s+/g, ' ') === b.answer.trim().replace(/\s+/g, ' ');
   let conflicts = 0;
   for (const group of byKey.values()) {
     if (group.length < 2) continue;
-    const conflict = group.some(g => !same(g.answer.answer, group[0].answer.answer));
+    const conflict = group.some(g => !same(g.answer, group[0].answer));
     if (conflict) conflicts++;
-    for (const g of group) Object.assign(g.answer, { conflict, others: group.filter(o => o !== g).map(o => ({ file: o.file, answered_by: o.answered_by, answer: o.answer.answer })) });
+    for (const g of group) Object.assign(g.answer, { conflict, others: group.filter(o => o !== g).map(o => ({ file: o.file, answered_by: o.answered_by, answer: o.answer.answer, ...(o.answer.choice ? { choice: o.answer.choice } : {}) })) });
   }
   return { ok: true, conflicts, files: listed };
+}
+
+// A proposed transaction for the answers given by choice, for the AI to check and apply.
+// Free-text answers, "分からない" and anything that needs a decision (agreement, aliases,
+// replacements, differing answers) are listed in `notes` instead; nothing is written here.
+export function answersPatch(target, { model } = {}) {
+  const files = listAnswers(target, { model }).files.filter(f => !f.error);
+  const modelFiles = [...new Set(files.map(f => f.model_file))];
+  if (modelFiles.length !== 1) fail('VALUE', modelFiles.length ? 'The answers refer to several models; give one answers file or folder per model' : 'No answers for a model were found; pass --model');
+  const modelFile = path.resolve(process.cwd(), modelFiles[0]);
+  const raw = loadModel(modelFile, { resolve: false }), draft = structuredClone(raw);
+  const issues = new Map(assessCompletion(loadModel(modelFile)).issues.map(issue => [issue.key, issue]));
+  const lists = { concept: 'concepts', property: 'properties', metric: 'metrics' }, touched = new Set(), attributeOps = [], notes = [], recorded = [];
+  const find = issue => (draft[lists[issue.kind]] || []).find(item => item.id === issue.id);
+  for (const f of files) for (const a of f.answers) {
+    const issue = issues.get(a.key), item = issue && find(issue);
+    const note = message => notes.push({ file: f.file, key: a.key, answered_by: f.answered_by, question: a.question, answer: a.answer, note: message });
+    if (!a.open || !issue) { note('この質問はもう出ていません。現在の定義を読んでから扱ってください。'); continue; }
+    if (!a.choice || !issue.field || !item && issue.field !== 'review_state') { note('自由記述の回答です。内容を読んで反映してください。'); continue; }
+    const take = () => { touched.add(`${issue.kind}:${issue.id}`); recorded.push({ file: f.file, key: a.key }); if (a.note?.trim()) note('補足があります。必要なら evidence や reason にも反映してください。'); };
+    if (issue.field === 'case') {
+      // Every department's judgment is kept, "分からない" included; it never decides the case.
+      const c = item.cases?.find(x => x.description === issue.case);
+      if (!c || !['included', 'excluded', 'unsure'].includes(a.choice)) { note('対応するケースが見つかりません。'); continue; }
+      const by = (f.answered_by || '').trim() || '回答者未記入';
+      c.judgments = [...(c.judgments || []).filter(j => j.by !== by), { by, result: a.choice, ...(a.note?.trim() ? { reason: a.note.trim() } : {}) }];
+      take();
+      note(`judgments.by に回答者「${by}」を入れました。部署・役割の名前に直してから apply してください。`);
+      continue;
+    }
+    if (a.choice === 'unsure') { note('「分からない」という回答です。ほかの人に聞いてください。'); continue; }
+    if (a.conflict) { note('ほかの回答と分かれています。ユーザーに確認してください。'); continue; }
+    const yes = a.choice === 'yes';
+    if (issue.field === 'review_state') { note(yes ? '定義に同意しています。合意として記録するのは、ユーザーに確認してから（review_state・agreed_by・agreed_at）。' : '定義に同意していません。補足を読んで定義を見直してください。'); continue; }
+    if (issue.field === 'alias') { note(`別名「${issue.alias}」は ${a.choice} を指すという回答です。別名を付け替えるか、ユーザーに確認してください。`); continue; }
+    if (issue.field === 'replaced_by') { note(yes ? `置き換え先 ${issue.replacement} で合っているという回答です。参照を置き換えてください。` : '置き換え先ではないという回答です。補足を読んでください。'); continue; }
+    if (issue.field === 'temporal.basis') item.temporal = { ...item.temporal, basis: a.choice };
+    else if (issue.field.startsWith('temporal.period.')) item.temporal.period[issue.field.split('.').pop()] = yes;
+    else if (issue.field === 'aggregation') item.aggregation = a.choice;
+    else if (issue.field === 'dimension.additive') { const d = item.dimensions?.find(x => x.name === issue.dimension); if (!d) { note('対応する軸が見つかりません。'); continue; } d.additive = yes; }
+    else if (issue.field === 'attribute.type') {
+      attributeOps.push({ op: 'upsert', entity: 'attribute', concept: issue.id, id: issue.attribute, value: { type: a.choice } });
+      recorded.push({ file: f.file, key: a.key });
+      continue;
+    }
+    else { note('自動では反映できない回答です。'); continue; }
+    take();
+  }
+  const operations = [...touched].map(entry => {
+    const [kind, id] = entry.split(':'), list = lists[kind];
+    const before = raw[list].find(x => x.id === id), after = draft[list].find(x => x.id === id);
+    const value = Object.fromEntries(Object.keys(after).filter(key => JSON.stringify(before[key]) !== JSON.stringify(after[key])).map(key => [key, after[key]]));
+    return { op: 'upsert', entity: kind, id, value };
+  }).filter(op => Object.keys(op.value).length);
+  return { ok: true, model: path.relative(process.cwd(), modelFile) || modelFile, patch: { operations: [...operations, ...attributeOps] }, recorded, notes };
 }
 
 // Answers saved under <dir>/answers/ for one model, flattened (the dev server shows them in the viewer).
@@ -97,7 +158,7 @@ export function savedAnswers(dir, model) {
   return fs.readdirSync(folder).filter(name => name.endsWith('.json')).sort().flatMap(name => {
     try {
       const data = readAnswers(path.join(folder, name));
-      return data.model === model ? data.answers.map(a => ({ key: a.key, answer: a.answer, answered_by: data.answered_by || '', exported_at: data.exported_at || '', file: name })) : [];
+      return data.model === model ? data.answers.map(a => ({ key: a.key, answer: a.answer, ...(a.choice ? { choice: a.choice } : {}), answered_by: data.answered_by || '', exported_at: data.exported_at || '', file: name })) : [];
     } catch { return []; }
   });
 }
@@ -139,5 +200,6 @@ export function registerAnswerCommands(program, run) {
   program.command('answers <path>').description('Read answers exported from the viewer (a file or a folder); --resolve removes recorded ones')
     .option('--model <file>', 'model the answers refer to (default: found next to the answers)')
     .option('--resolve <keys...>', 'remove these answers from the file; the file is deleted when empty')
-    .action(run((target, options) => options.resolve ? resolveAnswers(target, options.resolve) : listAnswers(target, options)));
+    .option('--patch', 'propose an apply transaction for the answers given by choice (nothing is written)')
+    .action(run((target, options) => options.resolve ? resolveAnswers(target, options.resolve) : options.patch ? answersPatch(target, options) : listAnswers(target, options)));
 }

@@ -59,6 +59,18 @@ concepts:
       - description: 契約開始日が来月の法人
         result: unresolved
         reason: 契約の有効開始時点を確認する必要がある。
+      # 境界の例を部署ごとに判定してもらった記録（judgments）。判定が分かれている。
+      - description: 停止中の契約だけを持つ法人
+        result: unresolved
+        judgments:
+          - { by: 営業部, result: included, reason: 再開の見込みがあるので、顧客として担当を続けている。 }
+          - { by: 経理部, result: excluded, reason: 請求が止まっているので、顧客数には含めていない。 }
+          - { by: カスタマーサクセス, result: unsure }
+      - description: 解約を申し出ていて、契約終了日がまだ来ていない法人
+        result: unresolved
+        judgments:
+          - { by: 営業部, result: included }
+          - { by: 経理部, result: included, reason: 終了日までは請求している。 }
     evidence: このファイルの説明用の仮定。実際の業務担当者との合意は未実施。
     data_mapping:
       source: example_warehouse.contracts（架空の説明用テーブル）
@@ -122,6 +134,8 @@ concepts:
       - description: 基準日時ちょうどに終了する契約
         result: excluded
         reason: 終了日時の時点では、もう有効ではない。
+        judgments:
+          - { by: カスタマーサクセス, result: included, reason: 終了日の当日まではサポートを提供している。 }
 properties:
   - id: hasContract
     name: 契約を持つ

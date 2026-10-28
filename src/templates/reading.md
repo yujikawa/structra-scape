@@ -22,6 +22,7 @@ them unconfirmed for lacking one.
 | `question` | Something still undecided about the item. The definition may change once it is answered. |
 | `cases[].result: unresolved` | Nobody has decided whether this example is included. Do not guess. |
 | `cases[].result: included / excluded` | Decided examples (inside / outside the definition). |
+| `cases[].judgments` | How each department or role judged the example (`unsure` = they do not know). Judgments that differ from each other or from `result` mean people understand the definition differently: say so instead of picking one. |
 | `agreed_by` / `agreed_at` | Who agreed the definition and on which day. |
 | `evidence` | Where the definition came from. Missing evidence means the source is unknown. |
 | `deprecated: true` | A retired term. It may still appear in old documents; use `replaced_by` (the term that took over) for anything current. |

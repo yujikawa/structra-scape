@@ -23,7 +23,7 @@ export function validateOntology(model) {
     if (!item || typeof item !== 'object') { errors.push('概念・関係はオブジェクトで指定してください'); continue; }
     if(item.cases!==undefined){
       if(!Array.isArray(item.cases))errors.push(`${item.id}.cases: 配列にしてください`);
-      else item.cases.forEach((c,i)=>{if(!c||typeof c.description!=='string'||!c.description.trim()||!['included','excluded','unresolved'].includes(c.result)||(c.reason!==undefined&&typeof c.reason!=='string'))errors.push(`${item.id}.cases[${i}]: description、result（included/excluded/unresolved）、任意のreasonが必要です`)});
+      else item.cases.forEach((c,i)=>{if(!c||typeof c.description!=='string'||!c.description.trim()||!['included','excluded','unresolved'].includes(c.result)||(c.reason!==undefined&&typeof c.reason!=='string'))errors.push(`${item.id}.cases[${i}]: description、result（included/excluded/unresolved）、任意のreasonが必要です`);else if(c.judgments!==undefined)errors.push(...validateJudgments(`${item.id}.cases[${i}].judgments`,c.judgments))});
     }
     for (const field of ['exclusion', 'evidence']) {
       if (item[field] !== undefined && typeof item[field] !== 'string') errors.push(`${item.id}.${field}: 文字列にしてください`);
@@ -171,6 +171,22 @@ function validateMetrics(model, termIds) {
     if (m.deprecated !== true) errors.push(`${m.id}.replaced_by: deprecated: true のときだけ指定してください`);
     if (!ids.has(m.replaced_by) || m.replaced_by === m.id) errors.push(`${m.id}.replaced_by: 置き換え先の指標が見つかりません`);
   }
+  return errors;
+}
+// How each department or role judged a case: the raw material of an agreement. People often
+// cannot state a definition but can judge an example, and where they judge differently is
+// itself the knowledge worth recording. `result` on the case stays the agreed outcome.
+export const judgmentResults = { included: '含む', excluded: '含まない', unsure: '分からない' };
+function validateJudgments(at, judgments) {
+  if (!Array.isArray(judgments)) return [`${at}: 配列にしてください`];
+  const errors = [], seen = new Set();
+  judgments.forEach((j, i) => {
+    if (!j || typeof j !== 'object' || typeof j.by !== 'string' || !j.by.trim() || !Object.hasOwn(judgmentResults, j.result)) { errors.push(`${at}[${i}]: by（部署・役割）と result（included/excluded/unsure）が必要です`); return; }
+    if (seen.has(j.by.trim())) errors.push(`${at}: 同じ判定者が重複しています: ${j.by}`);
+    seen.add(j.by.trim());
+    if (j.reason !== undefined && typeof j.reason !== 'string') errors.push(`${at}[${i}].reason: 文字列にしてください`);
+    if (j.at !== undefined && !isDate(j.at)) errors.push(`${at}[${i}].at: YYYY-MM-DD の日付にしてください`);
+  });
   return errors;
 }
 // Data items carried by a concept (OWL datatype properties). The type is the business-level kind of value.
