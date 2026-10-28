@@ -97,7 +97,11 @@ test('every view of the built reader runs without page errors', async t => {
   assert.equal(await page.innerText('#detail h2'), await page.$eval('#concepts button.active', button => button.firstChild.textContent.trim()));
   // Work places: a step shows where it is done; a term shows where it is created, received and used.
   await page.click('#mode-process');
+  // The process itself says what it is for before any step is chosen.
+  await page.locator('#process-list [data-root="ContractProcess"]').click();
+  assert.match(await page.innerText('#process-breadcrumbs .process-purpose'), /条件を満たす申込みだけを契約に/);
   await page.locator('#process-list button', { hasText: '契約を締結する' }).click();
+  assert.match(await page.innerText('#process-breadcrumbs .process-purpose'), /条件を満たす申込みだけを契約に/);
   assert.equal(await page.innerText('#process-detail .step-place'), '販売管理システム');
   assert.match(await page.evaluate(() => pc.$id('Sign').data('label')), /＠販売管理システム/);
   await page.click('#mode-ontology');

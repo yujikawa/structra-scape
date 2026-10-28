@@ -209,6 +209,8 @@ export function completionIssueKey(issue) {
 // flow declares a start or end, because an informal sketch of steps has no defined boundary.
 function assessProcess(p, add, text) {
   const processTarget = { kind: 'process', id: p.id, name: p.name };
+  // Why the process exists is what tells a step that serves it from one that is only habit.
+  if (!text(p.purpose)) add('不足', '目的（purpose）を記録してください。', processTarget, 'この業務は、何のために行いますか？ やめると、誰が何に困りますか？');
   if (!p.steps.length) { add('不足', '作業を記録してください。', processTarget, 'この業務は、どんな作業で進みますか？'); return; }
   const outgoing = id => p.flows.filter(f => f.source === id), incoming = id => p.flows.filter(f => f.target === id);
   const strict = p.steps.some(s => s.type === 'start' || s.type === 'end');

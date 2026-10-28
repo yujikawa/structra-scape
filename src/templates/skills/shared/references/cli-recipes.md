@@ -42,6 +42,7 @@ starter's example concept and process are removed in the same transaction.
     {"subject":"Customer","property":"hasContract","operator":"someValuesFrom","target":"Contract","mode":"equivalent"}
   ]},
   {"op":"upsert","entity":"process","id":"ContractProcess","value":{"name":"申込みから契約まで",
+    "purpose":"条件を満たす申込みだけを契約にし、契約した顧客へサービスを提供し始めるため。",
     "steps":[
       {"id":"Start","name":"申込みを受け取る","type":"start"},
       {"id":"Review","name":"内容を審査する","type":"task","owner":"営業担当","items":[{"concept":"Organization","role":"reads"}]},
@@ -207,7 +208,7 @@ has `role: receives`; how it is done goes in its description only as people say 
   {"op":"upsert","entity":"place","id":"SalesSystem","value":{"name":"販売管理システム","description":"申込みと契約を記録する。","owner":"営業部"}},
   {"op":"upsert","entity":"place","id":"BillingSheet","value":{"name":"請求確認シート","description":"経理部が請求前に確認するスプレッドシート。"}},
   {"op":"upsert","entity":"step","process":"ContractProcess","id":"Sign","value":{"place":"SalesSystem"}},
-  {"op":"upsert","entity":"process","id":"ContractsToBilling","value":{"name":"契約を請求確認シートへ","steps":[
+  {"op":"upsert","entity":"process","id":"ContractsToBilling","value":{"name":"契約を請求確認シートへ","purpose":"締め日の請求確認に、その月の契約をそろえるため。","steps":[
     {"id":"Start","name":"締め日を迎える","type":"start"},
     {"id":"Copy","name":"契約を請求確認シートに写す","type":"task","owner":"経理担当","place":"BillingSheet","timing":"毎月の締め日","items":[{"concept":"Contract","role":"receives"}]},
     {"id":"End","name":"写し終わる","type":"end"}

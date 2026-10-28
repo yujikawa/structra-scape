@@ -259,6 +259,7 @@ export function validateProcesses(model) {
     if (!p || !validId(p.id) || processIds.has(p.id)) { errors.push('業務フローのIDが無効または重複しています'); continue; }
     processIds.add(p.id);
     if (typeof p.name !== 'string' || !p.name.trim()) errors.push(`${p.id}: 業務名が必要です`);
+    if (p.purpose !== undefined && typeof p.purpose !== 'string') errors.push(`${p.id}.purpose: 文字列にしてください`);
     if (!Array.isArray(p.steps) || !Array.isArray(p.flows)) { errors.push(`${p.id}: steps と flows は配列にしてください`); continue; }
     const ids = new Set();
     for (const s of p.steps) {

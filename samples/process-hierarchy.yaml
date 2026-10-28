@@ -7,6 +7,7 @@ restrictions: []
 processes:
   - id: OrderToInvoice
     name: 受注から請求まで
+    purpose: 受けた注文を、回収できる見込みのあるものだけ出荷し、出荷した分を漏れなく請求するため。
     steps:
       - {id: Receive, name: 受注, type: task, description: 注文内容を受け付ける, position: {x: 100, y: 160}}
       - {id: Review, name: 審査, type: task, subprocess: ReviewDetails, description: 出荷してよい注文か確認する, position: {x: 350, y: 160}}
@@ -18,6 +19,7 @@ processes:
       - {source: Ship, target: Invoice}
   - id: ReviewDetails
     name: 審査
+    purpose: 代金を回収できない注文や、書類に不備のある注文を出荷前に止めるため。
     steps:
       - {id: Documents, name: 書類確認, type: task, owner: 営業担当, description: 必要書類と注文内容の整合を確認する, position: {x: 100, y: 160}}
       - {id: Credit, name: 与信判断, type: task, subprocess: CreditDetails, position: {x: 350, y: 160}}

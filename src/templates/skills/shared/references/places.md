@@ -61,6 +61,7 @@ used, and where no way of getting there is recorded.
 ```json
 {"operations":[
   {"op":"upsert","entity":"process","id":"ImportContracts","value":{"name":"契約の取り込み",
+    "purpose":"締結した契約を翌朝までに請求システムへ反映し、請求漏れを防ぐため。",
     "steps":[
       {"id":"Start","name":"夜間の取り込み時刻になる","type":"start"},
       {"id":"Import","name":"契約を請求システムに取り込む","type":"task","owner":"情報システム部","place":"BillingSystem","timing":"毎日の夜間","items":[{"concept":"Contract","role":"receives"}]},

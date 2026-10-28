@@ -8,8 +8,8 @@
 
 - **Terms and relationships**: definitions, aliases, included and excluded examples, evidence and agreement state; how terms relate and the rules that classify them
 - **Attributes (data items)**: the values a term carries (dates, amounts, codes…) and where they live in the data
-- **Business processes**: steps in order, who does them, where (the work place: a system, a spreadsheet…), and the terms each step uses, with drill-down into detail flows
-- **Open questions**: what is missing, undecided, not yet agreed or not yet mapped to data, and gaps in the flows (owners, decision conditions, dead ends), phrased as questions business users can answer in the viewer
+- **Business processes**: what each process is for (its purpose), steps in order, who does them, where (the work place: a system, a spreadsheet…), and the terms each step uses, with drill-down into detail flows
+- **Open questions**: what is missing, undecided, not yet agreed or not yet mapped to data, and gaps in the flows (purposes, owners, decision conditions, dead ends), phrased as questions business users can answer in the viewer
 - **Changes**: how the meaning changed since the last commit, with changes to agreed definitions highlighted
 
 The YAML is the source of truth. The viewer is read-only; the model is changed by the AI or in a text editor.
@@ -117,7 +117,7 @@ strscape export models/business.yaml --format skos --output glossary.ttl   # SKO
 - **Data mappings** (when recorded): verified or not, what one row represents, the selection condition, differences from the business definition
 - **Agreement records**: an agreed definition that does not say who agreed and when
 - **Inconsistencies**: cyclic parents, contradicting cardinalities, an alias that is another term's name or alias, deprecated terms still in use
-- **Flows**: task owners, decisions with two or more labelled paths, parallel splits matched by joins; with start/end steps, steps that cannot be reached and dead ends
+- **Flows**: the purpose of each process, task owners, decisions with two or more labelled paths, parallel splits matched by joins; with start/end steps, steps that cannot be reached and dead ends
 
 No open questions does not mean the model is complete: the checks are structural. Business owners still confirm the scope and the definitions.
 
@@ -186,6 +186,7 @@ restrictions:
 processes:
   - id: ContractProcess
     name: From application to contract
+    purpose: Turn only applications that meet the conditions into contracts   # why the process exists; who suffers if it stops
     steps:
       - { id: Start, name: Receive the application, type: start }
       - id: Sign
@@ -205,6 +206,7 @@ processes:
 - **IDs** start with a letter and use letters, digits, `_` and `-`. They stay the same when a name changes. Terms and relationships share one ID space.
 - **Relationships vs. attributes**: a link between terms is a relationship (`properties`); a value such as a date or an amount is an attribute.
 - **Classification rules** (`restrictions`): `someValuesFrom` (at least one), `allValuesFrom` (all of them; does not require any), `minCardinality` / `maxCardinality` / `cardinality` (number of distinct targets). `mode: equivalent` means "this is how the term is told apart"; `necessary` means "always holds".
+- **Purpose**: why the process exists. The steps can be read off the flow, but the purpose usually lives only in people's heads; held against it, steps kept only out of habit, and steps missing to achieve it, stand out. A process without one appears in the open questions.
 - **Detail flows**: `subprocess: ReviewDetails` on a task links to another flow for drill-down. A flow has one parent; cycles are rejected.
 - **Shared definitions**: `imports: [common.yaml]` reads another file's terms, relationships and rules (read-only; processes are not imported). `strscape promote <file> <ids...> --to models/common.yaml` moves existing terms into a shared file.
 

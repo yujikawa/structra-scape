@@ -5,7 +5,7 @@ export const changeFieldLabels = {
   name: '名前', description: '説明', example: '具体例', exclusion: '含まない例', question: '確認したいこと',
   review_state: '合意状態', evidence: '根拠', cases: 'ケース', judgments: '判定', data_mapping: 'データ対応', parent: '上位概念',
   aliases: '別名', domain: '始点', range: '相手', owner: '担当', type: '種類', items: '登場することば',
-  subprocess: '詳細フロー', required: '必須', values: '区分値', label: '条件', base: 'IRI', imports: '読み込む共通定義',
+  purpose: '目的', subprocess: '詳細フロー', required: '必須', values: '区分値', label: '条件', base: 'IRI', imports: '読み込む共通定義',
   agreed_by: '合意した人', agreed_at: '合意した日', deprecated: '廃止', replaced_by: '置き換え先',
   temporal: '時間の意味', effective_from: '適用開始日', effective_to: '適用終了日', concept: '対象の概念',
   aggregation: '集計方法', attribute: '集計対象', formula: '計算式', condition: '条件', unit: '単位',

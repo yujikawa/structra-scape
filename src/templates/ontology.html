@@ -318,12 +318,17 @@ details.reader-section>summary~*{margin-left:2px}
 .tree-toggle[aria-expanded=true]::before{left:8px;top:6px;transform:rotate(45deg)}
 .branch-mark{flex-shrink:0;font-size:11px;font-weight:400;color:var(--accent)}
 .process-list .legend{margin:auto -10px 0}
-#process-breadcrumbs{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;flex-wrap:wrap;gap:2px;min-height:48px;padding:8px 14px;background:var(--glass);border-bottom:1px solid var(--rule);font-size:13px}
+/* The bar sits above the diagram, not over it: the purpose line makes it taller. */
+.process-canvas{display:flex;flex-direction:column}
+#process-breadcrumbs{position:relative;z-index:3;display:flex;align-items:center;flex-wrap:wrap;gap:2px;min-height:48px;padding:8px 14px;background:var(--glass);border-bottom:1px solid var(--rule);font-size:13px}
 #process-breadcrumbs button{padding:4px 8px;border:0;border-radius:6px;background:none;color:var(--accent)}
 #process-breadcrumbs button:hover{background:var(--accent-soft)}
 #process-breadcrumbs button[aria-current=page]{color:var(--ink);font-weight:700}
-#process-breadcrumbs span{color:var(--ink-3)}
-#process-cy{position:absolute;inset:48px 0 0}
+#process-breadcrumbs>span{color:var(--ink-3)}
+.process-purpose{flex-basis:100%;min-width:0;max-width:880px;margin:2px 8px;color:var(--ink-2);font-size:13px;line-height:1.7}
+.process-purpose b{color:var(--accent-ink);font-weight:600}
+.process-purpose.missing span{color:var(--warn)}
+#process-cy{position:relative;flex:1;min-height:0}
 
 #process-detail>h2+.hint{margin-top:4px}
 #process-detail>p:not(.hint){margin-top:14px;color:var(--ink-2)}

@@ -58,7 +58,10 @@ renderProcess = function() {
   const chain = [], seen = new Set();
   let id = activeProcess;
   while (id && !seen.has(id)) { seen.add(id); const p=all.find(x=>x.id===id); if(!p)break; chain.unshift(p); id=parents.get(id)?.process; }
-  crumbs.innerHTML=chain.map(p=>`<button data-level="${esc(p.id)}" ${p.id===activeProcess?'aria-current="page"':''}>${esc(p.name)}</button>`).join('<span aria-hidden="true">›</span>');
+  const barHeight=crumbs.offsetHeight, purpose=process()?.purpose;
+  // Why the process exists stays in view while people read its steps.
+  crumbs.innerHTML=chain.map(p=>`<button data-level="${esc(p.id)}" ${p.id===activeProcess?'aria-current="page"':''}>${esc(p.name)}</button>`).join('<span aria-hidden="true">›</span>')+(process()?`<p class="process-purpose${purpose?'':' missing'}"><b>目的</b><span aria-hidden="true"> : </span><span>${purpose?esc(purpose):'まだ記録されていません。'}</span></p>`:'');
+  if(crumbs.offsetHeight!==barHeight){pc.resize();frameProcess()}
   crumbs.querySelectorAll('button').forEach(b=>b.onclick=()=>navigateHierarchy(b.dataset.level));
   for(const s of process()?.steps || []) if(s.subprocess) pc.$id(s.id).data('label',stepLabel(s)+'\n詳細 ›').addClass('has-detail');
   if(activeStep) pc.$id(activeStep).select();

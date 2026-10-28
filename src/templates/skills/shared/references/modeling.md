@@ -85,6 +85,13 @@ Rules of thumb:
 
 ## 4. Process flows
 
+- Ask first what the process is for and record it as `purpose`: the outcome it secures
+  and who is affected if it stops (「締め日の翌月初までに正しい金額を請求し、売上を正しい月に
+  計上するため」), not a restatement of the steps. People can list the steps; the purpose is
+  the tacit part. Then check each step against it: a step that serves none of it may be
+  habit, and a part of the purpose no step secures is a missing step or an open question.
+  Do not infer a purpose from the step names; if the user does not know, leave it out and
+  let the open-questions view ask.
 - Use `start` and `end` steps for every flow you model end to end; the open-questions view
   then checks reachability and dead ends.
 - `task` steps get an `owner`: a role or team (営業担当), not a person's name. If unknown,

@@ -204,7 +204,8 @@ each concept. References must resolve.
   allValuesFrom does not imply existence. Cardinality counts all distinct targets.
   Equivalent conditions combine with parents as an AND. Validation checks structure,
   not logical consistency; no reasoner is included.
-- processes: id, name, steps, flows.
+- processes: id, name, purpose? (why the process exists: the outcome it secures and who
+  is affected if it stops, as the business states it), steps, flows.
 - steps: id, name, type (start, task, decision, parallel, join, end), owner?,
   description?, example?, question?, position?, subprocess? (process ID, tasks only),
   items? [{concept: concept ID, role: creates|receives|reads|updates|participates}],
@@ -214,7 +215,7 @@ each concept. References must resolve.
 Start by expressing the business steps, then define terms used by those steps.
 Reuse concepts via items; do not duplicate definitions in each process. Mark uncertain
 definitions with question and review_state: discussion. Do not invent agreement.
-The open-questions view also checks flows: give tasks an owner, give every outgoing
+The open-questions view also checks flows: give each process a purpose, give tasks an owner, give every outgoing
 path of a decision a label, give parallel splits and joins two or more paths, and
 connect start to end without dead ends. Record unknown owners as a step question
 rather than guessing.

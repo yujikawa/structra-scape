@@ -246,6 +246,22 @@ test('attributes and aliases validate, inherit, export and appear in open questi
   assert.ok(validateModel(duplicate).some(e => e.includes('aliases')));
 });
 
+test('a process records why it exists, and open questions ask for a missing purpose', () => {
+  const m = sample();
+  const p = m.processes[0];
+  assert.ok(p.purpose);
+  assert.ok(!assessCompletion(m).issues.some(i => i.kind === 'process' && i.message.includes('purpose')));
+  const before = structuredClone(m);
+  delete p.purpose;
+  const issue = assessCompletion(m).issues.find(i => i.kind === 'process' && i.id === p.id && i.message === '目的（purpose）を記録してください。');
+  assert.match(issue.ask, /何のために/);
+  assert.equal(translateUI(issue.ask, 'en'), 'What is this process for? If it stopped, who would have trouble, and with what?');
+  const change = diffModels(before, m).find(c => c.entity === 'process' && c.id === p.id);
+  assert.deepEqual(change.fields.map(f => f.field), ['purpose']);
+  assert.ok(validateOntology({ ...m, processes: [{ ...p, purpose: ['請求するため'] }] }).some(e => e.includes('purpose')));
+  assert.match(publicationSvg(before, { process: p.id }), /目的: /);
+});
+
 test('flow checks report owners, decisions, gateways, reachability and dead ends', () => {
   const m = sample();
   // Work-place questions (how data gets to a place) are covered in places.test.js.

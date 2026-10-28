@@ -48,6 +48,7 @@ restrictions:
 processes:
   - id: Billing
     name: 月次請求
+    purpose: 契約どおりの金額を、締め日の翌月初までに顧客へ請求し、売上を正しい月に計上するため。遅れたり誤ったりすると、入金が遅れ、月次決算の数字も合わなくなる。
     steps:
       - id: Start
         name: 締め日を迎える
@@ -95,6 +96,7 @@ processes:
   # 販売管理システムで作られた契約を、請求システムへ取り込む作業。
   - id: ImportContracts
     name: 契約の取り込み
+    purpose: 締結した契約を翌朝までに請求システムへ反映し、請求漏れを防ぐため。
     steps:
       - id: Start
         name: 夜間の取り込み時刻になる

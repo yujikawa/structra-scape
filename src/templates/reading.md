@@ -60,8 +60,10 @@ can be agreed while its data mapping is only proposed, and the other way round.
     It does not say there is one.
   - `minCardinality` / `maxCardinality` / `cardinality` + `count`: at least / at most /
     exactly that many related items (all distinct items, of any concept).
-- `processes`: business flows. `steps` have a `type` (start, task, decision, parallel, join,
-  end) and an `owner` (who does it). `flows` connect steps; a `label` on a flow out of a
+- `processes`: business flows. `purpose` is why the process exists, as the business states it;
+  read the steps against it (a step that serves no part of it may be habit, not need). If it
+  is missing, say so rather than guessing it from the step names. `steps` have a `type`
+  (start, task, decision, parallel, join, end) and an `owner` (who does it). `flows` connect steps; a `label` on a flow out of a
   decision is the condition for taking it. `subprocess` points to a more detailed process.
 - `items` on a step: the concepts the step uses, with a `role`: `creates` (the step brings
   it into existence), `receives` (the step takes it in from another work place), `reads`,
