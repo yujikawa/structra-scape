@@ -41,11 +41,14 @@ test('every view of the built reader runs without page errors', async t => {
   await page.goto('file://' + file);
   const models = await page.$$eval('#model-choice option', options => options.map(o => o.value));
   assert.ok(models.length >= 3);
+  // A file of shared work places only has nothing of its own to show, so it is not offered.
+  assert.ok(!(await page.$$eval('#model-choice option', options => options.map(o => o.textContent))).includes('作業場所の一覧'));
 
   // Several domains open on the overview: domains are boxes, and selecting one opens its model.
   assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'true');
   assert.match(await page.innerText('#overview-summary'), /^3つのドメイン/);
-  assert.ok(await page.locator('#overview-details .overview-table').count() === 1);
+  // The term-and-process table, and the work places.
+  assert.equal(await page.locator('#overview-details .overview-table').count(), 2);
   const boxes = await page.evaluate(() => overviewGraph.nodes('[kind="domain"]').length);
   assert.equal(boxes, 3);
   const crossing = await page.evaluate(() => overviewGraph.nodes('[kind="concept"]').length);
@@ -78,6 +81,21 @@ test('every view of the built reader runs without page errors', async t => {
   await page.click('#mode-ontology');
   await page.click('#mode-process');
   assert.deepEqual(await page.evaluate(id => pc.$id(id).position(), step), stepMoved);
+  // Choosing another model redraws the flow on screen at once, without another click.
+  await page.selectOption('#model-choice', { label: '顧客と契約の定義' });
+  assert.match(await page.innerText('#process-list'), /申込みから契約まで/);
+  await page.selectOption('#model-choice', { label: '請求の定義' });
+  // On the overview, choosing a model opens it.
+  await page.click('#mode-overview');
+  await page.selectOption('#model-choice', { label: '顧客と契約の定義' });
+  assert.equal(await page.getAttribute('#mode-overview', 'aria-pressed'), 'false');
+  assert.match(await page.innerText('#process-list'), /申込みから契約まで/);
+  // The overview lists every place of the folder and opens one where its steps are.
+  await page.click('#mode-overview');
+  assert.match(await page.innerText('#overview-details'), /作業場所[\s\S]*会計システム\s*↗\s*Accounting\s*請求の定義/);
+  await page.locator('[data-overview-place]', { hasText: '会計システム' }).click();
+  assert.equal(await page.innerText('#process-detail h2'), '会計システム');
+  await page.selectOption('#model-choice', { label: '請求の定義' });
   await page.click('#mode-overview');
   await page.evaluate(() => { overviewGraph.$id('concept:customer-contract.yaml#Contract').emit('tap'); });
   assert.equal(await page.innerText('#detail h2'), '契約');
@@ -102,12 +120,40 @@ test('every view of the built reader runs without page errors', async t => {
   assert.match(await page.innerText('#process-breadcrumbs .process-purpose'), /条件を満たす申込みだけを契約に/);
   await page.locator('#process-list button', { hasText: '契約を締結する' }).click();
   assert.match(await page.innerText('#process-breadcrumbs .process-purpose'), /条件を満たす申込みだけを契約に/);
-  assert.equal(await page.innerText('#process-detail .step-place'), '販売管理システム');
+  assert.equal(await page.innerText('#process-detail .step-place'), '販売管理システム ↗');
   assert.match(await page.evaluate(() => pc.$id('Sign').data('label')), /＠販売管理システム/);
+  // A place listed under the flows reads like a term: what it is, who owns it, the steps and data there.
+  assert.equal(await page.innerText('#place-list'), '販売管理システム\n営業部');
+  await page.click('#process-detail .step-place');
+  assert.equal(await page.innerText('#process-detail h2'), '販売管理システム');
+  assert.equal(await page.getAttribute('#place-list [data-place="SalesSystem"]', 'class'), 'active');
+  assert.deepEqual(await page.evaluate(() => { const ids = []; pc.nodes('.on-place').forEach(n => { ids.push(n.id()); }); return ids.sort(); }), ['Review', 'Sign']);
+  assert.match(await page.innerText('#process-detail'), /ここで行う作業 · 2件[\s\S]*ここにあることば[\s\S]*生まれる\s*契約[\s\S]*データの受け渡し[\s\S]*契約\s*販売管理システム\s*→\s*請求システム/);
+  await page.locator('#process-detail [data-place-step]', { hasText: '契約を締結する' }).click();
+  assert.equal(await page.innerText('#process-detail h2'), '契約を締結する');
+  assert.equal(await page.locator('#place-list .active').count(), 0);
   await page.click('#mode-ontology');
   await page.click('#concepts button[data-id="Contract"]');
   await page.locator('.reader-tabs button').nth(1).click();
   assert.match(await page.innerText('#detail .place-trail'), /生まれる\s*販売管理システム[\s\S]*受け取る\s*請求システム/);
+  // A place on another domain's step opens in that domain; an alias finds it in the search.
+  await page.locator('#detail [data-place-open]', { hasText: '請求システム' }).first().click();
+  assert.equal(await page.$eval('#model-choice', select => select.selectedOptions[0].textContent), '請求の定義');
+  assert.equal(await page.innerText('#process-detail h2'), '請求システム');
+  await page.click('#mode-ontology');
+  await page.fill('#search', '請求確認Excel');
+  await page.click('#place-hits-list button');
+  assert.equal(await page.innerText('#process-detail h2'), '請求確認シート');
+  await page.goBack();
+  assert.equal(await page.isVisible('#process-workspace'), false);
+  await page.goForward();
+  assert.equal(await page.innerText('#process-detail h2'), '請求確認シート');
+  await page.click('#mode-ontology');
+  await page.fill('#search', '');
+  await page.selectOption('#model-choice', { label: '顧客と契約の定義' });
+  await page.click('#mode-ontology');
+  await page.click('#concepts button[data-id="Contract"]');
+  await page.locator('.reader-tabs button').nth(1).click();
   await page.locator('.reader-tabs button').nth(0).click();
   // Metrics say what the records can answer: now, but not at the end of last month (current-only data).
   await page.locator('#metrics-list button').first().click();
@@ -201,6 +247,7 @@ test('every view of the built reader runs without page errors', async t => {
       await page.click('#mode-process');
       // Open each step, and drill into detail flows through the tree.
       await clickAll('#process-list button:not(.tree-toggle)');
+      await clickAll('#place-list button');
       await page.click('#mode-overview');
       await page.click('#overview-fit');
       await page.click('#mode-unconfirmed');

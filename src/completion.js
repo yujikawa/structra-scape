@@ -28,7 +28,9 @@ export function assessCompletion(model, context) {
   // A deprecated term is no longer reviewed; what still uses it is reported instead.
   const current = item => !item.deprecated;
   const entries = [...model.concepts.filter(local).filter(current).map(item => ({ item, kind: 'concept' })), ...model.properties.filter(local).filter(current).map(item => ({ item, kind: 'property' }))];
-  if (!model.concepts.length) add('不足', '対象とする業務の概念を登録してください。', undefined, 'この業務では、どんな「もの」や「こと」を扱いますか？');
+  // A shared list of work places (places.yaml) is not a business domain: it has no terms to ask for.
+  const placeCatalog = !(model.processes || []).length && (model.places || []).some(local);
+  if (!model.concepts.length && !placeCatalog) add('不足', '対象とする業務の概念を登録してください。', undefined, 'この業務では、どんな「もの」や「こと」を扱いますか？');
   // `definition` is the temporal meaning of what the data stands for: a definition judged at a
   // past moment needs data that keeps past states.
   const mappingIssues = (mapping, target, prefix = '', definition) => {
@@ -156,14 +158,17 @@ export function assessCompletion(model, context) {
   return { issues, ready, total: reviewed.length };
 }
 
-// Work places (where a step is done, and so where its data is). Places are reviewed in the file
-// that owns them (usually places.yaml). Data must get to every place a step uses it on: from a
+// Work places (where a step is done, and so where its data is). A place is reviewed in the file
+// that owns it (usually places.yaml) and in every model whose steps are done on it, since a shared
+// catalog has no view of its own; the target says which file to record the answer in. Data must
+// get to every place a step uses it on: from a
 // step that creates or receives it there. How it gets there (by hand, a file, an API) is asked,
 // never assumed, and recorded as a step that receives it.
 function assessPlaces(model, add, text, local, context) {
   const places = model.places || [], name = id => places.find(s => s.id === id)?.name || id;
-  for (const s of places.filter(local)) {
-    const target = { kind: 'place', id: s.id, name: s.name };
+  const usedHere = s => (model.processes || []).some(p => (p.steps || []).some(x => x.place === s.id));
+  for (const s of places.filter(s => local(s) || usedHere(s))) {
+    const target = { kind: 'place', id: s.id, name: s.name, ...(s.imported_from ? { imported_from: s.imported_from } : {}) };
     if (text(s.question)) add('未決定', s.question, target);
     if (!text(s.description)) add('不足', '説明を記録してください。', target, `「${s.name}」では、何のデータを扱い、どんな仕事をしていますか？`);
     if (!text(s.owner)) add('不足', '担当（owner）を記録してください。', target, `「${s.name}」は、どの部署が担当していますか？`);

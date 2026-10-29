@@ -169,7 +169,11 @@ place that creates, reads or updates a term says the data is there. Work that mo
 another place is a step on the receiving place with an item `role: receives`; how it is
 done (by hand, a file, an API) is not categorized — describe it only as people say it, never
 guess. The open questions ask, across the folder, how a term gets to a place where it is
-used but neither created nor received. `promote` also moves places into a shared file.
+used but neither created nor received. Questions about a place itself (description, owner)
+are asked in the file that owns it and in every model whose steps are done on it; record the
+answer in the owning file (the question's target has `imported_from`). A place is not a
+term: do not add a concept for a system or spreadsheet. `promote` also moves places into a
+shared file.
 
 Required arrays: concepts, properties, restrictions. Optional arrays: processes, metrics,
 places.

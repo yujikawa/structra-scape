@@ -25,15 +25,16 @@ function ownerScope(owner) {
     : issue.kind === 'process' ? steps.some(x => x.process === issue.id)
       : issue.kind === 'concept' ? concepts.has(issue.id)
         : issue.kind === 'property' ? [model.properties.find(p => p.id === issue.id)].some(p => p && (concepts.has(p.domain) || concepts.has(p.range)))
-          : issue.kind === 'metric' ? concepts.has((model.metrics || []).find(m => m.id === issue.id)?.concept) : false;
+          : issue.kind === 'metric' ? concepts.has((model.metrics || []).find(m => m.id === issue.id)?.concept)
+            : issue.kind === 'place' ? steps.some(x => x.step.place === issue.id) : false;
 }
 // What the question is about, as recorded now, so people can answer without leaving the list.
 function issueContext(group) {
   const item = group.kind === 'step' ? (model.processes || []).find(p => p.id === group.process)?.steps.find(s => s.id === group.id)
     : group.kind === 'process' ? (model.processes || []).find(p => p.id === group.id)
-      : ({ concept: model.concepts, property: model.properties, metric: model.metrics || [] })[group.kind]?.find(x => x.id === group.id);
+      : ({ concept: model.concepts, property: model.properties, metric: model.metrics || [], place: model.places || [] })[group.kind]?.find(x => x.id === group.id);
   if (!item) return '';
-  const owner = group.kind === 'step' && item.owner ? `<span class="issue-context-owner"><span>担当</span><span>${esc(item.owner)}</span></span>` : '';
+  const owner = (group.kind === 'step' || group.kind === 'place') && item.owner ? `<span class="issue-context-owner"><span>担当</span><span>${esc(item.owner)}</span></span>` : '';
   return `<p class="issue-context"><span class="issue-context-label">いまの記録</span>${item.description ? `<span>${esc(item.description)}</span>` : '<span class="hint">説明はまだありません。</span>'}${owner}</p>`;
 }
 const issueMatches = (issue, query) => !query || [issue.name, issue.processName, issue.id, issue.ask, issue.message].some(value => String(value || '').toLowerCase().includes(query));
@@ -92,6 +93,7 @@ function renderUnconfirmed() {
       if (activeStep) pickStep(activeStep);
       return;
     }
+    if (issue.kind === 'place') { setProcessMode(true); openPlace(issue.id); return; }
     setProcessMode(false);
     selected = { kind: issue.kind, id: issue.id };
     $('search').value = '';

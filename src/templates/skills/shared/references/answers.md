@@ -14,8 +14,11 @@ strscape answers ~/Downloads/answers-contracts-20261002T1030.json --model models
 ```
 
 Each file lists `answered_by`, `exported_at` and its answers. Each answer has a `key`, the
-`target` (concept, property, step or process, with ID and name), the `question` as the
-business user saw it, and the `answer`. Questions with a known set of answers were answered
+`target` (concept, property, metric, step, process or place, with ID and name), the
+`question` as the business user saw it, and the `answer`. A target with `imported_from` is
+defined in that shared file: a work place from `places.yaml` is asked in every model whose
+steps are done on it, and its answer is recorded in `places.yaml`, not in the model the
+answers came from. Questions with a known set of answers were answered
 by choice: those answers also carry `choice` (the value to record, e.g. `yes`, `excluded`,
 `as_of`) and an optional `note`. The CLI adds:
 - `open`: the question is still asked by the current model. `false` means the model
@@ -61,6 +64,8 @@ transaction yourself (`cli-recipes.md`). Typical mappings:
 | どの資料や打ち合わせで決まった？ | `evidence` |
 | どんな種類の値ですか？／どんな区分がありますか？ | the attribute's `type` / `values` |
 | 誰が担当しますか？ | the step's `owner` |
+| 「…」では、何のデータを扱い、どんな仕事をしていますか？ | the place's `description` (in the file that owns it) |
+| 「…」は、どの部署が担当していますか？ | the place's `owner` (in the file that owns it) |
 | どんな条件で、どちらへ進みますか？ | flow `label`s (replace the process's flow list) |
 | 「…」は、どれを指しますか？ | move the alias to the right term, or keep both and record the difference |
 | この定義は、どなたがいつ確認しましたか？ | `agreed_by` / `agreed_at` (on an agreed definition) |

@@ -11,7 +11,7 @@ function saveViewState() {
   }
   try {
     sessionStorage.setItem(viewStateKey, JSON.stringify({
-      slug: entries[Number(entryIndex)]?.slug, selected, activeProcess, activeStep, ancestors,
+      slug: entries[Number(entryIndex)]?.slug, selected, activeProcess, activeStep, activePlace, ancestors,
       mode: overviewMode ? 'overview' : changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
       search: $('search').value, zoom: cy.zoom(), pan: cy.pan(), pz: pc.zoom(), pp: pc.pan(),
       hierarchy: [...hierarchyViews], collapsedBranches: [...collapsedBranches], scroll,
@@ -30,7 +30,7 @@ setTimeout(() => {
   try { state = JSON.parse(sessionStorage.getItem(viewStateKey)); } catch {}
   // A workspace of several domains opens on its overview.
   if (!state || typeof state !== 'object') { if(!overviewButton.hidden)overviewButton.click(); else if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
-  const index = entries.findIndex(e=>e.slug===state.slug);
+  const index = choiceEntries.find(x=>x.e.slug===state.slug)?.i ?? -1;
   if (state.slug && index < 0) { if(model.processes?.length)setProcessMode(true); else openTerms(); return; }
   if (index >= 0) {
     entryIndex=String(index); $('model-choice').value=entryIndex; modelChoiceTitle();
@@ -46,6 +46,7 @@ setTimeout(() => {
   refresh(true);
   const mode=state.mode;
   setProcessMode(mode==='process');
+  if(mode==='process'&&!activeStep&&typeof state.activePlace==='string')openPlace(state.activePlace);
   if(mode==='unconfirmed')completionButton.click();
   if(mode==='changes'&&!changesButton.hidden)changesButton.click();
   if(mode==='overview'&&!overviewButton.hidden)overviewButton.click();
@@ -74,7 +75,7 @@ setTimeout(() => {
 // True until the restored view has been recorded as the first step (restoring clicks the tabs).
 let navApplying = true;
 const navState = () => ({
-  entry: entryIndex, selected: { ...selected }, activeProcess, activeStep,
+  entry: entryIndex, selected: { ...selected }, activeProcess, activeStep, activePlace,
   mode: overviewMode ? 'overview' : changesMode ? 'changes' : unconfirmedMode ? 'unconfirmed' : processMode ? 'process' : document.body.classList.contains('reviewing') ? 'definitions' : 'ontology',
 });
 function recordNav() {
@@ -94,11 +95,12 @@ function applyNav(state) {
     const collection = selectionCollection(state.selected?.kind);
     if (collection.some(x => x.id === state.selected?.id)) selected = { ...state.selected };
     if (model.processes?.some(p => p.id === state.activeProcess)) { activeProcess = state.activeProcess; activeStep = state.activeStep; }
+    activePlace = typeof state.activePlace === 'string' ? state.activePlace : null;
     refresh(Boolean(modelChanged));
     if (state.mode === 'overview' && !overviewButton.hidden) overviewButton.click();
     else if (state.mode === 'changes' && !changesButton.hidden) changesButton.click();
     else if (state.mode === 'unconfirmed') completionButton.click();
-    else if (state.mode === 'process') { setProcessMode(true); if (activeStep) pickStep(activeStep); }
+    else if (state.mode === 'process') { setProcessMode(true); if (activeStep) pickStep(activeStep); else if (state.activePlace) openPlace(state.activePlace); }
     else { setProcessMode(false); setReview(state.mode === 'definitions'); if (state.mode === 'ontology') focusSelection(); }
   } finally {
     navApplying = false;

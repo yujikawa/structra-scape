@@ -10,6 +10,7 @@ export function workspaceOverview(entries) {
   // A file that only lists places (places.yaml) is a shared catalog, not a business domain.
   const catalog = model => !model.concepts.some(c => !c.imported_from) && !(model.processes || []).length && (model.places || []).some(s => !s.imported_from);
   const catalogs = new Set(entries.filter(entry => catalog(entry.model)).map(entry => entry.file));
+  const places = workPlaces(entries);
   entries = entries.filter(entry => !catalogs.has(entry.file));
   for (const entry of entries) {
     const model = entry.model;
@@ -105,7 +106,7 @@ export function workspaceOverview(entries) {
     return { key: c.key, id: c.id, name: c.name, owner: c.owner, cells };
   }).sort((a, b) => [...domains.keys()].indexOf(a.owner) - [...domains.keys()].indexOf(b.owner) || a.name.localeCompare(b.name, 'ja'));
   // Where data is and how it moves between work places, read from the steps.
-  const uses = placeUses(entries), placeData = { uses, moves: dataMoves(uses) };
+  const uses = placeUses(entries), placeData = { list: places, uses, moves: dataMoves(uses) };
   // What crosses a domain boundary: the diagram can show only these.
   const relationList = [...relations.values()];
   for (const r of relationList) r.cross = new Set([r.owner, concepts.get(r.from).owner, concepts.get(r.to).owner]).size > 1;
@@ -123,6 +124,23 @@ export function workspaceOverview(entries) {
   };
 }
 
+// Every work place of the models built together, shared catalogs (places.yaml) included, with the
+// steps done on it. Places are keyed like terms: the file that owns them and their ID.
+export function workPlaces(entries) {
+  const places = new Map();
+  for (const entry of entries) {
+    const model = entry.model, owner = item => item.imported_from || entry.file;
+    for (const place of model.places || []) {
+      const key = `${owner(place)}#${place.id}`, { imported_from, ...fields } = place;
+      if (!places.has(key)) places.set(key, { key, file: owner(place), ...fields, steps: [] });
+    }
+    for (const p of model.processes || []) for (const s of p.steps || []) {
+      const place = s.place && (model.places || []).find(x => x.id === s.place);
+      if (place) places.get(`${owner(place)}#${place.id}`).steps.push({ domain: entry.file, domainName: entry.name || model.name, process: p.id, processName: p.name, step: s.id, stepName: s.name, ...(s.timing ? { timing: s.timing } : {}) });
+    }
+  }
+  return [...places.values()];
+}
 // Where data is, read from the steps: a step names the place (作業場所) it is done on and the
 // terms it creates, receives, reads or updates there. Across every model built together.
 // Terms and places are identified by the file that owns them and their ID.
@@ -203,7 +221,14 @@ export function overviewMarkdown(overview) {
     lines.push(`| ことば | 定義元 | ${used.map(d => d.name).join(' | ')} |`, `|---|---|${used.map(() => '---|').join('')}`);
     for (const row of overview.matrix) lines.push(`| ${row.name} | ${name(row.owner)} | ${used.map(d => [...new Set((row.cells[d.file] || []).map(u => overviewRoleNames[u.role]))].join('、')).join(' | ')} |`);
   } else lines.push('業務フローで使われていることばはありません。');
-  const { uses, moves } = overview.places;
+  const { list, uses, moves } = overview.places;
+  if (list.length) {
+    lines.push('', '## 作業場所', '');
+    for (const place of list) {
+      const domains = [...new Set(place.steps.map(s => s.domainName))];
+      lines.push(`- ${place.name}${place.owner ? `（担当：${place.owner}）` : ''}${place.description ? `：${place.description}` : ''}${domains.length ? ` — 作業 ${place.steps.length}件（${domains.join('、')}）` : ' — まだどの作業でも使われていません'}`);
+    }
+  }
   if (uses.length) {
     lines.push('', '## 作業場所とデータ', '', '作業に書かれた作業場所から読み取ったものです。渡し方（手渡し・ファイル・APIなど）は区別していません。', '');
     const roleNames = { creates: '作成', receives: '受け取り', reads: '参照', updates: '更新' };

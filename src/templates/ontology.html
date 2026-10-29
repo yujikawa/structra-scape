@@ -285,11 +285,19 @@ details.reader-section>summary~*{margin-left:2px}
 .case-expected{font-weight:600;color:var(--accent-ink)}
 /* Work places: where a step is done, in the teal data layer. */
 .step-meta .step-place,.step-meta .step-timing{background:var(--data-soft);color:var(--data)}
+.step-meta button.step-place{padding:2px 9px;border:0;border-radius:999px;font-size:12px}
+.step-meta button.step-place:hover{text-decoration:underline}
+.place-trail li button.place-name{color:var(--data);font-weight:600}
+.place-moves{margin:6px 0;padding:0;list-style:none;display:grid;gap:6px;font-size:13px}
+.place-moves li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+.place-moves .here{color:var(--data);font-weight:600}
+.move-gap{padding:0 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:12px;font-weight:600}
 .place-trail{margin:6px 0;padding:0;list-style:none;display:grid;gap:6px}
 .place-trail li{display:grid;grid-template-columns:4.5em minmax(6em,9em) 1fr;align-items:center;gap:4px 8px;font-size:13px}
 .place-trail li b{color:var(--data);font-weight:600}
 .place-trail li button{padding:2px 0;border:0;background:none;text-align:left;color:var(--accent-ink)}
 .place-trail li button small{display:block;color:var(--ink-3)}
+.place-terms li{grid-template-columns:4.5em 1fr}
 .attribute .reader-text,.attr-mapping .reader-text{margin-top:4px;font-size:13px}
 .attr-values{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px}
 .attr-values li{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
@@ -318,6 +326,13 @@ details.reader-section>summary~*{margin-left:2px}
 .tree-toggle[aria-expanded=true]::before{left:8px;top:6px;transform:rotate(45deg)}
 .branch-mark{flex-shrink:0;font-size:11px;font-weight:400;color:var(--accent)}
 .process-list .legend{margin:auto -10px 0}
+/* Work places sit under the flows: where the steps are done, and so where their data is. */
+.process-list .place-list h2{margin-top:18px}
+#place-list{display:grid;gap:1px}
+#place-list button{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 8px;border:0;border-radius:6px;background:none;text-align:left;font-size:13px;line-height:1.45;color:var(--ink)}
+#place-list button:hover{background:var(--sunken)}
+#place-list button.active{background:var(--data-soft);color:var(--data);font-weight:600}
+#place-list small{flex-shrink:0;font-size:11px;font-weight:400;color:var(--ink-3)}
 /* The bar sits above the diagram, not over it: the purpose line makes it taller. */
 .process-canvas{display:flex;flex-direction:column}
 #process-breadcrumbs{position:relative;z-index:3;display:flex;align-items:center;flex-wrap:wrap;gap:2px;min-height:48px;padding:8px 14px;background:var(--glass);border-bottom:1px solid var(--rule);font-size:13px}
@@ -424,6 +439,8 @@ details.reader-section>summary~*{margin-left:2px}
 .overview-table thead th{border-top:0;background:var(--paper);font-size:12px;color:var(--ink-2);white-space:nowrap}
 .overview-table tbody th{font-weight:600}
 .overview-table tbody th .term-id{display:block}
+.overview-table tbody th button{padding:0;border:0;background:none;text-align:left;color:var(--accent-ink);font-weight:600}
+.overview-table tbody th button:hover{text-decoration:underline}
 .overview-table td{min-width:96px}
 .overview-table td.owner{background:var(--tint)}
 .overview-table td .overview-role+.overview-role{margin-left:4px}
@@ -549,7 +566,11 @@ details.reader-section>summary~*{margin-left:2px}
 <!-- ONTOLOGY_CORE -->
 // A read-only reader: the YAML (edited by AI or a text editor) is the only source of model content.
 const $=id=>document.getElementById(id), entries=window.__STRUCTRA_DATA__.models;
-let model=structuredClone(entries[0].model), selected={kind:'concept',id:model.concepts[0]?.id}, entryIndex='0';
+// A file that only lists shared work places (or other imported-only parts) has nothing to show on its own:
+// it stays in the build for the overview and the open questions, but not in the model selector.
+const hasOwnView=e=>Boolean(e.model.concepts?.length||e.model.processes?.length||e.model.metrics?.length);
+const choiceEntries=entries.some(hasOwnView)?entries.map((e,i)=>({e,i})).filter(x=>hasOwnView(x.e)):entries.map((e,i)=>({e,i}));
+let entryIndex=String(choiceEntries[0].i), model=structuredClone(entries[Number(entryIndex)].model), selected={kind:'concept',id:model.concepts[0]?.id};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const graphFont='"Hiragino Sans","BIZ UDPGothic","Noto Sans JP","Yu Gothic UI",Meiryo,system-ui,sans-serif';
 // Cytoscape only wraps at spaces, so Japanese labels overflow their nodes. Break each line by measured
@@ -652,9 +673,9 @@ function updateReview(){
 }
 function setReview(enabled){document.body.classList.toggle('reviewing',enabled);$('review-board').hidden=!enabled;$('diagram-toggle').setAttribute('aria-pressed',String(!enabled));$('review-toggle').setAttribute('aria-pressed',String(enabled));if(enabled)updateReview();cy.resize()}
 $('diagram-toggle').onclick=()=>setReview(false);$('review-toggle').onclick=()=>setReview(true);
-$('search').oninput=renderLists;
+$('search').oninput=()=>renderLists();
 function download(filename,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-$('model-choice').innerHTML=entries.map((e,i)=>`<option value="${i}">${esc(e.name)}</option>`).join('');
+$('model-choice').innerHTML=choiceEntries.map(({e,i})=>`<option value="${i}">${esc(e.name)}</option>`).join('');
 // The select cuts long model names; the tooltip shows the whole name.
 const modelChoiceTitle=()=>{$('model-choice').title=entries[Number($('model-choice').value)]?.name||''};modelChoiceTitle();
 $('model-choice').onchange=()=>{modelChoiceTitle();entryIndex=$('model-choice').value;model=structuredClone(entries[Number(entryIndex)].model);selected={kind:'concept',id:model.concepts[0]?.id};cy.elements().remove();refresh(true)};
@@ -664,6 +685,7 @@ $('fit').onclick=()=>cy.fit(undefined,50);
 <!-- PROCESS_VIEW -->
 <!-- READER -->
 <!-- PROCESS_HIERARCHY -->
+<!-- PLACE_VIEW -->
 <!-- LANGUAGE_VIEW -->
 <!-- VIEW_STATE -->
 setReview(false);refresh(true);

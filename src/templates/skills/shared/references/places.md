@@ -18,6 +18,11 @@ where it has to get to. How it gets there is the tacit knowledge to draw out.
   knows, leave the step out and let the open question ask.
 - Leave out implementation: endpoints, file formats, field mappings and job schedules live in
   the code and the integration tools.
+- What people know about the place itself goes on the place: what it holds and is the
+  source of truth for, what it does not hold, who looks after it, what people call it
+  (「販管」). A place is not a term: do not add a concept for a system or a spreadsheet,
+  and do not draw relationships from terms to it — the steps' `place` already says where
+  each term is.
 
 ## Where it lives
 
@@ -52,7 +57,10 @@ Across every model in the folder:
   います。請求システムへは、どうやって渡っていますか？」 — answer with a receiving step;
 - a receiving step for a term no other place creates, updates or receives: 「どこから受け取って
   いますか？」;
-- a receiving step without `timing`, and places without a description or an owner.
+- a receiving step without `timing`, and places without a description or an owner. A place
+  is asked about in places.yaml and in every model whose steps are done on it (places.yaml
+  has no view of its own in the viewer); the question's target has `imported_from`, and the
+  answer is recorded in that file.
 `strscape overview models/ --format md` lists, per term, where it is created, received and
 used, and where no way of getting there is recorded.
 

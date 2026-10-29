@@ -242,7 +242,17 @@ the data a step creates or uses is. Work that moves data to another place is a s
 receiving place with `role: receives`; how it is done (by hand, a file, an API) is not
 categorized or guessed. Across the folder, open questions ask how a term gets to a place
 where it is used but neither created nor received. The term detail lists where a term is
-created, received and used; `strscape overview` lists the same per term.
+created, received and used; `strscape overview` lists the places and the same per term.
+
+A place carries what people know about it the way a term does — `description`, `owner`
+(department), `aliases` (what people call it), `question`, `evidence` — but it is not a term.
+In the business process view, the places this model's steps are done on are listed under
+the flows: choosing one highlights its steps in the diagram and shows its description,
+owner, the steps done there, the terms there and the data handed over. The step detail and
+the term detail link to it, and the term search finds places by name or alias. The overview
+lists every place of the folder. A places.yaml that holds only places is left out of the
+model selector; questions about a place are asked in the models whose steps are done on it,
+and their answers are recorded in places.yaml.
 
 ## How the AI edits, and how agreed definitions are protected
 

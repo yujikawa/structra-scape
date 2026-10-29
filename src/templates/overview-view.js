@@ -92,7 +92,8 @@ function drawOverview() {
 // Open a domain, process or term in its own model.
 function openFromOverview(file, open) {
   const index = entries.findIndex(e => e.file === file);
-  if (index < 0) return;
+  // A file with nothing of its own to show (only shared work places) is not opened.
+  if (!choiceEntries.some(x => x.i === index)) return;
   if (String(index) !== entryIndex) { $('model-choice').value = String(index); $('model-choice').onchange(); }
   open();
 }
@@ -118,7 +119,18 @@ function renderOverviewDetails(data) {
   const roleTags = list => [...new Set(list.map(u => u.role))].map(role => `<span class="overview-role" data-role="${role}" title="${esc(list.filter(u => u.role === role).map(u => `${u.processName} › ${u.stepName}`).join('\n'))}">${esc(overviewRoleShort[role])}</span>`).join('');
   const matrix = data.matrix.length ? `<div class="overview-table-wrap"><table class="overview-table"><thead><tr><th scope="col">ことば</th>${used.map(d => `<th scope="col">${esc(d.name)}</th>`).join('')}</tr></thead>${owners.map(owner => `<tbody><tr class="overview-group"><th colspan="${used.length + 1}" scope="rowgroup"><span>定義元</span>：<span>${esc(name(owner))}</span></th></tr>${data.matrix.filter(row => row.owner === owner).map(row => `<tr><th scope="row">${esc(row.name)}<code class="term-id">${esc(row.id)}</code></th>${used.map(d => `<td${d.file === owner ? ' class="owner"' : ''}>${roleTags(row.cells[d.file] || [])}</td>`).join('')}</tr>`).join('')}</tbody>`).join('')}</table></div><p class="hint">業務フローの作業が、どのことばを作成・参照・更新するかの一覧です。濃い列はことばの定義元です。</p>` : '<p class="hint">業務フローで使われていることばはありません。</p>';
   const questions = data.questions.length ? `<article class="completion-group">${data.questions.map(q => `<div class="completion-issue"><small data-category="${q.kind === 'overlap' ? 'conflict' : 'missing'}">${q.kind === 'overlap' ? '食い違い' : '教えてほしいこと'}</small><p>${esc(q.ask)}</p><p class="issue-task">${esc(q.message)}</p></div>`).join('')}</article>` : '<p class="hint">確認したいことはありません。</p>';
-  $('overview-details').innerHTML = `<h3 class="overview-heading">ドメインをまたぐ関係</h3>${data.links.length ? data.links.map(linkHtml).join('') : '<p class="hint">ドメインをまたぐ関係はまだありません。</p>'}<h3 class="overview-heading">ことばと業務の対応表</h3>${matrix}<h3 class="overview-heading">ドメインをまたいで確認したいこと</h3>${questions}`;
+  // Work places across the folder: who owns each, which domains work on it, and what moves in and out.
+  const placeList = data.places.list, placeMoves = key => data.places.moves.filter(m => m.from === key || m.to === key);
+  const placeRows = placeList.map((s, i) => {
+    const domainNames = [...new Set(s.steps.map(x => x.domainName))], moves = placeMoves(s.key);
+    return `<tr><th scope="row">${s.steps.length ? `<button data-overview-place="${i}">${esc(s.name)} ↗</button>` : `<span>${esc(s.name)}</span>`}<code class="term-id">${esc(s.id)}</code></th><td>${esc(s.owner || '')}</td><td>${s.steps.length ? `<span>${esc(domainNames.join('、'))}</span><small class="hint"> · <span>${s.steps.length}件の作業</span></small>` : '<span class="hint">まだどの作業でも使われていません</span>'}</td><td>${moves.map(m => `<div><b>${esc(m.conceptName)}</b> <span>${esc(m.fromName)}</span> <span class="overview-arrow">→</span> <span>${esc(m.toName)}</span>${m.gap ? ' <span class="move-gap">経路が未記録</span>' : ''}</div>`).join('')}</td></tr>`;
+  }).join('');
+  const places = placeList.length ? `<h3 class="overview-heading">作業場所</h3><div class="overview-table-wrap"><table class="overview-table"><thead><tr><th scope="col">作業場所</th><th scope="col">担当</th><th scope="col">使っているドメイン</th><th scope="col">データの受け渡し</th></tr></thead><tbody>${placeRows}</tbody></table></div><p class="hint">作業に書かれた作業場所から読み取っています。渡し方（手渡し・ファイル・APIなど）は区別していません。</p>` : '';
+  $('overview-details').innerHTML = `<h3 class="overview-heading">ドメインをまたぐ関係</h3>${data.links.length ? data.links.map(linkHtml).join('') : '<p class="hint">ドメインをまたぐ関係はまだありません。</p>'}<h3 class="overview-heading">ことばと業務の対応表</h3>${matrix}${places}<h3 class="overview-heading">ドメインをまたいで確認したいこと</h3>${questions}`;
+  $('overview-details').querySelectorAll('[data-overview-place]').forEach(b => b.onclick = () => {
+    const place = placeList[Number(b.dataset.overviewPlace)];
+    openFromOverview(place.steps[0].domain, () => { setProcessMode(true); openPlace(place.id); });
+  });
 }
 function renderOverview() {
   overviewData = workspaceOverview(entries);
@@ -146,6 +158,12 @@ overviewButton.onclick = () => {
     button.setAttribute('aria-pressed', String(button === overviewButton));
   }
   renderOverview();
+};
+// The overview covers every model: choosing one in the selector opens that model.
+const overviewModelChange = $('model-choice').onchange;
+$('model-choice').onchange = () => {
+  overviewModelChange();
+  if (overviewMode) { if (model.processes?.length) setProcessMode(true); else openTerms(); }
 };
 const overviewRefresh = refresh;
 refresh = function(...args) {

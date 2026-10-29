@@ -58,6 +58,7 @@ export function renderBundle(file, { compare } = {}) {
     .replace('<!-- ONTOLOGY_CORE -->', () => shared('ontology.js'))
     .replace('<!-- PROCESS_VIEW -->', () => template('process-view.js'))
     .replace('<!-- PROCESS_HIERARCHY -->', () => template('process-hierarchy.js'))
+    .replace('<!-- PLACE_VIEW -->', () => template('place-view.js'))
     .replace('<!-- VIEW_STATE -->', () => template('view-state.js'))
     .replace('<!-- READER -->', () => [shared('publication.js'), shared('completion.js'), shared('diff.js'), template('reader.js'), template('analysis-view.js'), template('graph-scope.js'), template('completion-view.js'), template('answers-view.js'), template('changes-view.js'), shared('workspace.js'), template('overview-view.js'), template('theme-view.js')].join('\n'))
     .replace('<!-- LANGUAGE_VIEW -->', () => shared('i18n.js') + '\n' + template('language-view.js'));

@@ -28,7 +28,7 @@ export function openQuestions(file) {
   const questions = assessCompletion(model, contextFor(absolute)).issues.filter(issue => issue.category !== 'データ対応').map(issue => ({
     key: issue.key,
     category: issue.category,
-    target: issue.id ? { kind: issue.kind, id: issue.id, name: issue.name, ...(issue.process ? { process: issue.process, processName: issue.processName } : {}) } : { kind: 'model' },
+    target: issue.id ? { kind: issue.kind, id: issue.id, name: issue.name, ...(issue.process ? { process: issue.process, processName: issue.processName } : {}), ...(issue.imported_from ? { imported_from: issue.imported_from } : {}) } : { kind: 'model' },
     question: issue.ask || issue.message,
     // Questions with known answers offer choices; the answer then carries `choice` (and `note`).
     ...(issue.choices ? { choices: issue.choices } : {}),
@@ -120,7 +120,7 @@ export function answersPatch(target, { model } = {}) {
     const issue = issues.get(a.key), item = issue && find(issue);
     const note = message => notes.push({ file: f.file, key: a.key, answered_by: f.answered_by, question: a.question, answer: a.answer, note: message });
     if (!a.open || !issue) { note('この質問はもう出ていません。現在の定義を読んでから扱ってください。'); continue; }
-    if (!a.choice || !issue.field || !item && issue.field !== 'review_state') { note('自由記述の回答です。内容を読んで反映してください。'); continue; }
+    if (!a.choice || !issue.field || !item && issue.field !== 'review_state') { note(issue?.imported_from ? `自由記述の回答です。読み込み元の ${issue.imported_from} に反映してください。` : '自由記述の回答です。内容を読んで反映してください。'); continue; }
     const take = () => { touched.add(`${issue.kind}:${issue.id}`); recorded.push({ file: f.file, key: a.key }); if (a.note?.trim()) note('補足があります。必要なら evidence や reason にも反映してください。'); };
     if (issue.field === 'case') {
       // Every department's judgment is kept, "分からない" included; it never decides the case.

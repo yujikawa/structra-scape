@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { loadModel, validateModel } from '../src/validate.js';
 import { assessCompletion } from '../src/completion.js';
-import { placeUses, dataMoves, completionContext, workspaceOverview, overviewMarkdown } from '../src/workspace.js';
+import { placeUses, dataMoves, completionContext, workspaceOverview, overviewMarkdown, workPlaces } from '../src/workspace.js';
 import { loadWorkspace } from '../src/build.js';
 import { diffModels } from '../src/diff.js';
 import { updateDocument, promoteDefinitions, readDocument } from '../src/mutate.js';
@@ -49,6 +49,28 @@ test('across the folder, open questions ask how data gets to every place it is u
   // The CLI asks the same questions as the viewer built from the folder.
   assert.deepEqual(asks(openQuestions('samples/billing.yaml').questions.map(q => ({ ask: q.question }))).sort(), asks(check('billing.yaml')).sort());
   for (const i of [...check('billing.yaml'), ...check('customer-contract.yaml'), ...assessCompletion(loadModel('samples/places.yaml')).issues].filter(i => i.ask)) assert.notEqual(translateUI(i.ask, 'en'), i.ask, i.ask);
+});
+
+test('a shared place is asked about in the models whose steps are done on it', () => {
+  const entries = loadWorkspace('samples');
+  const placeIssues = file => assessCompletion(entries.find(e => e.file === file).model, completionContext(entries, file)).issues.filter(i => i.kind === 'place');
+  // 会計システム has no owner. places.yaml has no view of its own, so 請求 (whose steps are done there) asks too.
+  const shared = placeIssues('places.yaml').find(i => i.id === 'Accounting'), here = placeIssues('billing.yaml').find(i => i.id === 'Accounting');
+  assert.equal(here.ask, '「会計システム」は、どの部署が担当していますか？');
+  assert.equal(here.imported_from, 'places.yaml');
+  assert.equal(here.key, shared.key);
+  // 顧客と契約 works only on 販売管理システム, which is fully described.
+  assert.deepEqual(placeIssues('customer-contract.yaml'), []);
+  assert.equal(openQuestions('samples/billing.yaml').questions.find(q => q.target.id === 'Accounting').target.imported_from, 'places.yaml');
+  // A list of places is not a domain: it is not asked which terms it handles.
+  assert.ok(!assessCompletion(loadModel('samples/places.yaml')).issues.some(i => !i.kind));
+});
+
+test('the work places of a folder list the steps done on each', () => {
+  const places = workPlaces(loadWorkspace('samples'));
+  assert.deepEqual(places.map(s => [s.key, s.steps.length]), [['places.yaml#SalesSystem', 2], ['places.yaml#BillingSystem', 3], ['places.yaml#BillingCheckSheet', 1], ['places.yaml#Accounting', 1]]);
+  assert.deepEqual(places.find(s => s.id === 'BillingCheckSheet').steps.map(x => [x.domain, x.stepName, x.timing]), [['billing.yaml', '請求内容を確認する', '月末の締め日']]);
+  assert.match(overviewMarkdown(workspaceOverview(loadWorkspace('samples'))), /## 作業場所\n\n- 販売管理システム（担当：営業部）：[^\n]* — 作業 2件（顧客と契約の定義）/);
 });
 
 test('where each term is, and how it moves, is read from the steps', () => {

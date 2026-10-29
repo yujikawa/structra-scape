@@ -25,6 +25,9 @@ function frameProcess(readable=true){
   }
 }
 function setProcessMode(enabled){processMode=enabled;setReview(false);document.querySelector('.workspace').hidden=enabled;processRoot.hidden=!enabled;$('mode-process').classList.toggle('active',enabled);$('mode-ontology').classList.toggle('active',!enabled);if(enabled)renderProcess();else cy.resize()}
+// Another model replaces the flow on screen too, not only the term diagram behind it.
+const processModelChange=$('model-choice').onchange;
+$('model-choice').onchange=()=>{processModelChange();if(processMode)renderProcess()};
 $('mode-process').onclick=()=>setProcessMode(true);$('mode-ontology').onclick=()=>setProcessMode(false);
 // Dragging is a view adjustment only: steps keep where they were dragged while the page is open.
 const draggedSteps=new Map(), draggedStepKey=id=>`${entries[Number(entryIndex)]?.slug}\u0000${activeProcess}\u0000${id}`;

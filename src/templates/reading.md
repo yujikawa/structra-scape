@@ -87,7 +87,9 @@ can be agreed while its data mapping is only proposed, and the other way round.
   data in from another place; its `timing` and description say when and how, as people put
   it. Whether that is done by hand or automatically is not recorded. A term used on a place
   where no step creates or receives it has no recorded way of getting there: say so instead
-  of assuming one.
+  of assuming one. A place's `description`, `owner` and `aliases` are what people know about
+  the place itself (what it holds, who looks after it, what they call it); a place is not a
+  term.
 - The model records meaning, not implementation. It does not say how tables are joined or
   which SQL is correct; a relationship (`property`) or a cardinality rule is business
   meaning and says nothing about key uniqueness in the data.
